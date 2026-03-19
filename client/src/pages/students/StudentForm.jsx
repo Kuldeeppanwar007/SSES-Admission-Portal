@@ -116,13 +116,13 @@ export default function StudentForm() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Photo</label>
-            {existingDocs.photo && <a href={existingDocs.photo} target="_blank" className="text-xs text-blue-500 block mb-1">View existing photo</a>}
+            {existingDocs.photo && <a href={existingDocs.photo} target="_blank" className="text-xs text-primary block mb-1">View existing photo</a>}
             <input type="file" accept="image/*" onChange={(e) => setPhoto(e.target.files[0])}
               className="w-full text-sm text-gray-500 file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:bg-primary file:text-white" />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Marksheet</label>
-            {existingDocs.marksheet && <a href={existingDocs.marksheet} target="_blank" className="text-xs text-blue-500 block mb-1">View existing marksheet</a>}
+            {existingDocs.marksheet && <a href={existingDocs.marksheet} target="_blank" className="text-xs text-primary block mb-1">View existing marksheet</a>}
             <input type="file" accept="image/*,.pdf" onChange={(e) => setMarksheet(e.target.files[0])}
               className="w-full text-sm text-gray-500 file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:bg-primary file:text-white" />
           </div>

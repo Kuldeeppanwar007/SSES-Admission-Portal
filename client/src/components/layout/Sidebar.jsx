@@ -24,27 +24,29 @@ export default function Sidebar() {
         {open ? <FiX size={20} /> : <FiMenu size={20} />}
       </button>
 
-      <aside className={`fixed top-0 left-0 h-full w-64 bg-primary-dark text-white flex flex-col z-40 transform transition-transform duration-300
+      <aside className={`fixed top-0 left-0 h-full w-64 bg-white border-r border-gray-200 text-gray-800 flex flex-col z-40 transform transition-transform duration-300
         ${open ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}>
-        <div className="p-6 border-b border-blue-700">
-          <h1 className="text-xl font-bold">SSES Portal</h1>
-          <p className="text-sm text-blue-300 mt-1 capitalize">{user?.role?.replace('_', ' ')}</p>
-          {user?.track && <p className="text-xs text-blue-400">{user.track}</p>}
+        <div className="p-6 border-b border-gray-200">
+          <h1 className="text-xl font-bold text-gray-900">SSES Portal</h1>
+          <p className="text-sm text-gray-500 mt-1 capitalize">{user?.role?.replace('_', ' ')}</p>
+          {user?.track && <p className="text-xs text-gray-400">{user.track}</p>}
         </div>
 
         <nav className="flex-1 p-4 space-y-1">
           {links.map((item) => (
             <NavLink key={item.to} to={item.to} onClick={() => setOpen(false)}
               className={({ isActive }) =>
-                `flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${isActive ? 'bg-primary text-white' : 'text-blue-200 hover:bg-blue-800'}`}>
+                `flex items-center gap-3 px-4 py-3 rounded-lg transition-colors font-medium ${
+                  isActive ? 'bg-primary text-white' : 'text-gray-600 hover:bg-orange-50 hover:text-primary'
+                }`}>
               {item.icon} {item.label}
             </NavLink>
           ))}
         </nav>
 
-        <div className="p-4 border-t border-blue-700">
-          <p className="text-sm text-blue-300 mb-2">{user?.name}</p>
-          <button onClick={handleLogout} className="flex items-center gap-2 text-blue-200 hover:text-white transition-colors">
+        <div className="p-4 border-t border-gray-200">
+          <p className="text-sm text-gray-600 mb-2">{user?.name}</p>
+          <button onClick={handleLogout} className="flex items-center gap-2 text-gray-500 hover:text-primary transition-colors">
             <FiLogOut /> Logout
           </button>
         </div>

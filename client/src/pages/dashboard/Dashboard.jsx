@@ -34,19 +34,21 @@ export default function Dashboard() {
       </div>
 
       <div className="bg-white rounded-xl shadow p-6">
-        <h3 className="text-lg font-semibold mb-4">Track-wise Students</h3>
-        <div className="space-y-3">
-          {stats.trackWise.map((t) => (
-            <div key={t._id} className="flex items-center gap-3">
-              <span className="w-36 text-sm text-gray-600 truncate">{t._id}</span>
-              <div className="flex-1 bg-gray-100 rounded-full h-5">
-                <div className="bg-primary h-5 rounded-full flex items-center justify-end pr-2"
-                  style={{ width: `${Math.max((t.count / stats.total) * 100, 5)}%` }}>
-                  <span className="text-white text-xs font-medium">{t.count}</span>
+        <h3 className="text-lg font-semibold text-gray-800 mb-4">Track-wise Students</h3>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+          {stats.trackWise.map((t) => {
+            const pct = Math.round((t.count / stats.total) * 100);
+            return (
+              <div key={t._id} className="rounded-xl border border-gray-200 p-4 hover:border-primary hover:shadow-sm transition-all">
+                <p className="text-xs text-gray-400 font-medium truncate uppercase tracking-wide">{t._id}</p>
+                <p className="text-3xl font-bold text-gray-800 mt-1">{t.count}</p>
+                <div className="mt-3 bg-gray-100 rounded-full h-1">
+                  <div className="h-1 rounded-full bg-primary" style={{ width: `${Math.max(pct, 3)}%` }} />
                 </div>
+                <p className="text-xs text-gray-400 mt-1">{pct}% of total</p>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </div>

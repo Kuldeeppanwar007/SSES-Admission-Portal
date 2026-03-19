@@ -4,7 +4,7 @@ import api from '../../api/axios';
 import { TRACKS, STATUSES, STATUS_COLORS } from '../../utils/constants';
 import useAuthStore from '../../store/authStore';
 import toast from 'react-hot-toast';
-import { FiPlus, FiUpload, FiSearch, FiEye, FiEdit2, FiTrash2, FiDownload } from 'react-icons/fi';
+import { FiPlus, FiUpload, FiSearch, FiEye, FiEdit2, FiDownload } from 'react-icons/fi';
 
 export default function Students() {
   const { user } = useAuthStore();
@@ -29,15 +29,6 @@ export default function Students() {
   };
 
   useEffect(() => { fetchStudents(); }, [page, filters]);
-
-  const handleDelete = async (id) => {
-    if (!window.confirm('Delete this student?')) return;
-    try {
-      await api.delete(`/students/${id}`);
-      toast.success('Student deleted');
-      fetchStudents();
-    } catch { toast.error('Delete failed'); }
-  };
 
   const handleDownloadTemplate = async () => {
     try {
@@ -69,7 +60,7 @@ export default function Students() {
       <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
         <h2 className="text-2xl font-bold text-gray-800">Students <span className="text-gray-400 text-lg">({total})</span></h2>
         <div className="flex gap-2">
-          <label className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg cursor-pointer hover:bg-green-700 transition-colors text-sm">
+          <label className="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg cursor-pointer hover:bg-primary-dark transition-colors text-sm">
             <FiUpload /> Bulk Upload
             <input type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleBulkUpload} />
           </label>
@@ -134,11 +125,8 @@ export default function Students() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex gap-2">
-                        <button onClick={() => navigate(`/students/${s._id}`)} className="text-blue-500 hover:text-blue-700"><FiEye /></button>
+                        <button onClick={() => navigate(`/students/${s._id}`)} className="text-primary hover:text-primary-dark"><FiEye /></button>
                         <button onClick={() => navigate(`/students/${s._id}/edit`)} className="text-yellow-500 hover:text-yellow-700"><FiEdit2 /></button>
-                        {user?.role !== 'track_incharge' && (
-                          <button onClick={() => handleDelete(s._id)} className="text-red-500 hover:text-red-700"><FiTrash2 /></button>
-                        )}
                       </div>
                     </td>
                   </tr>

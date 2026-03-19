@@ -12,8 +12,9 @@ const userSchema = new mongoose.Schema({
   },
   track: {
     type: String,
-    enum: ['Satwas','Nemawar','Harda','Khategaon','Kannod','Bherunda','Gopalpur','Timarni','Narmadapuram','Seoni Malva', null],
+    enum: ['Satwas','Nemawar','Harda','Khategaon','Kannod','Bherunda','Gopalpur','Timarni','Narmadapuram','Seoni Malva', null, ''],
     default: null,
+    set: v => v === '' ? null : v,
   },
   isActive: { type: Boolean, default: true },
 }, { timestamps: true });

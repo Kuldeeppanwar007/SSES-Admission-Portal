@@ -14,6 +14,8 @@ const getStudents = async (req, res) => {
     { name: { $regex: search, $options: 'i' } },
     { fatherName: { $regex: search, $options: 'i' } },
     { mobileNo: { $regex: search, $options: 'i' } },
+    { subject: { $regex: search, $options: 'i' } },
+    { track: { $regex: search, $options: 'i' } },
   ];
 
   const total = await Student.countDocuments(filter);

@@ -8,10 +8,19 @@ const emptyForm = { name: '', email: '', password: '', role: 'track_incharge', t
 
 export default function Users() {
   const [users, setUsers] = useState([]);
+  const [activeTab, setActiveTab] = useState('all');
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [editId, setEditId] = useState(null);
   const [loading, setLoading] = useState(false);
+
+  const tabs = [
+    { key: 'all', label: 'All' },
+    { key: 'admin', label: 'Admin' },
+    { key: 'manager', label: 'Manager' },
+    { key: 'track_incharge', label: 'Track Incharge' },
+  ];
+  const filteredUsers = activeTab === 'all' ? users : users.filter((u) => u.role === activeTab);
 
   const fetchUsers = () => api.get('/users').then(({ data }) => setUsers(data)).catch(() => toast.error('Failed to load users'));
 
@@ -100,37 +109,63 @@ export default function Users() {
         </div>
       )}
 
-      <div className="bg-white rounded-xl shadow overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-gray-50 border-b">
-            <tr>
-              {['Name', 'Email', 'Role', 'Track', 'Status', 'Actions'].map((h) => (
-                <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100">
-            {users.map((u) => (
-              <tr key={u._id} className="hover:bg-gray-50">
-                <td className="px-4 py-3 font-medium">{u.name}</td>
-                <td className="px-4 py-3 text-gray-600">{u.email}</td>
-                <td className="px-4 py-3 capitalize text-gray-600">{u.role.replace('_', ' ')}</td>
-                <td className="px-4 py-3 text-gray-600">{u.track || '-'}</td>
-                <td className="px-4 py-3">
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${u.isActive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                    {u.isActive ? 'Active' : 'Inactive'}
-                  </span>
-                </td>
-                <td className="px-4 py-3">
-                  <div className="flex gap-2">
-                    <button onClick={() => handleEdit(u)} className="text-yellow-500 hover:text-yellow-700"><FiEdit2 /></button>
-                    <button onClick={() => handleDelete(u._id)} className="text-red-500 hover:text-red-700"><FiTrash2 /></button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <div className="flex gap-1 mb-4 border-b border-gray-200">
+        {tabs.map((t) => (
+          <button key={t.key} onClick={() => setActiveTab(t.key)}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === t.key ? 'border-primary text-primary' : 'border-transparent text-gray-500 hover:text-gray-700'
+            }`}>
+            {t.label}
+            <span className={`ml-1.5 text-xs px-1.5 py-0.5 rounded-full ${
+              activeTab === t.key ? 'bg-primary text-white' : 'bg-gray-100 text-gray-500'
+            }`}>
+              {t.key === 'all' ? users.length : users.filter((u) => u.role === t.key).length}
+            </span>
+          </button>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {filteredUsers.map((u) => (
+          <div key={u._id} className="bg-white rounded-xl shadow p-5 flex flex-col gap-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center font-bold text-lg">
+                  {u.name.charAt(0).toUpperCase()}
+                </div>
+                <div>
+                  <p className="font-semibold text-gray-800">{u.name}</p>
+                  <p className="text-xs text-gray-500">{u.email}</p>
+                </div>
+              </div>
+              <span className={`px-2 py-1 rounded-full text-xs font-medium ${u.isActive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                {u.isActive ? 'Active' : 'Inactive'}
+              </span>
+            </div>
+            <div className="flex flex-col gap-1 text-sm text-gray-600">
+              <div className="flex justify-between">
+                <span className="text-gray-400">Role</span>
+                <span className="capitalize font-medium">{u.role.replace('_', ' ')}</span>
+              </div>
+              {u.track && (
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Track</span>
+                  <span className="font-medium">{u.track}</span>
+                </div>
+              )}
+            </div>
+            <div className="flex gap-2 pt-1 border-t border-gray-100">
+              <button onClick={() => handleEdit(u)}
+                className="flex items-center gap-1 text-xs text-primary hover:text-primary-dark font-medium">
+                <FiEdit2 size={13} /> Edit
+              </button>
+              <button onClick={() => handleDelete(u._id)}
+                className="flex items-center gap-1 text-xs text-red-500 hover:text-red-700 font-medium ml-auto">
+                <FiTrash2 size={13} /> Delete
+              </button>
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );
