@@ -5,12 +5,13 @@ const { upload } = require('../config/cloudinary');
 const { protect, authorizeRoles } = require('../middleware/authMiddleware');
 const {
   getStudents, getStudent, addStudent, updateStudent,
-  deleteStudent, updateStatus, bulkUpload, getStats,
+  deleteStudent, updateStatus, bulkUpload, downloadTemplate, getStats,
 } = require('../controllers/studentController');
 
 const memStorage = multer({ storage: multer.memoryStorage() });
 
 router.get('/stats', protect, getStats);
+router.get('/download-template', protect, downloadTemplate);
 router.get('/', protect, getStudents);
 router.get('/:id', protect, getStudent);
 

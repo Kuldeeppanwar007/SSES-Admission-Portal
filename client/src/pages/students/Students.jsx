@@ -4,7 +4,7 @@ import api from '../../api/axios';
 import { TRACKS, STATUSES, STATUS_COLORS } from '../../utils/constants';
 import useAuthStore from '../../store/authStore';
 import toast from 'react-hot-toast';
-import { FiPlus, FiUpload, FiSearch, FiEye, FiEdit2, FiTrash2 } from 'react-icons/fi';
+import { FiPlus, FiUpload, FiSearch, FiEye, FiEdit2, FiTrash2, FiDownload } from 'react-icons/fi';
 
 export default function Students() {
   const { user } = useAuthStore();
@@ -39,6 +39,18 @@ export default function Students() {
     } catch { toast.error('Delete failed'); }
   };
 
+  const handleDownloadTemplate = async () => {
+    try {
+      const res = await api.get('/students/download-template', { responseType: 'blob' });
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'students_template.xlsx';
+      a.click();
+      window.URL.revokeObjectURL(url);
+    } catch { toast.error('Failed to download template'); }
+  };
+
   const handleBulkUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -59,8 +71,12 @@ export default function Students() {
         <div className="flex gap-2">
           <label className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg cursor-pointer hover:bg-green-700 transition-colors text-sm">
             <FiUpload /> Bulk Upload
-            <input type="file" accept=".xlsx,.xls,.csv,.pdf" className="hidden" onChange={handleBulkUpload} />
+            <input type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleBulkUpload} />
           </label>
+          <button onClick={handleDownloadTemplate}
+            className="flex items-center gap-2 bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors text-sm border border-gray-300">
+            <FiDownload /> Sample Format
+          </button>
           <button onClick={() => navigate('/students/add')}
             className="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary-dark transition-colors text-sm">
             <FiPlus /> Add Student
@@ -107,7 +123,7 @@ export default function Students() {
                   <tr><td colSpan={8} className="text-center py-10 text-gray-400">No students found</td></tr>
                 ) : students.map((s, i) => (
                   <tr key={s._id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 text-gray-500">{s.sn || ((page - 1) * 20 + i + 1)}</td>
+                    <td className="px-4 py-3 text-gray-500">{(page - 1) * 20 + i + 1}</td>
                     <td className="px-4 py-3 font-medium">{s.name}</td>
                     <td className="px-4 py-3 text-gray-600">{s.fatherName}</td>
                     <td className="px-4 py-3 text-gray-600">{s.track}</td>

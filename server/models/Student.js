@@ -2,13 +2,9 @@ const mongoose = require('mongoose');
 
 const studentSchema = new mongoose.Schema({
   sn: { type: String },
-  name: { type: String, required: true },
-  fatherName: { type: String, required: true },
-  track: {
-    type: String,
-    enum: ['Satwas','Nemawar','Harda','Khategaon','Kannod','Bherunda','Gopalpur','Timarni','Narmadapuram','Seoni Malva'],
-    required: true,
-  },
+  name: { type: String, default: '' },
+  fatherName: { type: String, default: '' },
+  track: { type: String, default: '' },
   mobileNo: { type: String },
   whatsappNo: { type: String },
   subject: { type: String },

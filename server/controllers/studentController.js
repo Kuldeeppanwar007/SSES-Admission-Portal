@@ -1,14 +1,13 @@
 const Student = require('../models/Student');
 const xlsx = require('xlsx');
-const pdfParse = require('pdf-parse');
 
 // Get all students (admin/manager = all, track_incharge = own track)
 const getStudents = async (req, res) => {
   const { track, status, search, page = 1, limit = 20 } = req.query;
   const filter = {};
 
-  if (req.user.role === 'track_incharge') filter.track = req.user.track;
-  else if (track) filter.track = track;
+  if (req.user.role === 'track_incharge') filter.track = { $regex: `^${req.user.track}$`, $options: 'i' };
+  else if (track) filter.track = { $regex: `^${track}$`, $options: 'i' };
 
   if (status) filter.status = status;
   if (search) filter.$or = [
@@ -81,14 +80,17 @@ const updateStatus = async (req, res) => {
 };
 
 const fieldMap = {
-  'S.N.': 'sn', 'SN': 'sn', 'Sr No': 'sn',
+  'S.N.': 'sn', 'SN': 'sn', 'Sr No': 'sn', 'S.N': 'sn',
   'Name': 'name', 'Student Name': 'name',
   'Father Name': 'fatherName', "Father's Name": 'fatherName',
   'Track': 'track',
   'Mob. No': 'mobileNo', 'Mobile': 'mobileNo', 'Mobile No': 'mobileNo',
-  'Whatsapp No': 'whatsappNo', 'WhatsApp': 'whatsappNo',
+  'Mob. no': 'mobileNo', 'Mob. No.': 'mobileNo', 'mob. no': 'mobileNo',
+  'Whatsapp No': 'whatsappNo', 'WhatsApp': 'whatsappNo', 'Whatsapp no.': 'whatsappNo',
+  'Whatsapp No.': 'whatsappNo', 'whatsapp no.': 'whatsappNo',
   'Subject': 'subject',
   'Full Address': 'fullAddress', 'Address': 'fullAddress',
+  'Full Adress': 'fullAddress', 'full adress': 'fullAddress',
   'Other Track': 'otherTrack',
 };
 
@@ -101,52 +103,86 @@ const mapRowToStudent = (row, addedBy) => {
   return student;
 };
 
-const parsePdfRows = (text) => {
-  const lines = text.split('\n').map((l) => l.trim()).filter(Boolean);
-  const students = [];
-  // Expected PDF line format: SN Name FatherName Track Mobile Subject
-  // Try to detect header line and parse accordingly
-  let headers = [];
-  for (const line of lines) {
-    const cols = line.split(/\s{2,}|\t/).map((c) => c.trim()).filter(Boolean);
-    if (headers.length === 0) {
-      // Detect header row
-      const isHeader = cols.some((c) => /name|track|mobile|subject/i.test(c));
-      if (isHeader) { headers = cols; continue; }
-    } else {
-      if (cols.length < 2) continue;
-      const row = {};
-      headers.forEach((h, i) => { if (cols[i]) row[h] = cols[i]; });
-      students.push(row);
-    }
-  }
-  return students;
-};
 
-// Bulk upload via Excel or PDF
+// Bulk upload via Excel
 const bulkUpload = async (req, res) => {
   if (!req.file) return res.status(400).json({ message: 'No file uploaded' });
 
-  const mime = req.file.mimetype;
-  let rows = [];
+  const workbook = xlsx.read(req.file.buffer, { type: 'buffer', codepage: 65001 });
+  const sheet = workbook.Sheets[workbook.SheetNames[0]];
 
-  if (mime === 'application/pdf') {
-    const parsed = await pdfParse(req.file.buffer);
-    rows = parsePdfRows(parsed.text);
-    if (rows.length === 0)
-      return res.status(400).json({ message: 'No data found in PDF. Make sure PDF has tabular data with headers like Name, Father Name, Track, Mobile, Subject.' });
-  } else {
-    const workbook = xlsx.read(req.file.buffer, { type: 'buffer' });
-    const sheet = workbook.Sheets[workbook.SheetNames[0]];
-    rows = xlsx.utils.sheet_to_json(sheet, { defval: '' });
+  // Get all rows as array of arrays (raw)
+  const rawRows = xlsx.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+
+  // Find the header row (row that contains 'Name' or 'name')
+  let headerRowIndex = -1;
+  for (let i = 0; i < rawRows.length; i++) {
+    if (rawRows[i].some((cell) => String(cell).trim().toLowerCase() === 'name')) {
+      headerRowIndex = i;
+      break;
+    }
   }
 
-  const students = rows.map((row) => mapRowToStudent(row, req.user._id)).filter((s) => s.name);
-  if (students.length === 0)
-    return res.status(400).json({ message: 'No valid student records found. Check that Name column exists.' });
+  if (headerRowIndex === -1)
+    return res.status(400).json({ message: 'Header row not found. Make sure your file has a "Name" column.' });
 
-  const inserted = await Student.insertMany(students, { ordered: false });
-  res.json({ message: `${inserted.length} students uploaded successfully` });
+  const headers = rawRows[headerRowIndex].map((h) => String(h).trim());
+  const dataRows = rawRows.slice(headerRowIndex + 1);
+
+  const rows = dataRows
+    .filter((row) => row.some((cell) => String(cell).trim() !== ''))
+    .map((row) => {
+      const obj = {};
+      headers.forEach((h, i) => { obj[h] = String(row[i] ?? '').trim(); });
+      return obj;
+    });
+
+  if (rows.length === 0)
+    return res.status(400).json({ message: 'No data rows found after header.' });
+
+  const students = rows.map((row) => mapRowToStudent(row, req.user._id));
+
+  let insertedCount = 0;
+  let skippedCount = 0;
+  for (const student of students) {
+    try {
+      // Check duplicate by name + fatherName + mobileNo
+      const query = { name: { $regex: `^${student.name}$`, $options: 'i' } };
+      if (student.fatherName) query.fatherName = { $regex: `^${student.fatherName}$`, $options: 'i' };
+      if (student.mobileNo) query.mobileNo = student.mobileNo;
+      const exists = await Student.findOne(query);
+      if (exists) { skippedCount++; continue; }
+      await Student.create(student);
+      insertedCount++;
+    } catch (err) {
+      console.log('Row skip:', err.message, student);
+    }
+  }
+
+  if (insertedCount === 0 && skippedCount > 0)
+    return res.json({ message: `0 students uploaded. ${skippedCount} duplicate records skipped.` });
+
+  if (insertedCount === 0)
+    return res.status(400).json({ message: 'No rows could be saved. Check your file format.' });
+
+  res.json({ message: `${insertedCount} students uploaded successfully${skippedCount ? `, ${skippedCount} duplicates skipped` : ''}.` });
+};
+
+// Download Excel template
+const downloadTemplate = (req, res) => {
+  const headers = [['S.N.', 'Name', 'Father Name', 'Track', 'Mob. no', 'Whatsapp no.', 'Subject', 'Full Adress', 'Other Track']];
+  const sampleRows = [
+    [1, 'Ali Ahmed', 'Ahmed Khan', 'Harda', '9876543210', '9876543210', 'Science', 'Village Harda, MP', ''],
+    [2, 'Sara Begum', 'Mohd Raza', 'Nemawar', '9123456789', '9123456789', 'Arts', 'Village Nemawar, MP', ''],
+  ];
+  const wb = xlsx.utils.book_new();
+  const ws = xlsx.utils.aoa_to_sheet([...headers, ...sampleRows]);
+  ws['!cols'] = [8, 20, 20, 14, 14, 14, 14, 30, 14].map((w) => ({ wch: w }));
+  xlsx.utils.book_append_sheet(wb, ws, 'Students');
+  const buf = xlsx.write(wb, { type: 'buffer', bookType: 'xlsx' });
+  res.setHeader('Content-Disposition', 'attachment; filename=students_template.xlsx');
+  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  res.send(buf);
 };
 
 // Dashboard stats
@@ -167,4 +203,4 @@ const getStats = async (req, res) => {
   res.json({ total, applied, verified, admitted, rejected, trackWise });
 };
 
-module.exports = { getStudents, getStudent, addStudent, updateStudent, deleteStudent, updateStatus, bulkUpload, getStats };
+module.exports = { getStudents, getStudent, addStudent, updateStudent, deleteStudent, updateStatus, bulkUpload, downloadTemplate, getStats };
