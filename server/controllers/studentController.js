@@ -1,5 +1,6 @@
 const Student = require('../models/Student');
 const xlsx = require('xlsx');
+const pdfParse = require('pdf-parse');
 
 // Get all students (admin/manager = all, track_incharge = own track)
 const getStudents = async (req, res) => {
@@ -79,34 +80,70 @@ const updateStatus = async (req, res) => {
   res.json(student);
 };
 
-// Bulk upload via Excel
+const fieldMap = {
+  'S.N.': 'sn', 'SN': 'sn', 'Sr No': 'sn',
+  'Name': 'name', 'Student Name': 'name',
+  'Father Name': 'fatherName', "Father's Name": 'fatherName',
+  'Track': 'track',
+  'Mob. No': 'mobileNo', 'Mobile': 'mobileNo', 'Mobile No': 'mobileNo',
+  'Whatsapp No': 'whatsappNo', 'WhatsApp': 'whatsappNo',
+  'Subject': 'subject',
+  'Full Address': 'fullAddress', 'Address': 'fullAddress',
+  'Other Track': 'otherTrack',
+};
+
+const mapRowToStudent = (row, addedBy) => {
+  const student = { addedBy, status: 'Applied' };
+  Object.keys(row).forEach((key) => {
+    const mapped = fieldMap[key.trim()];
+    if (mapped) student[mapped] = String(row[key]).trim();
+  });
+  return student;
+};
+
+const parsePdfRows = (text) => {
+  const lines = text.split('\n').map((l) => l.trim()).filter(Boolean);
+  const students = [];
+  // Expected PDF line format: SN Name FatherName Track Mobile Subject
+  // Try to detect header line and parse accordingly
+  let headers = [];
+  for (const line of lines) {
+    const cols = line.split(/\s{2,}|\t/).map((c) => c.trim()).filter(Boolean);
+    if (headers.length === 0) {
+      // Detect header row
+      const isHeader = cols.some((c) => /name|track|mobile|subject/i.test(c));
+      if (isHeader) { headers = cols; continue; }
+    } else {
+      if (cols.length < 2) continue;
+      const row = {};
+      headers.forEach((h, i) => { if (cols[i]) row[h] = cols[i]; });
+      students.push(row);
+    }
+  }
+  return students;
+};
+
+// Bulk upload via Excel or PDF
 const bulkUpload = async (req, res) => {
   if (!req.file) return res.status(400).json({ message: 'No file uploaded' });
 
-  const workbook = xlsx.read(req.file.buffer, { type: 'buffer' });
-  const sheet = workbook.Sheets[workbook.SheetNames[0]];
-  const rows = xlsx.utils.sheet_to_json(sheet, { defval: '' });
+  const mime = req.file.mimetype;
+  let rows = [];
 
-  const fieldMap = {
-    'S.N.': 'sn', 'SN': 'sn', 'Sr No': 'sn',
-    'Name': 'name', 'Student Name': 'name',
-    'Father Name': 'fatherName', "Father's Name": 'fatherName',
-    'Track': 'track',
-    'Mob. No': 'mobileNo', 'Mobile': 'mobileNo', 'Mobile No': 'mobileNo',
-    'Whatsapp No': 'whatsappNo', 'WhatsApp': 'whatsappNo',
-    'Subject': 'subject',
-    'Full Address': 'fullAddress', 'Address': 'fullAddress',
-    'Other Track': 'otherTrack',
-  };
+  if (mime === 'application/pdf') {
+    const parsed = await pdfParse(req.file.buffer);
+    rows = parsePdfRows(parsed.text);
+    if (rows.length === 0)
+      return res.status(400).json({ message: 'No data found in PDF. Make sure PDF has tabular data with headers like Name, Father Name, Track, Mobile, Subject.' });
+  } else {
+    const workbook = xlsx.read(req.file.buffer, { type: 'buffer' });
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+    rows = xlsx.utils.sheet_to_json(sheet, { defval: '' });
+  }
 
-  const students = rows.map((row) => {
-    const student = { addedBy: req.user._id, status: 'Applied' };
-    Object.keys(row).forEach((key) => {
-      const mapped = fieldMap[key.trim()];
-      if (mapped) student[mapped] = String(row[key]).trim();
-    });
-    return student;
-  }).filter((s) => s.name);
+  const students = rows.map((row) => mapRowToStudent(row, req.user._id)).filter((s) => s.name);
+  if (students.length === 0)
+    return res.status(400).json({ message: 'No valid student records found. Check that Name column exists.' });
 
   const inserted = await Student.insertMany(students, { ordered: false });
   res.json({ message: `${inserted.length} students uploaded successfully` });

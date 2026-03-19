@@ -59,7 +59,7 @@ export default function Students() {
         <div className="flex gap-2">
           <label className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg cursor-pointer hover:bg-green-700 transition-colors text-sm">
             <FiUpload /> Bulk Upload
-            <input type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleBulkUpload} />
+            <input type="file" accept=".xlsx,.xls,.csv,.pdf" className="hidden" onChange={handleBulkUpload} />
           </label>
           <button onClick={() => navigate('/students/add')}
             className="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary-dark transition-colors text-sm">
