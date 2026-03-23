@@ -47,7 +47,7 @@ export default function Sidebar() {
       </aside>
 
       {/* ── Mobile Top Bar ── */}
-      <div className="md:hidden fixed top-0 left-0 right-0 z-40 bg-white border-b border-gray-200 flex items-center justify-between px-4 py-2">
+      <div className="md:hidden fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-200 flex items-center justify-between px-4 py-2">
         <img src={logo} alt="SSES Logo" className="h-8 object-contain" />
         <button onClick={() => setOpen(true)} className="text-gray-600 p-1">
           <FiMenu size={22} />
