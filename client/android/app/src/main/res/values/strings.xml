@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">SSES Portal</string>
+    <string name="title_activity_main">SSES Portal</string>
+    <string name="package_name">com.sses.portal</string>
+    <string name="custom_url_scheme">com.sses.portal</string>
+</resources>
