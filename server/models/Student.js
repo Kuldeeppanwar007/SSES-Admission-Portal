@@ -11,7 +11,12 @@ const studentSchema = new mongoose.Schema({
   fullAddress: { type: String },
   otherTrack: { type: String },
   photo: { type: String, default: null },
-  marksheet: { type: String, default: null },
+  marksheet10th: { type: String, default: null },
+  marksheet12th: { type: String, default: null },
+  incomeCertificate: { type: String, default: null },
+  jaatiPraman: { type: String, default: null },
+  abcId: { type: String, default: null },
+  aadharCard: { type: String, default: null },
   status: {
     type: String,
     enum: ['Applied', 'Verified', 'Admitted', 'Rejected'],

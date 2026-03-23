@@ -37,12 +37,13 @@ const getStudent = async (req, res) => {
   res.json(student);
 };
 
+const DOCS = ['photo', 'marksheet10th', 'marksheet12th', 'incomeCertificate', 'jaatiPraman', 'abcId', 'aadharCard'];
+
 // Add student manually
 const addStudent = async (req, res) => {
   const count = await Student.countDocuments();
   const data = { ...req.body, sn: String(count + 1), addedBy: req.user._id };
-  if (req.files?.photo) data.photo = req.files.photo[0].path;
-  if (req.files?.marksheet) data.marksheet = req.files.marksheet[0].path;
+  DOCS.forEach((d) => { if (req.files?.[d]) data[d] = req.files[d][0].path; });
   const student = await Student.create(data);
   res.status(201).json(student);
 };
@@ -55,9 +56,7 @@ const updateStudent = async (req, res) => {
     return res.status(403).json({ message: 'Access denied' });
 
   const updates = { ...req.body };
-  if (req.files?.photo) updates.photo = req.files.photo[0].path;
-  if (req.files?.marksheet) updates.marksheet = req.files.marksheet[0].path;
-
+  DOCS.forEach((d) => { if (req.files?.[d]) updates[d] = req.files[d][0].path; });
   const updated = await Student.findByIdAndUpdate(req.params.id, updates, { new: true });
   res.json(updated);
 };

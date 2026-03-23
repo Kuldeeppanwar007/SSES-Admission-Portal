@@ -77,36 +77,31 @@ export default function StudentDetail() {
           ) : null)}
         </div>
 
-        {(student.photo || student.marksheet) && (
+        {(student.photo || student.marksheet10th || student.marksheet12th || student.incomeCertificate || student.jaatiPraman || student.abcId || student.aadharCard) && (
           <div className="mt-5 pt-5 border-t border-gray-100">
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Documents</p>
             <div className="flex gap-3 flex-wrap">
-              {student.photo && (
-                <a href={student.photo} target="_blank" rel="noreferrer"
+              {[
+                { key: 'photo',             label: 'Photo',               icon: FiImage },
+                { key: 'marksheet10th',     label: '10th Marksheet',      icon: FiFileText },
+                { key: 'marksheet12th',     label: '12th Marksheet',      icon: FiFileText },
+                { key: 'incomeCertificate', label: 'Income Certificate',  icon: FiFileText },
+                { key: 'jaatiPraman',       label: 'Jaati Praman Patra',  icon: FiFileText },
+                { key: 'abcId',             label: 'ABC ID',              icon: FiFileText },
+                { key: 'aadharCard',        label: 'Aadhar Card',         icon: FiFileText },
+              ].filter((d) => student[d.key]).map(({ key, label, icon: Icon }) => (
+                <a key={key} href={student[key]} target="_blank" rel="noreferrer"
                   className="flex items-center gap-3 border border-gray-200 rounded-xl p-3 hover:border-primary hover:shadow-sm transition-all group w-48">
                   <div className="w-10 h-10 rounded-lg bg-orange-50 flex items-center justify-center text-primary">
-                    <FiImage size={20} />
+                    <Icon size={20} />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-700">Photo</p>
-                    <p className="text-xs text-gray-400">View image</p>
-                  </div>
-                  <FiExternalLink size={14} className="text-gray-300 group-hover:text-primary" />
-                </a>
-              )}
-              {student.marksheet && (
-                <a href={student.marksheet} target="_blank" rel="noreferrer"
-                  className="flex items-center gap-3 border border-gray-200 rounded-xl p-3 hover:border-primary hover:shadow-sm transition-all group w-48">
-                  <div className="w-10 h-10 rounded-lg bg-orange-50 flex items-center justify-center text-primary">
-                    <FiFileText size={20} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-700">Marksheet</p>
+                    <p className="text-sm font-medium text-gray-700">{label}</p>
                     <p className="text-xs text-gray-400">View document</p>
                   </div>
                   <FiExternalLink size={14} className="text-gray-300 group-hover:text-primary" />
                 </a>
-              )}
+              ))}
             </div>
           </div>
         )}
