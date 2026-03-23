@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useAuthStore from '../../store/authStore';
 import toast from 'react-hot-toast';
+import logo from '../../assets/web/icon-512.png';
 
 export default function Login() {
   const [form, setForm] = useState({ email: '', password: '' });
@@ -27,8 +28,8 @@ export default function Login() {
     <div className="min-h-screen flex items-center justify-center bg-white">
       <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-8 w-full max-w-md">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">SSES</h1>
-          <p className="text-gray-500 mt-1">Admission Portal</p>
+          <img src={logo} alt="SSES Logo" className="h-24 object-contain mx-auto mb-3" />
+          <p className="text-gray-500 text-base font-medium">Admission Portal</p>
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>

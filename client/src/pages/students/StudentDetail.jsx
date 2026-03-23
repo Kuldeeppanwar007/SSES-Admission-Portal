@@ -68,7 +68,7 @@ export default function StudentDetail() {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {info.map(([label, value]) => value ? (
             <div key={label} className="bg-gray-50 rounded-lg p-3">
               <p className="text-xs text-gray-500">{label}</p>

@@ -4,7 +4,7 @@ import api from '../../api/axios';
 import { TRACKS, STATUSES, STATUS_COLORS } from '../../utils/constants';
 import useAuthStore from '../../store/authStore';
 import toast from 'react-hot-toast';
-import { FiPlus, FiUpload, FiSearch, FiEye, FiEdit2, FiDownload } from 'react-icons/fi';
+import { FiPlus, FiUpload, FiSearch, FiEye, FiEdit2, FiDownload, FiFilter } from 'react-icons/fi';
 
 export default function Students() {
   const { user } = useAuthStore();
@@ -15,11 +15,12 @@ export default function Students() {
   const [pages, setPages] = useState(1);
   const [filters, setFilters] = useState({ track: '', status: '', search: '' });
   const [loading, setLoading] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
 
   const fetchStudents = async () => {
     setLoading(true);
     try {
-      const params = { page, limit: 20, ...filters };
+      const params = { page, limit: 10, ...filters };
       const { data } = await api.get('/students', { params });
       setStudents(data.students);
       setTotal(data.total);
@@ -35,9 +36,7 @@ export default function Students() {
       const res = await api.get('/students/download-template', { responseType: 'blob' });
       const url = window.URL.createObjectURL(new Blob([res.data]));
       const a = document.createElement('a');
-      a.href = url;
-      a.download = 'students_template.xlsx';
-      a.click();
+      a.href = url; a.download = 'students_template.xlsx'; a.click();
       window.URL.revokeObjectURL(url);
     } catch { toast.error('Failed to download template'); }
   };
@@ -57,46 +56,61 @@ export default function Students() {
 
   return (
     <div>
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
-        <h2 className="text-2xl font-bold text-gray-800">Students <span className="text-gray-400 text-lg">({total})</span></h2>
-        <div className="flex gap-2">
-          <label className="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg cursor-pointer hover:bg-primary-dark transition-colors text-sm">
-            <FiUpload /> Bulk Upload
+      {/* Header */}
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+        <h2 className="text-xl md:text-2xl font-bold text-gray-800">
+          Students <span className="text-gray-400 text-base">({total})</span>
+        </h2>
+        <div className="flex gap-2 flex-wrap">
+          <label className="flex items-center gap-1.5 bg-primary text-white px-3 py-2 rounded-lg cursor-pointer hover:bg-primary-dark transition-colors text-sm">
+            <FiUpload size={14} /> <span className="hidden sm:inline">Bulk Upload</span>
             <input type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleBulkUpload} />
           </label>
           <button onClick={handleDownloadTemplate}
-            className="flex items-center gap-2 bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors text-sm border border-gray-300">
-            <FiDownload /> Sample Format
+            className="flex items-center gap-1.5 bg-gray-100 text-gray-700 px-3 py-2 rounded-lg hover:bg-gray-200 transition-colors text-sm border border-gray-300">
+            <FiDownload size={14} /> <span className="hidden sm:inline">Sample Format</span>
           </button>
           <button onClick={() => navigate('/students/add')}
-            className="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary-dark transition-colors text-sm">
-            <FiPlus /> Add Student
+            className="flex items-center gap-1.5 bg-primary text-white px-3 py-2 rounded-lg hover:bg-primary-dark transition-colors text-sm">
+            <FiPlus size={14} /> <span className="hidden sm:inline">Add Student</span>
           </button>
         </div>
       </div>
 
-      <div className="bg-white rounded-xl shadow p-4 mb-4 flex flex-wrap gap-3">
-        <div className="flex items-center gap-2 flex-1 min-w-48 border border-gray-300 rounded-lg px-3">
-          <FiSearch className="text-gray-400" />
-          <input placeholder="Search name, father, mobile..." value={filters.search}
-            onChange={(e) => { setFilters({ ...filters, search: e.target.value }); setPage(1); }}
-            className="flex-1 py-2 outline-none text-sm" />
+      {/* Search + Filters */}
+      <div className="bg-white rounded-xl shadow p-3 mb-4 space-y-2">
+        <div className="flex gap-2">
+          <div className="flex items-center gap-2 flex-1 border border-gray-300 rounded-lg px-3">
+            <FiSearch className="text-gray-400 shrink-0" size={15} />
+            <input placeholder="Search name, father, mobile, track..." value={filters.search}
+              onChange={(e) => { setFilters({ ...filters, search: e.target.value }); setPage(1); }}
+              className="flex-1 py-2 outline-none text-sm" />
+          </div>
+          <button onClick={() => setShowFilters(!showFilters)}
+            className={`flex items-center gap-1 px-3 py-2 rounded-lg border text-sm transition-colors ${showFilters ? 'bg-primary text-white border-primary' : 'border-gray-300 text-gray-600'}`}>
+            <FiFilter size={14} /> <span className="hidden sm:inline">Filter</span>
+          </button>
         </div>
-        {user?.role !== 'track_incharge' && (
-          <select value={filters.track} onChange={(e) => { setFilters({ ...filters, track: e.target.value }); setPage(1); }}
-            className="border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none">
-            <option value="">All Tracks</option>
-            {TRACKS.map((t) => <option key={t}>{t}</option>)}
-          </select>
+        {showFilters && (
+          <div className="flex flex-wrap gap-2 pt-1">
+            {user?.role !== 'track_incharge' && (
+              <select value={filters.track} onChange={(e) => { setFilters({ ...filters, track: e.target.value }); setPage(1); }}
+                className="flex-1 min-w-32 border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none">
+                <option value="">All Tracks</option>
+                {TRACKS.map((t) => <option key={t}>{t}</option>)}
+              </select>
+            )}
+            <select value={filters.status} onChange={(e) => { setFilters({ ...filters, status: e.target.value }); setPage(1); }}
+              className="flex-1 min-w-32 border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none">
+              <option value="">All Status</option>
+              {STATUSES.map((s) => <option key={s}>{s}</option>)}
+            </select>
+          </div>
         )}
-        <select value={filters.status} onChange={(e) => { setFilters({ ...filters, status: e.target.value }); setPage(1); }}
-          className="border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none">
-          <option value="">All Status</option>
-          {STATUSES.map((s) => <option key={s}>{s}</option>)}
-        </select>
       </div>
 
-      <div className="bg-white rounded-xl shadow overflow-hidden">
+      {/* Table — desktop */}
+      <div className="hidden md:block bg-white rounded-xl shadow overflow-hidden">
         {loading ? (
           <div className="flex justify-center items-center h-40"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>
         ) : (
@@ -137,14 +151,74 @@ export default function Students() {
         )}
       </div>
 
+      {/* Cards — mobile */}
+      <div className="md:hidden space-y-3">
+        {loading ? (
+          <div className="flex justify-center items-center h-40"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>
+        ) : students.length === 0 ? (
+          <div className="text-center py-10 text-gray-400 bg-white rounded-xl shadow">No students found</div>
+        ) : students.map((s, i) => (
+          <div key={s._id} className="bg-white rounded-xl shadow p-4">
+            <div className="flex items-start justify-between mb-2">
+              <div>
+                <p className="font-semibold text-gray-800">{(page - 1) * 20 + i + 1}. {s.name}</p>
+                <p className="text-sm text-gray-500">{s.fatherName}</p>
+              </div>
+              <span className={`px-2 py-1 rounded-full text-xs font-medium shrink-0 ${STATUS_COLORS[s.status]}`}>{s.status}</span>
+            </div>
+            <div className="grid grid-cols-2 gap-1 text-xs text-gray-500 mb-3">
+              {s.track && <span>📍 {s.track}</span>}
+              {s.mobileNo && <span>📞 {s.mobileNo}</span>}
+              {s.subject && <span>📚 {s.subject}</span>}
+            </div>
+            <div className="flex gap-2 border-t border-gray-100 pt-2">
+              <button onClick={() => navigate(`/students/${s._id}`)}
+                className="flex-1 flex items-center justify-center gap-1 text-xs text-primary font-medium py-1.5 border border-primary rounded-lg">
+                <FiEye size={13} /> View
+              </button>
+              <button onClick={() => navigate(`/students/${s._id}/edit`)}
+                className="flex-1 flex items-center justify-center gap-1 text-xs text-white font-medium py-1.5 bg-primary rounded-lg">
+                <FiEdit2 size={13} /> Edit
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Pagination */}
       {pages > 1 && (
-        <div className="flex justify-center gap-2 mt-4">
-          {Array.from({ length: pages }, (_, i) => i + 1).map((p) => (
-            <button key={p} onClick={() => setPage(p)}
-              className={`px-3 py-1 rounded text-sm ${p === page ? 'bg-primary text-white' : 'bg-white border text-gray-600 hover:bg-gray-50'}`}>
-              {p}
-            </button>
-          ))}
+        <div className="flex justify-center items-center gap-1 mt-4 flex-wrap">
+          <button onClick={() => setPage(p => Math.max(p - 1, 1))} disabled={page === 1}
+            className="px-3 py-1.5 rounded text-sm border bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-40">
+            ‹
+          </button>
+
+          {(() => {
+            const delta = 1;
+            const range = [];
+            const rangeWithDots = [];
+            for (let i = Math.max(2, page - delta); i <= Math.min(pages - 1, page + delta); i++) range.push(i);
+            if (range[0] > 2) rangeWithDots.push(1, '...');
+            else rangeWithDots.push(1);
+            rangeWithDots.push(...range);
+            if (range[range.length - 1] < pages - 1) rangeWithDots.push('...', pages);
+            else if (pages > 1) rangeWithDots.push(pages);
+            return rangeWithDots.map((p, idx) =>
+              p === '...' ? (
+                <span key={`dots-${idx}`} className="px-2 py-1.5 text-sm text-gray-400">...</span>
+              ) : (
+                <button key={p} onClick={() => setPage(p)}
+                  className={`px-3 py-1.5 rounded text-sm border transition-colors ${
+                    p === page ? 'bg-primary text-white border-primary' : 'bg-white text-gray-600 hover:bg-gray-50'
+                  }`}>{p}</button>
+              )
+            );
+          })()}
+
+          <button onClick={() => setPage(p => Math.min(p + 1, pages))} disabled={page === pages}
+            className="px-3 py-1.5 rounded text-sm border bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-40">
+            ›
+          </button>
         </div>
       )}
     </div>

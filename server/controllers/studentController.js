@@ -3,8 +3,10 @@ const xlsx = require('xlsx');
 
 // Get all students (admin/manager = all, track_incharge = own track)
 const getStudents = async (req, res) => {
-  const { track, status, search, page = 1, limit = 20 } = req.query;
+  const { track, status, search, page = 1, limit = 10 } = req.query;
   const filter = {};
+  const _limit = Number(limit);
+  const _page = Number(page);
 
   if (req.user.role === 'track_incharge') filter.track = { $regex: `^${req.user.track}$`, $options: 'i' };
   else if (track) filter.track = { $regex: `^${track}$`, $options: 'i' };
@@ -22,10 +24,10 @@ const getStudents = async (req, res) => {
   const students = await Student.find(filter)
     .populate('addedBy', 'name role')
     .sort({ createdAt: -1 })
-    .skip((page - 1) * limit)
-    .limit(Number(limit));
+    .skip((_page - 1) * _limit)
+    .limit(_limit);
 
-  res.json({ students, total, page: Number(page), pages: Math.ceil(total / limit) });
+  res.json({ students, total, page: _page, pages: Math.ceil(total / _limit) });
 };
 
 // Get single student

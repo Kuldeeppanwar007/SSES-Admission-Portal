@@ -25,7 +25,7 @@ export default function Dashboard() {
     <div>
       <h2 className="text-2xl font-bold text-gray-800 mb-6">Dashboard</h2>
 
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 mb-6">
         <StatCard label="Total" value={stats.total} color="bg-gray-700" />
         <StatCard label="Applied" value={stats.applied} color="bg-yellow-500" />
         <StatCard label="Verified" value={stats.verified} color="bg-blue-500" />
