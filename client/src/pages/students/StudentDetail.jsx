@@ -4,6 +4,7 @@ import api from '../../api/axios';
 import { STATUSES, STATUS_COLORS } from '../../utils/constants';
 import useAuthStore from '../../store/authStore';
 import toast from 'react-hot-toast';
+import { FiEdit2, FiArrowLeft, FiImage, FiFileText, FiExternalLink } from 'react-icons/fi';
 
 export default function StudentDetail() {
   const { id } = useParams();
@@ -39,12 +40,16 @@ export default function StudentDetail() {
   ];
 
   return (
-    <div className="max-w-3xl mx-auto">
+    <div className="px-2">
       <div className="flex items-center gap-3 mb-6">
-        <button onClick={() => navigate('/students')} className="text-gray-500 hover:text-gray-700">← Back</button>
+        <button onClick={() => navigate('/students')} className="flex items-center gap-1 text-gray-500 hover:text-gray-700 text-sm">
+          <FiArrowLeft size={16} /> Back
+        </button>
         <h2 className="text-2xl font-bold text-gray-800">Student Details</h2>
         <button onClick={() => navigate(`/students/${id}/edit`)}
-          className="ml-auto bg-primary text-white px-4 py-2 rounded-lg text-sm hover:bg-primary-dark">Edit</button>
+          className="ml-auto flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg text-sm hover:bg-primary-dark">
+          <FiEdit2 size={14} /> Edit
+        </button>
       </div>
 
       <div className="bg-white rounded-xl shadow p-6 mb-4">
@@ -72,12 +77,37 @@ export default function StudentDetail() {
           ) : null)}
         </div>
 
-        {student.marksheet && (
-          <div className="mt-4">
-            <a href={student.marksheet} target="_blank"
-              className="inline-flex items-center gap-2 bg-orange-50 text-primary px-4 py-2 rounded-lg text-sm hover:bg-orange-100">
-              📄 View Marksheet
-            </a>
+        {(student.photo || student.marksheet) && (
+          <div className="mt-5 pt-5 border-t border-gray-100">
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Documents</p>
+            <div className="flex gap-3 flex-wrap">
+              {student.photo && (
+                <a href={student.photo} target="_blank" rel="noreferrer"
+                  className="flex items-center gap-3 border border-gray-200 rounded-xl p-3 hover:border-primary hover:shadow-sm transition-all group w-48">
+                  <div className="w-10 h-10 rounded-lg bg-orange-50 flex items-center justify-center text-primary">
+                    <FiImage size={20} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-700">Photo</p>
+                    <p className="text-xs text-gray-400">View image</p>
+                  </div>
+                  <FiExternalLink size={14} className="text-gray-300 group-hover:text-primary" />
+                </a>
+              )}
+              {student.marksheet && (
+                <a href={student.marksheet} target="_blank" rel="noreferrer"
+                  className="flex items-center gap-3 border border-gray-200 rounded-xl p-3 hover:border-primary hover:shadow-sm transition-all group w-48">
+                  <div className="w-10 h-10 rounded-lg bg-orange-50 flex items-center justify-center text-primary">
+                    <FiFileText size={20} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-700">Marksheet</p>
+                    <p className="text-xs text-gray-400">View document</p>
+                  </div>
+                  <FiExternalLink size={14} className="text-gray-300 group-hover:text-primary" />
+                </a>
+              )}
+            </div>
           </div>
         )}
       </div>
