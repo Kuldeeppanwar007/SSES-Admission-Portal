@@ -26,7 +26,7 @@ const getStudents = async (req, res) => {
   const total = await Student.countDocuments(filter);
   const students = await Student.find(filter)
     .populate('addedBy', 'name role')
-    .sort({ createdAt: -1 })
+    .sort({ sn: 1, createdAt: 1 })
     .skip((_page - 1) * _limit)
     .limit(_limit);
 
@@ -47,7 +47,7 @@ const DOCS = ['photo', 'marksheet10th', 'marksheet12th', 'incomeCertificate', 'j
 // Add student manually
 const addStudent = async (req, res) => {
   const count = await Student.countDocuments();
-  const data = { ...req.body, sn: String(count + 1), addedBy: req.user._id };
+  const data = { ...req.body, sn: count + 1, addedBy: req.user._id };
   DOCS.forEach((d) => { if (req.files?.[d]) data[d] = req.files[d][0].path; });
   const student = await Student.create(data);
   res.status(201).json(student);
@@ -60,41 +60,67 @@ const SUBJECT_POINTS = {
   'Micro': 5,
 };
 
+const FUNNEL_POINTS = {
+  'Call Completed': 5,
+  'Lead Interested': 10,
+  'Visit Scheduled': 20,
+  'Visit Completed': 30,
+  'Admission Closed': 100,
+};
+
 // Update student
 const updateStudent = async (req, res) => {
-  const User = require('../models/User');
   const student = await Student.findById(req.params.id);
   if (!student) return res.status(404).json({ message: 'Student not found' });
   if (req.user.role === 'track_incharge' && student.track !== req.user.track)
     return res.status(403).json({ message: 'Access denied' });
 
   const prevStatus = student.status;
+  const prevFunnel = student.funnelStage || '';
   const updates = { ...req.body };
   if (updates.status === 'Disabled') updates.isDisabled = true;
   else if (updates.status && updates.status !== 'Disabled') updates.isDisabled = false;
   DOCS.forEach((d) => { if (req.files?.[d]) updates[d] = req.files[d][0].path; });
   const updated = await Student.findByIdAndUpdate(req.params.id, updates, { new: true });
 
-  // Points logic — only when newly admitted
-  if (prevStatus !== 'Admitted' && updates.status === 'Admitted' && updates.subject) {
-    const pts = SUBJECT_POINTS[updates.subject] || 0;
-    if (pts > 0) {
-      await User.findOneAndUpdate(
-        { track: updated.track, role: 'track_incharge' },
-        { $inc: { points: pts } }
-      );
-    }
+  let pointsDelta = 0;
+
+  // Subject admission points
+  if (prevStatus !== 'Admitted' && updates.status === 'Admitted' && updates.subject)
+    pointsDelta += SUBJECT_POINTS[updates.subject] || 0;
+  if (prevStatus === 'Admitted' && updates.status !== 'Admitted' && student.subject)
+    pointsDelta -= SUBJECT_POINTS[student.subject] || 0;
+
+  // Funnel stage points
+  const newFunnel = updates.funnelStage || '';
+  if (newFunnel && newFunnel !== prevFunnel) {
+    pointsDelta += FUNNEL_POINTS[newFunnel] || 0;
+    if (prevFunnel) pointsDelta -= FUNNEL_POINTS[prevFunnel] || 0;
   }
 
-  // Points rollback — if status changed FROM Admitted to something else
-  if (prevStatus === 'Admitted' && updates.status !== 'Admitted' && student.subject) {
-    const pts = SUBJECT_POINTS[student.subject] || 0;
-    if (pts > 0) {
-      await User.findOneAndUpdate(
-        { track: student.track, role: 'track_incharge' },
-        { $inc: { points: -pts } }
-      );
-    }
+  // Calling status remark points (+5 if remark added while Calling)
+  if (updates.status === 'Calling' && updates.remarks && updates.remarks.trim() && prevStatus !== 'Calling')
+    pointsDelta += 5;
+
+  if (pointsDelta !== 0 && updated.track) {
+    const TrackPoints = require('../models/TrackPoints');
+    await TrackPoints.findOneAndUpdate(
+      { track: updated.track },
+      { $inc: { points: pointsDelta } },
+      { upsert: true, new: true }
+    );
+  }
+
+  // Save to status history if status or funnelStage changed
+  const StatusHistory = require('../models/StatusHistory');
+  if (updates.status !== prevStatus || newFunnel !== prevFunnel || updates.remarks) {
+    await StatusHistory.create({
+      student: req.params.id,
+      status: updated.status,
+      funnelStage: newFunnel,
+      remarks: updates.remarks || '',
+      changedBy: req.user._id,
+    });
   }
 
   res.json(updated);
@@ -110,6 +136,7 @@ const deleteStudent = async (req, res) => {
 
 // Update status (Approve/Reject/Verify)
 const updateStatus = async (req, res) => {
+  const StatusHistory = require('../models/StatusHistory');
   const { status, remarks } = req.body;
   const isDisabled = status === 'Disabled';
   const student = await Student.findByIdAndUpdate(
@@ -118,7 +145,17 @@ const updateStatus = async (req, res) => {
     { new: true }
   );
   if (!student) return res.status(404).json({ message: 'Student not found' });
+  await StatusHistory.create({ student: req.params.id, status, remarks, changedBy: req.user._id });
   res.json(student);
+};
+
+// Get status history
+const getStatusHistory = async (req, res) => {
+  const StatusHistory = require('../models/StatusHistory');
+  const history = await StatusHistory.find({ student: req.params.id })
+    .populate('changedBy', 'name role')
+    .sort({ createdAt: -1 });
+  res.json(history);
 };
 
 const fieldMap = {
@@ -128,8 +165,9 @@ const fieldMap = {
   'Track': 'track',
   'Mob. No': 'mobileNo', 'Mobile': 'mobileNo', 'Mobile No': 'mobileNo',
   'Mob. no': 'mobileNo', 'Mob. No.': 'mobileNo', 'mob. no': 'mobileNo',
+  'Mob No.': 'mobileNo', 'Mob No': 'mobileNo', 'mob no': 'mobileNo', 'mob no.': 'mobileNo',
   'Whatsapp No': 'whatsappNo', 'WhatsApp': 'whatsappNo', 'Whatsapp no.': 'whatsappNo',
-  'Whatsapp No.': 'whatsappNo', 'whatsapp no.': 'whatsappNo',
+  'Whatsapp No.': 'whatsappNo', 'whatsapp no.': 'whatsappNo', 'Whatsapp No': 'whatsappNo',
   'Subject': 'subject',
   'Full Address': 'fullAddress', 'Address': 'fullAddress',
   'Full Adress': 'fullAddress', 'full adress': 'fullAddress',
@@ -137,9 +175,14 @@ const fieldMap = {
 };
 
 const mapRowToStudent = (row, addedBy) => {
+  // Normalize key: lowercase, remove dots/spaces
+  const normalize = (s) => s.toLowerCase().replace(/[.\s]/g, '');
+  const normalizedMap = {};
+  Object.keys(fieldMap).forEach((k) => { normalizedMap[normalize(k)] = fieldMap[k]; });
+
   const student = { addedBy, status: 'Applied' };
   Object.keys(row).forEach((key) => {
-    const mapped = fieldMap[key.trim()];
+    const mapped = normalizedMap[normalize(key)];
     if (mapped) student[mapped] = String(row[key]).trim();
   });
   return student;
@@ -195,7 +238,7 @@ const bulkUpload = async (req, res) => {
       const exists = await Student.findOne(query);
       if (exists) { skippedCount++; continue; }
       const count = await Student.countDocuments();
-      student.sn = String(count + 1);
+      student.sn = count + 1;
       await Student.create(student);
       insertedCount++;
     } catch (err) {
@@ -263,9 +306,10 @@ const getTrackStats = async (req, res) => {
     });
 
     const subjects = Object.entries(subjectMap).map(([subject, data]) => ({ subject, ...data }));
-    const trackUser = await User.findOne({ role: 'track_incharge', track }, 'points');
+    const TrackPoints = require('../models/TrackPoints');
+    const trackPoints = await TrackPoints.findOne({ track });
 
-    res.json({ track, total, applied, verified, admitted, rejected, disabled, subjects, points: trackUser?.points || 0 });
+    res.json({ track, total, applied, verified, admitted, rejected, disabled, subjects, points: trackPoints?.points || 0 });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -281,6 +325,7 @@ const getStats = async (req, res) => {
     const admitted = await Student.countDocuments({ status: 'Admitted' });
     const rejected = await Student.countDocuments({ status: 'Rejected' });
     const disabled = await Student.countDocuments({ isDisabled: true });
+    const unassigned = await Student.countDocuments({ $or: [{ track: '' }, { track: null }, { track: { $exists: false } }] });
 
     const trackSubjectAdmitted = await Student.aggregate([
       { $match: { status: 'Admitted' } },
@@ -302,21 +347,27 @@ const getStats = async (req, res) => {
       trackMap[track].subjects[subject].admitted = admitted;
     });
 
+    const TrackPoints = require('../models/TrackPoints');
+    const trackPointsDocs = await TrackPoints.find({});
+    const pointsMap = {};
+    trackPointsDocs.forEach(({ track, points }) => {
+      pointsMap[track] = points || 0;
+    });
+
+    Object.keys(pointsMap).forEach((track) => {
+      if (!trackMap[track]) trackMap[track] = { subjects: {} };
+    });
+
     const trackWise = Object.entries(trackMap).map(([track, { subjects }]) => ({
       track,
       subjects: Object.entries(subjects).map(([subject, data]) => ({ subject, ...data })),
+      points: pointsMap[track] || 0,
     }));
 
-    // Track wise points from track_incharge users
-    const trackUsers = await User.find({ role: 'track_incharge' }, 'track points');
-    const pointsMap = {};
-    trackUsers.forEach(({ track, points }) => { pointsMap[track] = (pointsMap[track] || 0) + points; });
-    trackWise.forEach((t) => { t.points = pointsMap[t.track] || 0; });
-
-    res.json({ total, applied, verified, admitted, rejected, disabled, trackWise });
+    res.json({ total, applied, verified, admitted, rejected, disabled, unassigned, trackWise });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 };
 
-module.exports = { getStudents, getStudent, addStudent, updateStudent, deleteStudent, updateStatus, bulkUpload, downloadTemplate, getStats, getTrackStats };
+module.exports = { getStudents, getStudent, addStudent, updateStudent, deleteStudent, updateStatus, getStatusHistory, bulkUpload, downloadTemplate, getStats, getTrackStats };

@@ -7,11 +7,12 @@ import toast from 'react-hot-toast';
 import { FiExternalLink, FiCamera, FiImage, FiFileText, FiUser, FiCreditCard, FiX } from 'react-icons/fi';
 
 const SUBJECTS = ['B.Tech', 'BCA', 'BBA', 'Bcom', 'Bio', 'Micro'];
+const FUNNEL_STAGES = ['', 'Call Completed', 'Lead Interested', 'Visit Scheduled', 'Visit Completed', 'Admission Closed'];
 
 const initialForm = {
   name: '', fatherName: '', track: '', mobileNo: '',
   whatsappNo: '', subject: '', fullAddress: '', otherTrack: '',
-  status: 'Applied', remarks: '',
+  status: 'Applied', remarks: '', funnelStage: '',
 };
 
 const DOC_FIELDS = [
@@ -89,7 +90,7 @@ export default function StudentForm() {
           name: data.name, fatherName: data.fatherName, track: data.track,
           mobileNo: data.mobileNo || '', whatsappNo: data.whatsappNo || '',
           subject: data.subject || '', fullAddress: data.fullAddress || '',
-          otherTrack: data.otherTrack || '', status: data.status, remarks: data.remarks || '',
+          otherTrack: data.otherTrack || '', status: data.status, remarks: '', funnelStage: data.funnelStage || '',
         });
         const existing = {};
         DOC_FIELDS.forEach(({ key }) => { if (data[key]) existing[key] = data[key]; });
@@ -116,8 +117,8 @@ export default function StudentForm() {
 
   const field = (label, key, type = 'text', required = false) => (
     <div>
-      <label className="block text-sm font-medium text-gray-700 mb-1">{label}{required && <span className="text-red-500">*</span>}</label>
-      <input type={type} value={form[key]} required={required}
+      <label className="block text-sm font-medium text-gray-700 mb-1">{label}{required && !isEdit && <span className="text-red-500">*</span>}</label>
+      <input type={type} value={form[key]} required={required && !isEdit}
         onChange={(e) => setForm({ ...form, [key]: e.target.value })}
         className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
     </div>
@@ -184,7 +185,7 @@ export default function StudentForm() {
             {field('Father Name', 'fatherName', 'text', true)}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Track<span className="text-red-500">*</span></label>
-              <select value={form.track} required onChange={(e) => setForm({ ...form, track: e.target.value })}
+              <select value={form.track} onChange={(e) => setForm({ ...form, track: e.target.value })}
                 disabled={user?.role === 'track_incharge'}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary">
                 <option value="">Select Track</option>
@@ -216,8 +217,8 @@ export default function StudentForm() {
               </div>
               {form.status === 'Admitted' && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Admission Subject<span className="text-red-500">*</span></label>
-                  <select value={form.subject} required onChange={(e) => setForm({ ...form, subject: e.target.value })}
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Admission Subject</label>
+                  <select value={form.subject} onChange={(e) => setForm({ ...form, subject: e.target.value })}
                     className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary">
                     <option value="">Select Subject</option>
                     {SUBJECTS.map((s) => <option key={s}>{s}</option>)}
@@ -228,6 +229,13 @@ export default function StudentForm() {
                 <label className="block text-sm font-medium text-gray-700 mb-1">Remarks</label>
                 <input value={form.remarks} onChange={(e) => setForm({ ...form, remarks: e.target.value })}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Funnel Stage</label>
+                <select value={form.funnelStage} onChange={(e) => setForm({ ...form, funnelStage: e.target.value })}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary">
+                  {FUNNEL_STAGES.map((s) => <option key={s} value={s}>{s || 'Select Stage'}</option>)}
+                </select>
               </div>
             </div>
           </div>

@@ -4,7 +4,7 @@ import api from '../../api/axios';
 import { STATUSES, STATUS_COLORS } from '../../utils/constants';
 import useAuthStore from '../../store/authStore';
 import toast from 'react-hot-toast';
-import { FiEdit2, FiArrowLeft, FiImage, FiFileText, FiExternalLink } from 'react-icons/fi';
+import { FiEdit2, FiArrowLeft, FiImage, FiFileText, FiExternalLink, FiClock, FiX } from 'react-icons/fi';
 
 export default function StudentDetail() {
   const { id } = useParams();
@@ -13,10 +13,12 @@ export default function StudentDetail() {
   const [student, setStudent] = useState(null);
   const [statusForm, setStatusForm] = useState({ status: '', remarks: '' });
   const [updating, setUpdating] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
+  const [history, setHistory] = useState([]);
 
   useEffect(() => {
     api.get(`/students/${id}`)
-      .then(({ data }) => { setStudent(data); setStatusForm({ status: data.status, remarks: data.remarks || '' }); })
+      .then(({ data }) => { setStudent(data); setStatusForm({ status: data.status, remarks: '' }); })
       .catch(() => toast.error('Failed to load student'));
   }, [id]);
 
@@ -28,6 +30,14 @@ export default function StudentDetail() {
       toast.success('Status updated');
     } catch { toast.error('Update failed'); }
     finally { setUpdating(false); }
+  };
+
+  const handleViewHistory = async () => {
+    try {
+      const { data } = await api.get(`/students/${id}/status-history`);
+      setHistory(data);
+      setShowHistory(true);
+    } catch { toast.error('Failed to load history'); }
   };
 
   if (!student) return <div className="flex justify-center items-center h-64"><div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary"></div></div>;
@@ -49,6 +59,10 @@ export default function StudentDetail() {
         <button onClick={() => navigate(`/students/${id}/edit`)}
           className="ml-auto flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg text-sm hover:bg-primary-dark">
           <FiEdit2 size={14} /> Edit
+        </button>
+        <button onClick={handleViewHistory}
+          className="flex items-center gap-2 border border-gray-300 text-gray-600 px-4 py-2 rounded-lg text-sm hover:bg-gray-50">
+          <FiClock size={14} /> History
         </button>
       </div>
 
@@ -123,8 +137,36 @@ export default function StudentDetail() {
               {updating ? 'Updating...' : 'Update'}
             </button>
           </div>
-          {student.remarks && <p className="text-sm text-gray-500 mt-2">Last remark: {student.remarks}</p>}
+
         </div>
+      {/* Status History Modal */}
+      {showHistory && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[85vh] flex flex-col">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+              <h3 className="font-semibold text-gray-800">Status History</h3>
+              <button onClick={() => setShowHistory(false)} className="text-gray-400 hover:text-gray-600"><FiX size={18} /></button>
+            </div>
+            <div className="overflow-y-auto flex-1 p-4 space-y-3">
+              {history.length === 0 ? (
+                <p className="text-center text-gray-400 text-sm py-6">No history found</p>
+              ) : history.map((h) => (
+                <div key={h._id} className="border border-gray-100 rounded-lg p-3">
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="flex items-center gap-2">
+                      <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${STATUS_COLORS[h.status] || 'bg-gray-100 text-gray-600'}`}>{h.status}</span>
+                      {h.funnelStage && <span className="text-xs bg-orange-50 text-primary border border-orange-100 px-2 py-0.5 rounded-full font-medium">{h.funnelStage}</span>}
+                    </div>
+                    <span className="text-xs text-gray-400">{new Date(h.createdAt).toLocaleString('en-IN')}</span>
+                  </div>
+                  {h.remarks && <p className="text-sm text-gray-600 mt-1">💬 {h.remarks}</p>}
+                  <p className="text-xs text-gray-400 mt-1">By: {h.changedBy?.name || 'Unknown'} ({h.changedBy?.role || ''})</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
