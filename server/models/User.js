@@ -17,6 +17,7 @@ const userSchema = new mongoose.Schema({
     set: v => v === '' ? null : v,
   },
   isActive: { type: Boolean, default: true },
+  points: { type: Number, default: 0 },
 }, { timestamps: true });
 
 userSchema.pre('save', async function () {

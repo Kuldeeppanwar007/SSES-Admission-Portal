@@ -8,6 +8,7 @@ import Students from './pages/students/Students';
 import StudentForm from './pages/students/StudentForm';
 import StudentDetail from './pages/students/StudentDetail';
 import Users from './pages/users/Users';
+import Targets from './pages/targets/Targets';
 
 export default function App() {
   return (
@@ -22,6 +23,11 @@ export default function App() {
           <Route path="/students/add" element={<StudentForm />} />
           <Route path="/students/:id" element={<StudentDetail />} />
           <Route path="/students/:id/edit" element={<StudentForm />} />
+          <Route path="/targets" element={
+            <ProtectedRoute roles={['admin']}>
+              <Targets />
+            </ProtectedRoute>
+          } />
           <Route path="/users" element={
             <ProtectedRoute roles={['admin']}>
               <Users />

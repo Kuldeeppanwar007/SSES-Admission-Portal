@@ -1,4 +1,5 @@
 const Student = require('../models/Student');
+const User = require('../models/User');
 const xlsx = require('xlsx');
 
 // Get all students (admin/manager = all, track_incharge = own track)
@@ -50,16 +51,48 @@ const addStudent = async (req, res) => {
   res.status(201).json(student);
 };
 
+const SUBJECT_POINTS = {
+  'B.Tech': 50,
+  'BCA': 20, 'BBA': 20,
+  'Bcom': 10, 'Bio': 10,
+  'Micro': 5,
+};
+
 // Update student
 const updateStudent = async (req, res) => {
+  const User = require('../models/User');
   const student = await Student.findById(req.params.id);
   if (!student) return res.status(404).json({ message: 'Student not found' });
   if (req.user.role === 'track_incharge' && student.track !== req.user.track)
     return res.status(403).json({ message: 'Access denied' });
 
+  const prevStatus = student.status;
   const updates = { ...req.body };
   DOCS.forEach((d) => { if (req.files?.[d]) updates[d] = req.files[d][0].path; });
   const updated = await Student.findByIdAndUpdate(req.params.id, updates, { new: true });
+
+  // Points logic — only when newly admitted
+  if (prevStatus !== 'Admitted' && updates.status === 'Admitted' && updates.subject) {
+    const pts = SUBJECT_POINTS[updates.subject] || 0;
+    if (pts > 0) {
+      await User.findOneAndUpdate(
+        { track: updated.track, role: 'track_incharge' },
+        { $inc: { points: pts } }
+      );
+    }
+  }
+
+  // Points rollback — if status changed FROM Admitted to something else
+  if (prevStatus === 'Admitted' && updates.status !== 'Admitted' && student.subject) {
+    const pts = SUBJECT_POINTS[student.subject] || 0;
+    if (pts > 0) {
+      await User.findOneAndUpdate(
+        { track: student.track, role: 'track_incharge' },
+        { $inc: { points: -pts } }
+      );
+    }
+  }
+
   res.json(updated);
 };
 
@@ -193,20 +226,51 @@ const downloadTemplate = (req, res) => {
 
 // Dashboard stats
 const getStats = async (req, res) => {
-  const filter = req.user.role === 'track_incharge' ? { track: req.user.track } : {};
-  const total = await Student.countDocuments(filter);
-  const applied = await Student.countDocuments({ ...filter, status: 'Applied' });
-  const verified = await Student.countDocuments({ ...filter, status: 'Verified' });
-  const admitted = await Student.countDocuments({ ...filter, status: 'Admitted' });
-  const rejected = await Student.countDocuments({ ...filter, status: 'Rejected' });
+  try {
+    const Target = require('../models/Target');
+    const filter = req.user.role === 'track_incharge' ? { track: req.user.track } : {};
+    const total = await Student.countDocuments(filter);
+    const applied = await Student.countDocuments({ ...filter, status: 'Applied' });
+    const verified = await Student.countDocuments({ ...filter, status: 'Verified' });
+    const admitted = await Student.countDocuments({ ...filter, status: 'Admitted' });
+    const rejected = await Student.countDocuments({ ...filter, status: 'Rejected' });
 
-  const trackWise = await Student.aggregate([
-    { $match: filter },
-    { $group: { _id: '$track', count: { $sum: 1 } } },
-    { $sort: { count: -1 } },
-  ]);
+    const trackSubjectAdmitted = await Student.aggregate([
+      { $match: { ...filter, status: 'Admitted' } },
+      { $group: { _id: { track: '$track', subject: '$subject' }, admitted: { $sum: 1 } } },
+    ]);
 
-  res.json({ total, applied, verified, admitted, rejected, trackWise });
+    const targetFilter = req.user.role === 'track_incharge' ? { track: req.user.track } : {};
+    const targets = await Target.find(targetFilter);
+
+    const trackMap = {};
+    targets.forEach(({ track, subject, target }) => {
+      if (!trackMap[track]) trackMap[track] = { subjects: {} };
+      trackMap[track].subjects[subject] = { target, admitted: 0 };
+    });
+
+    trackSubjectAdmitted.forEach(({ _id, admitted }) => {
+      const { track, subject } = _id;
+      if (!trackMap[track]) trackMap[track] = { subjects: {} };
+      if (!trackMap[track].subjects[subject]) trackMap[track].subjects[subject] = { target: 0, admitted: 0 };
+      trackMap[track].subjects[subject].admitted = admitted;
+    });
+
+    const trackWise = Object.entries(trackMap).map(([track, { subjects }]) => ({
+      track,
+      subjects: Object.entries(subjects).map(([subject, data]) => ({ subject, ...data })),
+    }));
+
+    // Track wise points from track_incharge users
+    const trackUsers = await User.find({ role: 'track_incharge' }, 'track points');
+    const pointsMap = {};
+    trackUsers.forEach(({ track, points }) => { pointsMap[track] = (pointsMap[track] || 0) + points; });
+    trackWise.forEach((t) => { t.points = pointsMap[t.track] || 0; });
+
+    res.json({ total, applied, verified, admitted, rejected, trackWise });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 };
 
 module.exports = { getStudents, getStudent, addStudent, updateStudent, deleteStudent, updateStatus, bulkUpload, downloadTemplate, getStats };

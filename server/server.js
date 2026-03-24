@@ -13,6 +13,7 @@ app.use(express.json());
 app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/students', require('./routes/studentRoutes'));
 app.use('/api/users', require('./routes/userRoutes'));
+app.use('/api/targets', require('./routes/targetRoutes'));
 
 app.get('/', (req, res) => res.send('SSES Admission Portal API Running'));
 

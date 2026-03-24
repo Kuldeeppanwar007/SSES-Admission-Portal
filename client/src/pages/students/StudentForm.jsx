@@ -6,6 +6,8 @@ import useAuthStore from '../../store/authStore';
 import toast from 'react-hot-toast';
 import { FiExternalLink, FiCamera, FiImage, FiFileText, FiUser, FiCreditCard, FiX } from 'react-icons/fi';
 
+const SUBJECTS = ['B.Tech', 'BCA', 'BBA', 'Bcom', 'Bio', 'Micro'];
+
 const initialForm = {
   name: '', fatherName: '', track: '', mobileNo: '',
   whatsappNo: '', subject: '', fullAddress: '', otherTrack: '',
@@ -191,7 +193,6 @@ export default function StudentForm() {
             </div>
             {field('Mobile No', 'mobileNo', 'tel')}
             {field('WhatsApp No', 'whatsappNo', 'tel')}
-            {field('Subject', 'subject')}
             {field('Other Track', 'otherTrack')}
             <div className="md:col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-1">Full Address</label>
@@ -205,7 +206,7 @@ export default function StudentForm() {
         {isEdit && user?.role !== 'track_incharge' && (
           <div>
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Status</p>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
                 <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}
@@ -213,7 +214,17 @@ export default function StudentForm() {
                   {STATUSES.map((s) => <option key={s}>{s}</option>)}
                 </select>
               </div>
-              <div>
+              {form.status === 'Admitted' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Admission Subject<span className="text-red-500">*</span></label>
+                  <select value={form.subject} required onChange={(e) => setForm({ ...form, subject: e.target.value })}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary">
+                    <option value="">Select Subject</option>
+                    {SUBJECTS.map((s) => <option key={s}>{s}</option>)}
+                  </select>
+                </div>
+              )}
+              <div className={form.status === 'Admitted' ? 'md:col-span-2' : ''}>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Remarks</label>
                 <input value={form.remarks} onChange={(e) => setForm({ ...form, remarks: e.target.value })}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary" />

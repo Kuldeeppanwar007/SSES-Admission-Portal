@@ -153,6 +153,12 @@ export default function Users() {
                   <span className="font-medium">{u.track}</span>
                 </div>
               )}
+              {u.role === 'track_incharge' && (
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Points</span>
+                  <span className="font-semibold text-primary">🏆 {u.points || 0}</span>
+                </div>
+              )}
             </div>
             <div className="flex gap-2 pt-1 border-t border-gray-100">
               <button onClick={() => handleEdit(u)}
