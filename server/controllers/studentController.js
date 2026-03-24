@@ -12,7 +12,9 @@ const getStudents = async (req, res) => {
   if (req.user.role === 'track_incharge') filter.track = { $regex: `^${req.user.track}$`, $options: 'i' };
   else if (track) filter.track = { $regex: `^${track}$`, $options: 'i' };
 
-  if (status) filter.status = status;
+  // by default disabled profiles exclude — only show if status=Disabled explicitly requested
+  if (status === 'Disabled') filter.isDisabled = true;
+  else { filter.isDisabled = { $ne: true }; if (status) filter.status = status; }
   if (search) filter.$or = [
     { name: { $regex: search, $options: 'i' } },
     { fatherName: { $regex: search, $options: 'i' } },
@@ -68,6 +70,8 @@ const updateStudent = async (req, res) => {
 
   const prevStatus = student.status;
   const updates = { ...req.body };
+  if (updates.status === 'Disabled') updates.isDisabled = true;
+  else if (updates.status && updates.status !== 'Disabled') updates.isDisabled = false;
   DOCS.forEach((d) => { if (req.files?.[d]) updates[d] = req.files[d][0].path; });
   const updated = await Student.findByIdAndUpdate(req.params.id, updates, { new: true });
 
@@ -107,9 +111,10 @@ const deleteStudent = async (req, res) => {
 // Update status (Approve/Reject/Verify)
 const updateStatus = async (req, res) => {
   const { status, remarks } = req.body;
+  const isDisabled = status === 'Disabled';
   const student = await Student.findByIdAndUpdate(
     req.params.id,
-    { status, remarks },
+    { status, remarks, isDisabled },
     { new: true }
   );
   if (!student) return res.status(404).json({ message: 'Student not found' });
@@ -224,24 +229,65 @@ const downloadTemplate = (req, res) => {
   res.send(buf);
 };
 
+// Track Dashboard stats (track_incharge ka apna track)
+const getTrackStats = async (req, res) => {
+  try {
+    const Target = require('../models/Target');
+    const track = req.user.track;
+    if (!track) return res.status(400).json({ message: 'No track assigned' });
+
+    const filter = { track };
+    const [total, applied, verified, admitted, rejected] = await Promise.all([
+      Student.countDocuments(filter),
+      Student.countDocuments({ ...filter, status: 'Applied' }),
+      Student.countDocuments({ ...filter, status: 'Verified' }),
+      Student.countDocuments({ ...filter, status: 'Admitted' }),
+      Student.countDocuments({ ...filter, status: 'Rejected' }),
+    ]);
+
+    const disabled = await Student.countDocuments({ track, isDisabled: true });
+
+    const subjectAdmitted = await Student.aggregate([
+      { $match: { track, status: 'Admitted' } },
+      { $group: { _id: '$subject', admitted: { $sum: 1 } } },
+    ]);
+
+    const targets = await Target.find({ track });
+    const subjectMap = {};
+    targets.forEach(({ subject, target }) => {
+      subjectMap[subject] = { target, admitted: 0 };
+    });
+    subjectAdmitted.forEach(({ _id, admitted }) => {
+      if (!subjectMap[_id]) subjectMap[_id] = { target: 0, admitted: 0 };
+      subjectMap[_id].admitted = admitted;
+    });
+
+    const subjects = Object.entries(subjectMap).map(([subject, data]) => ({ subject, ...data }));
+    const trackUser = await User.findOne({ role: 'track_incharge', track }, 'points');
+
+    res.json({ track, total, applied, verified, admitted, rejected, disabled, subjects, points: trackUser?.points || 0 });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
 // Dashboard stats
 const getStats = async (req, res) => {
   try {
     const Target = require('../models/Target');
-    const filter = req.user.role === 'track_incharge' ? { track: req.user.track } : {};
-    const total = await Student.countDocuments(filter);
-    const applied = await Student.countDocuments({ ...filter, status: 'Applied' });
-    const verified = await Student.countDocuments({ ...filter, status: 'Verified' });
-    const admitted = await Student.countDocuments({ ...filter, status: 'Admitted' });
-    const rejected = await Student.countDocuments({ ...filter, status: 'Rejected' });
+    const total = await Student.countDocuments();
+    const applied = await Student.countDocuments({ status: 'Applied' });
+    const verified = await Student.countDocuments({ status: 'Verified' });
+    const admitted = await Student.countDocuments({ status: 'Admitted' });
+    const rejected = await Student.countDocuments({ status: 'Rejected' });
+    const disabled = await Student.countDocuments({ isDisabled: true });
 
     const trackSubjectAdmitted = await Student.aggregate([
-      { $match: { ...filter, status: 'Admitted' } },
+      { $match: { status: 'Admitted' } },
       { $group: { _id: { track: '$track', subject: '$subject' }, admitted: { $sum: 1 } } },
     ]);
 
-    const targetFilter = req.user.role === 'track_incharge' ? { track: req.user.track } : {};
-    const targets = await Target.find(targetFilter);
+    const targets = await Target.find({});
 
     const trackMap = {};
     targets.forEach(({ track, subject, target }) => {
@@ -267,10 +313,10 @@ const getStats = async (req, res) => {
     trackUsers.forEach(({ track, points }) => { pointsMap[track] = (pointsMap[track] || 0) + points; });
     trackWise.forEach((t) => { t.points = pointsMap[t.track] || 0; });
 
-    res.json({ total, applied, verified, admitted, rejected, trackWise });
+    res.json({ total, applied, verified, admitted, rejected, disabled, trackWise });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 };
 
-module.exports = { getStudents, getStudent, addStudent, updateStudent, deleteStudent, updateStatus, bulkUpload, downloadTemplate, getStats };
+module.exports = { getStudents, getStudent, addStudent, updateStudent, deleteStudent, updateStatus, bulkUpload, downloadTemplate, getStats, getTrackStats };

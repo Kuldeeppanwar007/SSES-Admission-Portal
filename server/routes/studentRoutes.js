@@ -5,12 +5,13 @@ const { upload } = require('../config/cloudinary');
 const { protect, authorizeRoles } = require('../middleware/authMiddleware');
 const {
   getStudents, getStudent, addStudent, updateStudent,
-  deleteStudent, updateStatus, bulkUpload, downloadTemplate, getStats,
+  deleteStudent, updateStatus, bulkUpload, downloadTemplate, getStats, getTrackStats,
 } = require('../controllers/studentController');
 
 const memStorage = multer({ storage: multer.memoryStorage() });
 
 router.get('/stats', protect, getStats);
+router.get('/track-stats', protect, authorizeRoles('track_incharge'), getTrackStats);
 router.get('/download-template', protect, downloadTemplate);
 router.get('/', protect, getStudents);
 router.get('/:id', protect, getStudent);
@@ -35,6 +36,6 @@ router.put('/:id', protect, upload.fields([
   { name: 'aadharCard', maxCount: 1 },
 ]), updateStudent);
 router.delete('/:id', protect, authorizeRoles('admin', 'manager'), deleteStudent);
-router.patch('/:id/status', protect, authorizeRoles('admin', 'manager'), updateStatus);
+router.patch('/:id/status', protect, authorizeRoles('admin', 'manager', 'track_incharge'), updateStatus);
 
 module.exports = router;

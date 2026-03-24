@@ -4,11 +4,14 @@ import api from '../../api/axios';
 import { TRACKS, STATUSES, STATUS_COLORS } from '../../utils/constants';
 import useAuthStore from '../../store/authStore';
 import toast from 'react-hot-toast';
-import { FiPlus, FiUpload, FiSearch, FiEye, FiEdit2, FiDownload, FiFilter } from 'react-icons/fi';
+import { FiPlus, FiUpload, FiSearch, FiEye, FiEdit2, FiDownload, FiFilter, FiSlash } from 'react-icons/fi';
+
+const ACTIVE_STATUSES = STATUSES.filter((s) => s !== 'Disabled');
 
 export default function Students() {
   const { user } = useAuthStore();
   const navigate = useNavigate();
+  const [tab, setTab] = useState('active'); // 'active' | 'disabled'
   const [students, setStudents] = useState([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -20,7 +23,11 @@ export default function Students() {
   const fetchStudents = async () => {
     setLoading(true);
     try {
-      const params = { page, limit: 10, ...filters };
+      const params = {
+        page, limit: 10,
+        ...filters,
+        ...(tab === 'disabled' ? { status: 'Disabled' } : {}),
+      };
       const { data } = await api.get('/students', { params });
       setStudents(data.students);
       setTotal(data.total);
@@ -29,7 +36,9 @@ export default function Students() {
     finally { setLoading(false); }
   };
 
-  useEffect(() => { fetchStudents(); }, [page, filters]);
+  useEffect(() => { fetchStudents(); }, [page, filters, tab]);
+
+  const switchTab = (t) => { setTab(t); setPage(1); setFilters({ track: '', status: '', search: '' }); };
 
   const handleDownloadTemplate = async () => {
     try {
@@ -54,6 +63,8 @@ export default function Students() {
     e.target.value = '';
   };
 
+  const isDisabledTab = tab === 'disabled';
+
   return (
     <div>
       {/* Header */}
@@ -61,20 +72,34 @@ export default function Students() {
         <h2 className="text-xl md:text-2xl font-bold text-gray-800">
           Students <span className="text-gray-400 text-base">({total})</span>
         </h2>
-        <div className="flex gap-2 flex-wrap">
-          <label className="flex items-center gap-1.5 bg-primary text-white px-3 py-2 rounded-lg cursor-pointer hover:bg-primary-dark transition-colors text-sm">
-            <FiUpload size={14} /> <span className="hidden sm:inline">Bulk Upload</span>
-            <input type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleBulkUpload} />
-          </label>
-          <button onClick={handleDownloadTemplate}
-            className="flex items-center gap-1.5 bg-gray-100 text-gray-700 px-3 py-2 rounded-lg hover:bg-gray-200 transition-colors text-sm border border-gray-300">
-            <FiDownload size={14} /> <span className="hidden sm:inline">Sample Format</span>
-          </button>
-          <button onClick={() => navigate('/students/add')}
-            className="flex items-center gap-1.5 bg-primary text-white px-3 py-2 rounded-lg hover:bg-primary-dark transition-colors text-sm">
-            <FiPlus size={14} /> <span className="hidden sm:inline">Add Student</span>
-          </button>
-        </div>
+        {!isDisabledTab && (
+          <div className="flex gap-2 flex-wrap">
+            <label className="flex items-center gap-1.5 bg-primary text-white px-3 py-2 rounded-lg cursor-pointer hover:bg-primary-dark transition-colors text-sm">
+              <FiUpload size={14} /> <span className="hidden sm:inline">Bulk Upload</span>
+              <input type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleBulkUpload} />
+            </label>
+            <button onClick={handleDownloadTemplate}
+              className="flex items-center gap-1.5 bg-gray-100 text-gray-700 px-3 py-2 rounded-lg hover:bg-gray-200 transition-colors text-sm border border-gray-300">
+              <FiDownload size={14} /> <span className="hidden sm:inline">Sample Format</span>
+            </button>
+            <button onClick={() => navigate('/students/add')}
+              className="flex items-center gap-1.5 bg-primary text-white px-3 py-2 rounded-lg hover:bg-primary-dark transition-colors text-sm">
+              <FiPlus size={14} /> <span className="hidden sm:inline">Add Student</span>
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Tabs */}
+      <div className="flex gap-1 mb-4 bg-gray-100 p-1 rounded-xl w-fit">
+        <button onClick={() => switchTab('active')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${!isDisabledTab ? 'bg-white shadow text-gray-800' : 'text-gray-500 hover:text-gray-700'}`}>
+          <FiSearch size={14} /> Active Profiles
+        </button>
+        <button onClick={() => switchTab('disabled')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${isDisabledTab ? 'bg-white shadow text-gray-800' : 'text-gray-500 hover:text-gray-700'}`}>
+          <FiSlash size={14} /> Disabled Profiles
+        </button>
       </div>
 
       {/* Search + Filters */}
@@ -86,12 +111,14 @@ export default function Students() {
               onChange={(e) => { setFilters({ ...filters, search: e.target.value }); setPage(1); }}
               className="flex-1 py-2 outline-none text-sm" />
           </div>
-          <button onClick={() => setShowFilters(!showFilters)}
-            className={`flex items-center gap-1 px-3 py-2 rounded-lg border text-sm transition-colors ${showFilters ? 'bg-primary text-white border-primary' : 'border-gray-300 text-gray-600'}`}>
-            <FiFilter size={14} /> <span className="hidden sm:inline">Filter</span>
-          </button>
+          {!isDisabledTab && (
+            <button onClick={() => setShowFilters(!showFilters)}
+              className={`flex items-center gap-1 px-3 py-2 rounded-lg border text-sm transition-colors ${showFilters ? 'bg-primary text-white border-primary' : 'border-gray-300 text-gray-600'}`}>
+              <FiFilter size={14} /> <span className="hidden sm:inline">Filter</span>
+            </button>
+          )}
         </div>
-        {showFilters && (
+        {showFilters && !isDisabledTab && (
           <div className="flex flex-wrap gap-2 pt-1">
             {user?.role !== 'track_incharge' && (
               <select value={filters.track} onChange={(e) => { setFilters({ ...filters, track: e.target.value }); setPage(1); }}
@@ -103,7 +130,7 @@ export default function Students() {
             <select value={filters.status} onChange={(e) => { setFilters({ ...filters, status: e.target.value }); setPage(1); }}
               className="flex-1 min-w-32 border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none">
               <option value="">All Status</option>
-              {STATUSES.map((s) => <option key={s}>{s}</option>)}
+              {ACTIVE_STATUSES.map((s) => <option key={s}>{s}</option>)}
             </select>
           </div>
         )}
@@ -119,7 +146,7 @@ export default function Students() {
               <thead className="bg-gray-50 border-b">
                 <tr>
                   {['S.N.', 'Name', 'Father Name', 'Track', 'Mobile', 'Subject', 'Status', 'Actions'].map((h) => (
-                    <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">{h}</th>
+                    <th key={h} className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -128,12 +155,12 @@ export default function Students() {
                   <tr><td colSpan={8} className="text-center py-10 text-gray-400">No students found</td></tr>
                 ) : students.map((s, i) => (
                   <tr key={s._id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 text-gray-500">{(page - 1) * 20 + i + 1}</td>
-                    <td className="px-4 py-3 font-medium">{s.name}</td>
-                    <td className="px-4 py-3 text-gray-600">{s.fatherName}</td>
-                    <td className="px-4 py-3 text-gray-600">{s.track}</td>
-                    <td className="px-4 py-3 text-gray-600">{s.mobileNo}</td>
-                    <td className="px-4 py-3 text-gray-600">{s.subject}</td>
+                    <td className="px-4 py-3 text-gray-500">{(page - 1) * 10 + i + 1}</td>
+                    <td className="px-4 py-3 font-medium text-gray-600">{s.name}</td>
+                    <td className="px-4 py-3 text-gray-400">{s.fatherName}</td>
+                    <td className="px-4 py-3 text-gray-400">{s.track}</td>
+                    <td className="px-4 py-3 text-gray-400">{s.mobileNo}</td>
+                    <td className="px-4 py-3 text-gray-400">{s.subject}</td>
                     <td className="px-4 py-3">
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${STATUS_COLORS[s.status]}`}>{s.status}</span>
                     </td>
@@ -161,19 +188,19 @@ export default function Students() {
           <div key={s._id} className="bg-white rounded-xl shadow p-4">
             <div className="flex items-start justify-between mb-2">
               <div>
-                <p className="font-semibold text-gray-800">{(page - 1) * 20 + i + 1}. {s.name}</p>
-                <p className="text-sm text-gray-500">{s.fatherName}</p>
+                <p className="font-semibold text-gray-800">{(page - 1) * 10 + i + 1}. {s.name}</p>
+                <p className="text-sm text-gray-400">{s.fatherName}</p>
               </div>
               <span className={`px-2 py-1 rounded-full text-xs font-medium shrink-0 ${STATUS_COLORS[s.status]}`}>{s.status}</span>
             </div>
-            <div className="grid grid-cols-2 gap-1 text-xs text-gray-500 mb-3">
+            <div className="grid grid-cols-2 gap-1 text-xs text-gray-400 mb-3">
               {s.track && <span>📍 {s.track}</span>}
               {s.mobileNo && <span>📞 {s.mobileNo}</span>}
               {s.subject && <span>📚 {s.subject}</span>}
             </div>
             <div className="flex gap-2 border-t border-gray-100 pt-2">
               <button onClick={() => navigate(`/students/${s._id}`)}
-                className="flex-1 flex items-center justify-center gap-1 text-xs text-primary font-medium py-1.5 border border-primary rounded-lg">
+                className="flex-1 flex items-center justify-center gap-1 text-xs font-medium py-1.5 border border-primary text-primary rounded-lg">
                 <FiEye size={13} /> View
               </button>
               <button onClick={() => navigate(`/students/${s._id}/edit`)}
@@ -189,10 +216,7 @@ export default function Students() {
       {pages > 1 && (
         <div className="flex justify-center items-center gap-1 mt-4 flex-wrap">
           <button onClick={() => setPage(p => Math.max(p - 1, 1))} disabled={page === 1}
-            className="px-3 py-1.5 rounded text-sm border bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-40">
-            ‹
-          </button>
-
+            className="px-3 py-1.5 rounded text-sm border bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-40">‹</button>
           {(() => {
             const delta = 1;
             const range = [];
@@ -208,17 +232,12 @@ export default function Students() {
                 <span key={`dots-${idx}`} className="px-2 py-1.5 text-sm text-gray-400">...</span>
               ) : (
                 <button key={p} onClick={() => setPage(p)}
-                  className={`px-3 py-1.5 rounded text-sm border transition-colors ${
-                    p === page ? 'bg-primary text-white border-primary' : 'bg-white text-gray-600 hover:bg-gray-50'
-                  }`}>{p}</button>
+                  className={`px-3 py-1.5 rounded text-sm border transition-colors ${p === page ? 'bg-primary text-white border-primary' : 'bg-white text-gray-600 hover:bg-gray-50'}`}>{p}</button>
               )
             );
           })()}
-
           <button onClick={() => setPage(p => Math.min(p + 1, pages))} disabled={page === pages}
-            className="px-3 py-1.5 rounded text-sm border bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-40">
-            ›
-          </button>
+            className="px-3 py-1.5 rounded text-sm border bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-40">›</button>
         </div>
       )}
     </div>

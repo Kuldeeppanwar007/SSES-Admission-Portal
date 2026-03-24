@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import api from '../../api/axios';
 import toast from 'react-hot-toast';
-import { FiUsers, FiFileText, FiCheckCircle, FiAward, FiXCircle, FiTarget } from 'react-icons/fi';
+import useAuthStore from '../../store/authStore';
+import { FiUsers, FiFileText, FiCheckCircle, FiAward, FiXCircle, FiTarget, FiSlash, FiChevronDown } from 'react-icons/fi';
 
 const SUBJECT_COLORS = {
   'B.Tech': 'bg-blue-100 text-blue-700',
@@ -13,14 +14,83 @@ const SUBJECT_COLORS = {
 };
 
 const STAT_META = [
-  { key: 'total',    label: 'Total Students', icon: FiUsers,       gradient: 'from-blue-500 to-blue-600',   bg: 'bg-blue-50',   text: 'text-blue-600' },
-  { key: 'applied',  label: 'Applied',         icon: FiFileText,    gradient: 'from-amber-500 to-orange-500', bg: 'bg-amber-50',  text: 'text-amber-600' },
-  { key: 'verified', label: 'Verified',         icon: FiCheckCircle, gradient: 'from-violet-500 to-purple-600',bg: 'bg-violet-50', text: 'text-violet-600' },
-  { key: 'admitted', label: 'Admitted',         icon: FiAward,       gradient: 'from-emerald-500 to-green-600',bg: 'bg-emerald-50',text: 'text-emerald-600' },
-  { key: 'rejected', label: 'Rejected',         icon: FiXCircle,     gradient: 'from-rose-500 to-red-600',    bg: 'bg-rose-50',   text: 'text-rose-600' },
+  { key: 'total',    label: 'Total Students', icon: FiUsers,       gradient: 'from-blue-500 to-blue-600',    bg: 'bg-blue-50',   text: 'text-blue-600' },
+  { key: 'applied',  label: 'Applied',         icon: FiFileText,    gradient: 'from-amber-500 to-orange-500',  bg: 'bg-amber-50',  text: 'text-amber-600' },
+  { key: 'verified', label: 'Verified',         icon: FiCheckCircle, gradient: 'from-violet-500 to-purple-600', bg: 'bg-violet-50', text: 'text-violet-600' },
+  { key: 'admitted', label: 'Admitted',         icon: FiAward,       gradient: 'from-emerald-500 to-green-600', bg: 'bg-emerald-50',text: 'text-emerald-600' },
+  { key: 'rejected', label: 'Rejected',         icon: FiXCircle,     gradient: 'from-rose-500 to-red-600',      bg: 'bg-rose-50',   text: 'text-rose-600' },
+  { key: 'disabled', label: 'Disabled',         icon: FiSlash,       gradient: 'from-gray-500 to-gray-600',     bg: 'bg-gray-50',   text: 'text-gray-600' },
 ];
 
+const RANK_STYLES = [
+  { bg: 'bg-amber-400',  text: 'text-white', emoji: '🥇' },
+  { bg: 'bg-gray-300',   text: 'text-white', emoji: '🥈' },
+  { bg: 'bg-orange-400', text: 'text-white', emoji: '🥉' },
+];
+
+function LeaderboardSection({ stats, user }) {
+  const [open, setOpen] = useState(false);
+  const sorted = [...stats.trackWise].sort((a, b) => (b.points || 0) - (a.points || 0));
+  const maxPts = sorted.reduce((m, t) => Math.max(m, t.points || 0), 1);
+  const myRank = user?.role === 'track_incharge'
+    ? sorted.findIndex((t) => t.track === user.track) + 1
+    : null;
+
+  return (
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+      {/* Header — always visible */}
+      <button onClick={() => setOpen((o) => !o)}
+        className="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-50/60 transition-colors">
+        <div className="flex items-center gap-3">
+          <span className="text-sm font-bold text-gray-700 uppercase tracking-wide">Points Leaderboard</span>
+          {myRank && (
+            <span className="text-xs bg-orange-50 text-primary font-bold px-2 py-0.5 rounded-full border border-orange-100">
+              Your Rank #{myRank}
+            </span>
+          )}
+        </div>
+        <FiChevronDown size={16} className={`text-gray-400 transition-transform duration-300 ${open ? 'rotate-180' : ''}`} />
+      </button>
+
+      {/* Collapsible list */}
+      {open && (
+        <div className="border-t border-gray-50">
+          {sorted.map(({ track, points }, i) => {
+            const isMe = user?.role === 'track_incharge' && user?.track === track;
+            const rank = RANK_STYLES[i] || { bg: 'bg-gray-100', text: 'text-gray-500', emoji: null };
+            const barW = Math.round(((points || 0) / maxPts) * 100);
+            return (
+              <div key={track}
+                className={`flex items-center gap-4 px-5 py-3 border-b border-gray-50 last:border-0 transition-colors ${
+                  isMe ? 'bg-orange-50/60' : 'hover:bg-gray-50/60'
+                }`}>
+                <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 text-xs font-bold ${rank.bg} ${rank.text}`}>
+                  {rank.emoji || i + 1}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className={`text-sm font-semibold truncate ${isMe ? 'text-primary' : 'text-gray-800'}`}>{track}</span>
+                    {isMe && <span className="text-xs bg-orange-100 text-primary font-bold px-1.5 py-0.5 rounded-full">You</span>}
+                  </div>
+                  <div className="w-full bg-gray-100 rounded-full h-1.5 mt-1.5">
+                    <div className={`h-1.5 rounded-full transition-all duration-700 ${isMe ? 'bg-primary' : 'bg-gray-400'}`}
+                      style={{ width: `${barW}%` }} />
+                  </div>
+                </div>
+                <span className={`text-sm font-bold tabular-nums shrink-0 ${isMe ? 'text-primary' : 'text-gray-700'}`}>
+                  {points || 0} <span className="text-xs font-medium text-gray-400">pts</span>
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function Dashboard() {
+  const { user } = useAuthStore();
   const [stats, setStats] = useState(null);
 
   useEffect(() => {
@@ -43,7 +113,7 @@ export default function Dashboard() {
       </div>
 
       {/* Stat Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
         {STAT_META.map(({ key, label, icon: Icon, gradient, bg, text }) => (
           <div key={key} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex flex-col gap-3 hover:shadow-md transition-shadow">
             <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${gradient} flex items-center justify-center shadow-sm`}>
@@ -56,6 +126,11 @@ export default function Dashboard() {
           </div>
         ))}
       </div>
+
+      {/* Points Leaderboard */}
+      {(stats.trackWise || []).some((t) => t.points > 0) && (
+        <LeaderboardSection stats={stats} user={user} />
+      )}
 
       {/* Track-wise */}
       <div>

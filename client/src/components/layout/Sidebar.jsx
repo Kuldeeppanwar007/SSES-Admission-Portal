@@ -1,9 +1,10 @@
 import { NavLink, useNavigate } from 'react-router-dom';
-import { FiHome, FiUsers, FiUserCheck, FiLogOut, FiChevronLeft, FiChevronRight, FiFlag } from 'react-icons/fi';
+import { FiHome, FiUsers, FiUserCheck, FiLogOut, FiChevronLeft, FiChevronRight, FiFlag, FiPieChart } from 'react-icons/fi';
 import useAuthStore from '../../store/authStore';
 
 const navItems = [
   { to: '/dashboard', Icon: FiHome, label: 'Dashboard' },
+  { to: '/track-dashboard', Icon: FiPieChart, label: 'My Track', trackOnly: true },
   { to: '/students', Icon: FiUsers, label: 'Students' },
   { to: '/targets', Icon: FiFlag, label: 'Targets', adminOnly: true },
   { to: '/users', Icon: FiUserCheck, label: 'Users', adminOnly: true },
@@ -14,7 +15,11 @@ export default function Sidebar({ open, onClose, collapsed, onToggle }) {
   const navigate = useNavigate();
 
   const handleLogout = () => { logout(); navigate('/login'); };
-  const links = navItems.filter((i) => !i.adminOnly || user?.role === 'admin');
+  const links = navItems.filter((i) => {
+    if (i.adminOnly) return user?.role === 'admin';
+    if (i.trackOnly) return user?.role === 'track_incharge';
+    return true;
+  });
 
   const sidebarContent = (
     <div className="flex flex-col h-full relative">

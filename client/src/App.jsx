@@ -4,6 +4,7 @@ import Layout from './components/layout/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
 import Login from './pages/auth/Login';
 import Dashboard from './pages/dashboard/Dashboard';
+import TrackDashboard from './pages/dashboard/TrackDashboard';
 import Students from './pages/students/Students';
 import StudentForm from './pages/students/StudentForm';
 import StudentDetail from './pages/students/StudentDetail';
@@ -19,6 +20,11 @@ export default function App() {
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
         <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
           <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/track-dashboard" element={
+            <ProtectedRoute roles={['track_incharge']}>
+              <TrackDashboard />
+            </ProtectedRoute>
+          } />
           <Route path="/students" element={<Students />} />
           <Route path="/students/add" element={<StudentForm />} />
           <Route path="/students/:id" element={<StudentDetail />} />

@@ -107,7 +107,7 @@ export default function StudentDetail() {
         )}
       </div>
 
-      {user?.role !== 'track_incharge' && (
+      {/* Update Status — sabke liye */}
         <div className="bg-white rounded-xl shadow p-6">
           <h3 className="font-semibold mb-4">Update Status</h3>
           <div className="flex flex-wrap gap-3">
@@ -125,7 +125,6 @@ export default function StudentDetail() {
           </div>
           {student.remarks && <p className="text-sm text-gray-500 mt-2">Last remark: {student.remarks}</p>}
         </div>
-      )}
     </div>
   );
 }
