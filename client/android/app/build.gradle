@@ -3,6 +3,10 @@ apply plugin: 'com.android.application'
 android {
     namespace = "com.sses.portal"
     compileSdk = rootProject.ext.compileSdkVersion
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
     defaultConfig {
         applicationId "com.sses.portal"
         minSdkVersion rootProject.ext.minSdkVersion

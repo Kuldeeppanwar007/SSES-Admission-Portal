@@ -1,5 +1,16 @@
 {
   "appId": "com.sses.portal",
   "appName": "SSES Portal",
-  "webDir": "dist"
+  "webDir": "dist",
+  "plugins": {
+    "StatusBar": {
+      "overlaysWebView": false,
+      "style": "LIGHT",
+      "backgroundColor": "#ffffff"
+    },
+    "SplashScreen": {
+      "launchShowDuration": 1500,
+      "backgroundColor": "#ffffff"
+    }
+  }
 }

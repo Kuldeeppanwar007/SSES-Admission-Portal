@@ -60,12 +60,14 @@ export default function Sidebar({ open, onClose, collapsed, onToggle }) {
 
   return (
     <>
-      <aside className={`hidden md:flex fixed top-14 left-0 h-[calc(100vh-56px)] bg-white border-r border-gray-200 flex-col z-40 transition-all duration-300 ${collapsed ? 'w-16' : 'w-64'}`}>
+      <aside className={`hidden md:flex fixed left-0 bg-white border-r border-gray-200 flex-col z-40 transition-all duration-300 ${collapsed ? 'w-16' : 'w-64'}`}
+        style={{ top: 'calc(56px + env(safe-area-inset-top, 20px))', height: 'calc(100vh - 56px - env(safe-area-inset-top, 20px))' }}>
         {sidebarContent}
       </aside>
 
       {open && (
-        <div className="md:hidden fixed inset-0 z-40 flex" style={{ top: '56px' }}>
+        <div className="md:hidden fixed inset-0 z-40 flex"
+          style={{ top: 'calc(56px + env(safe-area-inset-top, 20px))' }}>
           <div className="absolute inset-0 bg-black bg-opacity-40" onClick={onClose} />
           <aside className="relative w-64 bg-white h-full flex flex-col shadow-xl">
             {sidebarContent}

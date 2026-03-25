@@ -16,7 +16,8 @@ export default function Layout() {
         collapsed={collapsed}
         onToggle={() => setCollapsed(!collapsed)}
       />
-      <main className={`pt-24 px-4 pb-4 md:px-6 md:pb-6 transition-all duration-300 ${collapsed ? 'md:ml-16' : 'md:ml-64'}`}>
+      <main className={`px-4 pb-4 md:px-6 md:pb-6 transition-all duration-300 ${collapsed ? 'md:ml-16' : 'md:ml-64'}`}
+        style={{ paddingTop: 'calc(56px + env(safe-area-inset-top, 20px) + 16px)' }}>
         <Outlet />
       </main>
     </div>
