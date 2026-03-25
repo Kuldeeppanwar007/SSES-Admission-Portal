@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import api from '../../api/axios';
 import toast from 'react-hot-toast';
 import useAuthStore from '../../store/authStore';
-import { FiUsers, FiFileText, FiCheckCircle, FiAward, FiXCircle, FiTarget, FiSlash, FiChevronDown } from 'react-icons/fi';
+import { FiUsers, FiFileText, FiCheckCircle, FiAward, FiXCircle, FiTarget, FiSlash, FiChevronDown, FiGift, FiClock } from 'react-icons/fi';
 
 const SUBJECT_COLORS = {
   'B.Tech': 'bg-blue-100 text-blue-700',
@@ -21,6 +21,101 @@ const STAT_META = [
   { key: 'rejected', label: 'Rejected',         icon: FiXCircle,     gradient: 'from-rose-500 to-red-600',      bg: 'bg-rose-50',   text: 'text-rose-600' },
   { key: 'disabled', label: 'Disabled',         icon: FiSlash,       gradient: 'from-gray-500 to-gray-600',     bg: 'bg-gray-50',   text: 'text-gray-600' },
 ];
+
+const SUBJECTS = ['B.Tech', 'BCA', 'BBA', 'Bcom', 'Bio', 'Micro'];
+const SUBJECT_LABELS = { 'B.Tech': 'BTech', 'BCA': 'BCA', 'BBA': 'BBA', 'Bcom': 'BCom', 'Bio': 'Bio/BSc', 'Micro': 'Micro' };
+
+const TRACK_GROUP = {
+  'Satwas': 1, 'Harda': 1, 'Gopalpur': 1,
+  'Khategaon': 2, 'Kannod': 2, 'Bherunda': 2,
+  'Timarni': 3, 'Nemawar': 3, 'Narmadapuram': 3, 'Seoni Malva': 3,
+};
+const SUBJECT_POINTS_BY_GROUP = {
+  'B.Tech': [180, 198, 225],
+  'BCA':    [120, 132, 150],
+  'BBA':    [130, 143, 163],
+  'Bcom':   [130, 143, 163],
+  'Bio':    [120, 132, 150],
+  'Micro':  [120, 132, 150],
+};
+const getSubjectPoints = (track, subject) => {
+  const g = (TRACK_GROUP[track] || 1) - 1;
+  return (SUBJECT_POINTS_BY_GROUP[subject] || [0, 0, 0])[g];
+};
+
+function PointsTable({ trackWise }) {
+  const [open, setOpen] = useState(true);
+
+  // build map: track -> subject -> points earned
+  const dataMap = {};
+  trackWise.forEach(({ track, subjects }) => {
+    dataMap[track] = {};
+    subjects.forEach(({ subject, admitted }) => {
+      dataMap[track][subject] = (admitted || 0) * getSubjectPoints(track, subject);
+    });
+  });
+
+  const tracks = [...trackWise].sort((a, b) => (b.points || 0) - (a.points || 0));
+
+  return (
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+      <button onClick={() => setOpen((o) => !o)}
+        className="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-50/60 transition-colors">
+        <div className="flex items-center gap-2">
+          <span className="text-lg">🎮</span>
+          <span className="text-sm font-bold text-gray-700 uppercase tracking-wide">Final Points Table (Tracks as Rows)</span>
+        </div>
+        <FiChevronDown size={16} className={`text-gray-400 transition-transform duration-300 ${open ? 'rotate-180' : ''}`} />
+      </button>
+
+      {open && (
+        <div className="overflow-x-auto border-t border-gray-50">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-gray-100">
+                <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 whitespace-nowrap">Center ↓ / Course →</th>
+                {SUBJECTS.map((s) => (
+                  <th key={s} className="px-5 py-3 text-left text-xs font-semibold text-gray-500 whitespace-nowrap">
+                    {SUBJECT_LABELS[s]}
+                  </th>
+                ))}
+                <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500">Total</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-50">
+              {tracks.map(({ track, points }, i) => {
+                const rankStyle = i === 0 ? 'bg-amber-50' : i === 1 ? 'bg-gray-50' : i === 2 ? 'bg-orange-50/40' : '';
+                return (
+                  <tr key={track} className={`hover:bg-orange-50/30 transition-colors ${rankStyle}`}>
+                    <td className="px-5 py-3 font-bold text-gray-800 whitespace-nowrap">
+                      <div className="flex items-center gap-2">
+                        {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : <span className="w-5 text-center text-xs text-gray-400">{i + 1}</span>}
+                        {track.toUpperCase()}
+                      </div>
+                    </td>
+                    {SUBJECTS.map((s) => {
+                      const pts = dataMap[track]?.[s] || 0;
+                      return (
+                        <td key={s} className="px-5 py-3 tabular-nums">
+                          <span className={pts > 0 ? 'font-bold text-gray-800' : 'text-gray-300'}>
+                            {pts > 0 ? pts : '—'}
+                          </span>
+                        </td>
+                      );
+                    })}
+                    <td className="px-5 py-3 font-bold text-primary tabular-nums">
+                      {SUBJECTS.reduce((sum, s) => sum + (dataMap[track]?.[s] || 0), 0)}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
 
 const RANK_STYLES = [
   { bg: 'bg-amber-400',  text: 'text-white', emoji: '🥇' },
@@ -92,12 +187,31 @@ function LeaderboardSection({ stats, user }) {
 export default function Dashboard() {
   const { user } = useAuthStore();
   const [stats, setStats] = useState(null);
+  const [bonusHistory, setBonusHistory] = useState([]);
+  const [distributing, setDistributing] = useState(false);
+
+  const fetchStats = () =>
+    api.get('/students/stats').then((r) => setStats(r.data)).catch(() => toast.error('Failed to load stats'));
+
+  const fetchBonusHistory = () =>
+    api.get('/students/weekly-bonus-history').then((r) => setBonusHistory(r.data)).catch(() => {});
 
   useEffect(() => {
-    api.get('/students/stats')
-      .then((r) => setStats(r.data))
-      .catch(() => toast.error('Failed to load stats'));
+    fetchStats();
+    if (user?.role === 'admin') fetchBonusHistory();
   }, []);
+
+  const handleManualBonus = async () => {
+    setDistributing(true);
+    try {
+      const { data } = await api.post('/students/weekly-bonus-manual', {});
+      toast.success(data.message);
+      fetchStats();
+      fetchBonusHistory();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to distribute bonus');
+    } finally { setDistributing(false); }
+  };
 
   if (!stats) return (
     <div className="flex justify-center items-center h-64">
@@ -127,10 +241,72 @@ export default function Dashboard() {
         ))}
       </div>
 
+      {/* Points Table */}
+      {(stats.trackWise || []).length > 0 && (
+        <PointsTable trackWise={stats.trackWise} />
+      )}
+
       {/* Points Leaderboard */}
       {(stats.trackWise || []).some((t) => t.points > 0) && (
         <LeaderboardSection stats={stats} user={user} />
       )}
+
+      {/* Admin — Manual Weekly Bonus */}
+      {user?.role === 'admin' && (() => {
+        const thisWeekStart = (() => {
+          const now = new Date();
+          const day = now.getDay();
+          const diff = now.getDate() - day + (day === 0 ? -6 : 1);
+          const m = new Date(now); m.setDate(diff); m.setHours(0,0,0,0);
+          return m.toDateString();
+        })();
+        const alreadyDone = bonusHistory.some((w) => new Date(w.weekStart).toDateString() === thisWeekStart);
+        return (
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+            <div className="px-5 py-4 border-b border-gray-50 flex items-center justify-between flex-wrap gap-3">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 bg-orange-50 rounded-lg flex items-center justify-center">
+                  <FiGift size={15} className="text-primary" />
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-gray-800">Weekly Bonus Distribution</p>
+                  <p className="text-xs text-gray-400">Top 3 tracks — 🥇 +200 &nbsp;🥈 +150 &nbsp;🥉 +100 pts</p>
+                </div>
+              </div>
+              <button onClick={handleManualBonus} disabled={distributing || alreadyDone}
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-colors shadow-sm ${
+                  alreadyDone
+                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed shadow-none'
+                    : 'bg-primary text-white hover:bg-primary-dark shadow-orange-200 disabled:opacity-60'
+                }`}>
+                <FiGift size={14} />
+                {alreadyDone ? 'Already Distributed This Week' : distributing ? 'Distributing...' : 'Distribute Now'}
+              </button>
+            </div>
+
+            {/* Bonus History */}
+            {bonusHistory.length > 0 && (
+              <div className="divide-y divide-gray-50">
+                {bonusHistory.map((week) => (
+                  <div key={week._id} className="px-5 py-3 flex items-center justify-between flex-wrap gap-2">
+                    <div className="flex items-center gap-2 text-xs text-gray-400">
+                      <FiClock size={12} />
+                      <span>Week of {new Date(week.weekStart).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                    </div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {week.bonuses.map((b) => (
+                        <span key={b.track} className="text-xs bg-orange-50 text-primary border border-orange-100 px-2 py-0.5 rounded-full font-semibold">
+                          {b.rank === 1 ? '🥇' : b.rank === 2 ? '🥈' : '🥉'} {b.track} +{b.points}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {/* Track-wise */}
       <div>

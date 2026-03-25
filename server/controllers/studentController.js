@@ -53,11 +53,25 @@ const addStudent = async (req, res) => {
   res.status(201).json(student);
 };
 
-const SUBJECT_POINTS = {
-  'B.Tech': 50,
-  'BCA': 20, 'BBA': 20,
-  'Bcom': 10, 'Bio': 10,
-  'Micro': 5,
+const TRACK_GROUP = {
+  'Satwas': 1, 'Harda': 1, 'Gopalpur': 1,
+  'Khategaon': 2, 'Kannod': 2, 'Bherunda': 2,
+  'Timarni': 3, 'Nemawar': 3, 'Narmadapuram': 3, 'Seoni Malva': 3,
+};
+
+// Points per admission: [group1, group2, group3]
+const SUBJECT_POINTS_BY_GROUP = {
+  'B.Tech': [180, 198, 225],
+  'BCA':    [120, 132, 150],
+  'BBA':    [130, 143, 163],
+  'Bcom':   [130, 143, 163],
+  'Bio':    [120, 132, 150],
+  'Micro':  [120, 132, 150],
+};
+
+const getSubjectPoints = (track, subject) => {
+  const group = (TRACK_GROUP[track] || 1) - 1; // 0-indexed
+  return (SUBJECT_POINTS_BY_GROUP[subject] || [0, 0, 0])[group];
 };
 
 const FUNNEL_POINTS = {
@@ -87,9 +101,9 @@ const updateStudent = async (req, res) => {
 
   // Subject admission points
   if (prevStatus !== 'Admitted' && updates.status === 'Admitted' && updates.subject)
-    pointsDelta += SUBJECT_POINTS[updates.subject] || 0;
+    pointsDelta += getSubjectPoints(updated.track, updates.subject);
   if (prevStatus === 'Admitted' && updates.status !== 'Admitted' && student.subject)
-    pointsDelta -= SUBJECT_POINTS[student.subject] || 0;
+    pointsDelta -= getSubjectPoints(student.track, student.subject);
 
   // Funnel stage points
   const newFunnel = updates.funnelStage || '';
@@ -137,16 +151,35 @@ const deleteStudent = async (req, res) => {
 // Update status (Approve/Reject/Verify)
 const updateStatus = async (req, res) => {
   const StatusHistory = require('../models/StatusHistory');
+  const TrackPoints = require('../models/TrackPoints');
   const { status, remarks } = req.body;
   const isDisabled = status === 'Disabled';
-  const student = await Student.findByIdAndUpdate(
+  const student = await Student.findById(req.params.id);
+  if (!student) return res.status(404).json({ message: 'Student not found' });
+
+  const prevStatus = student.status;
+  const updated = await Student.findByIdAndUpdate(
     req.params.id,
     { status, remarks, isDisabled },
     { new: true }
   );
-  if (!student) return res.status(404).json({ message: 'Student not found' });
+
+  // Points logic
+  let pointsDelta = 0;
+  if (prevStatus !== 'Admitted' && status === 'Admitted' && student.subject)
+    pointsDelta += getSubjectPoints(student.track, student.subject);
+  if (prevStatus === 'Admitted' && status !== 'Admitted' && student.subject)
+    pointsDelta -= getSubjectPoints(student.track, student.subject);
+  if (pointsDelta !== 0 && student.track) {
+    await TrackPoints.findOneAndUpdate(
+      { track: student.track },
+      { $inc: { points: pointsDelta } },
+      { upsert: true }
+    );
+  }
+
   await StatusHistory.create({ student: req.params.id, status, remarks, changedBy: req.user._id });
-  res.json(student);
+  res.json(updated);
 };
 
 // Get status history
@@ -253,6 +286,58 @@ const bulkUpload = async (req, res) => {
     return res.status(400).json({ message: 'No rows could be saved. Check your file format.' });
 
   res.json({ message: `${insertedCount} students uploaded successfully${skippedCount ? `, ${skippedCount} duplicates skipped` : ''}.` });
+};
+
+// Export students to Excel
+const exportStudents = async (req, res) => {
+  try {
+    const { ids } = req.body; // array of IDs, empty = export all (with current filters)
+    const { track, status, search } = req.query;
+
+    let students;
+    if (ids && ids.length > 0) {
+      students = await Student.find({ _id: { $in: ids } }).populate('addedBy', 'name');
+    } else {
+      const filter = {};
+      if (req.user.role === 'track_incharge') filter.track = { $regex: `^${req.user.track}$`, $options: 'i' };
+      else if (track) filter.track = { $regex: `^${track}$`, $options: 'i' };
+      if (status === 'Disabled') filter.isDisabled = true;
+      else { filter.isDisabled = { $ne: true }; if (status) filter.status = status; }
+      if (search) filter.$or = [
+        { name: { $regex: search, $options: 'i' } },
+        { fatherName: { $regex: search, $options: 'i' } },
+        { mobileNo: { $regex: search, $options: 'i' } },
+      ];
+      students = await Student.find(filter).populate('addedBy', 'name').sort({ sn: 1 });
+    }
+
+    const rows = students.map((s, i) => ({
+      'S.N.':             i + 1,
+      'Name':             s.name || '',
+      'Father Name':      s.fatherName || '',
+      'Track':            s.track || '',
+      'Mobile No':        s.mobileNo || '',
+      'WhatsApp No':      s.whatsappNo || '',
+      'Subject':          s.subject || '',
+      'Full Address':     s.fullAddress || '',
+      'Other Track':      s.otherTrack || '',
+      'Status':           s.status || '',
+      'Remarks':          s.remarks || '',
+      'Added By':         s.addedBy?.name || '',
+      'Added On':         s.createdAt ? new Date(s.createdAt).toLocaleDateString('en-IN') : '',
+    }));
+
+    const wb = xlsx.utils.book_new();
+    const ws = xlsx.utils.json_to_sheet(rows);
+    ws['!cols'] = [6, 22, 22, 14, 14, 14, 12, 30, 14, 12, 30, 16, 14].map((w) => ({ wch: w }));
+    xlsx.utils.book_append_sheet(wb, ws, 'Students');
+    const buf = xlsx.write(wb, { type: 'buffer', bookType: 'xlsx' });
+    res.setHeader('Content-Disposition', `attachment; filename=students_export_${Date.now()}.xlsx`);
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.send(buf);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 };
 
 // Download Excel template
@@ -370,4 +455,4 @@ const getStats = async (req, res) => {
   }
 };
 
-module.exports = { getStudents, getStudent, addStudent, updateStudent, deleteStudent, updateStatus, getStatusHistory, bulkUpload, downloadTemplate, getStats, getTrackStats };
+module.exports = { getStudents, getStudent, addStudent, updateStudent, deleteStudent, updateStatus, getStatusHistory, bulkUpload, downloadTemplate, exportStudents, getStats, getTrackStats };

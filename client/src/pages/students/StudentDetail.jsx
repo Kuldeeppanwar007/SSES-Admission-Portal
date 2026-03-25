@@ -4,7 +4,7 @@ import api from '../../api/axios';
 import { STATUSES, STATUS_COLORS } from '../../utils/constants';
 import useAuthStore from '../../store/authStore';
 import toast from 'react-hot-toast';
-import { FiEdit2, FiArrowLeft, FiImage, FiFileText, FiExternalLink, FiClock, FiX } from 'react-icons/fi';
+import { FiEdit2, FiArrowLeft, FiImage, FiFileText, FiExternalLink, FiClock, FiX, FiDownload } from 'react-icons/fi';
 
 export default function StudentDetail() {
   const { id } = useParams();
@@ -15,6 +15,20 @@ export default function StudentDetail() {
   const [updating, setUpdating] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [history, setHistory] = useState([]);
+  const [exporting, setExporting] = useState(false);
+
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const res = await api.post('/students/export', { ids: [id] }, { responseType: 'blob' });
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const a = document.createElement('a');
+      a.href = url; a.download = `${student?.name || 'student'}_export.xlsx`; a.click();
+      window.URL.revokeObjectURL(url);
+      toast.success('Exported successfully');
+    } catch { toast.error('Export failed'); }
+    finally { setExporting(false); }
+  };
 
   useEffect(() => {
     api.get(`/students/${id}`)
@@ -59,6 +73,10 @@ export default function StudentDetail() {
         <button onClick={() => navigate(`/students/${id}/edit`)}
           className="ml-auto flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg text-sm hover:bg-primary-dark">
           <FiEdit2 size={14} /> Edit
+        </button>
+        <button onClick={handleExport} disabled={exporting}
+          className="flex items-center gap-2 border border-orange-200 text-primary px-4 py-2 rounded-lg text-sm hover:bg-orange-50 disabled:opacity-60">
+          <FiDownload size={14} /> {exporting ? 'Exporting...' : 'Export'}
         </button>
         <button onClick={handleViewHistory}
           className="flex items-center gap-2 border border-gray-300 text-gray-600 px-4 py-2 rounded-lg text-sm hover:bg-gray-50">
