@@ -11,7 +11,15 @@ const {
 const memStorage = multer({ storage: multer.memoryStorage() });
 
 router.get('/stats', protect, getStats);
-router.get('/track-stats', protect, authorizeRoles('track_incharge'), getTrackStats);
+router.get('/track-stats', protect, async (req, res, next) => {
+  if (req.user.role === 'admin') {
+    if (!req.query.track) return res.status(400).json({ message: 'track query param required' });
+    req.user.track = req.query.track;
+    return getTrackStats(req, res, next);
+  }
+  if (req.user.role === 'track_incharge') return getTrackStats(req, res, next);
+  return res.status(403).json({ message: 'Access denied' });
+});
 router.get('/weekly-bonus-history', protect, async (req, res) => {
   const WeeklyBonus = require('../models/WeeklyBonus');
   const history = await WeeklyBonus.find({}).sort({ weekStart: -1 }).limit(10);

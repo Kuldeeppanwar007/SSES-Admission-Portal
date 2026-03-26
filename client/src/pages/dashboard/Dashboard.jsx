@@ -86,12 +86,9 @@ function PointsTable({ trackWise }) {
               {tracks.map(({ track, points }, i) => {
                 const rankStyle = i === 0 ? 'bg-amber-50' : i === 1 ? 'bg-gray-50' : i === 2 ? 'bg-orange-50/40' : '';
                 return (
-                  <tr key={track} className={`hover:bg-orange-50/30 transition-colors ${rankStyle}`}>
+                  <tr key={track} className="hover:bg-orange-50/30 transition-colors">
                     <td className="px-5 py-3 font-bold text-gray-800 whitespace-nowrap">
-                      <div className="flex items-center gap-2">
-                        {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : <span className="w-5 text-center text-xs text-gray-400">{i + 1}</span>}
-                        {track.toUpperCase()}
-                      </div>
+                      {track.toUpperCase()}
                     </td>
                     {SUBJECTS.map((s) => {
                       const pts = dataMap[track]?.[s] || 0;

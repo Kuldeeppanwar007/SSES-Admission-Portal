@@ -1,6 +1,8 @@
-import { NavLink, useNavigate } from 'react-router-dom';
-import { FiHome, FiUsers, FiUserCheck, FiLogOut, FiChevronLeft, FiChevronRight, FiFlag, FiPieChart } from 'react-icons/fi';
+import { NavLink, useNavigate, useLocation } from 'react-router-dom';
+import { FiHome, FiUsers, FiUserCheck, FiLogOut, FiChevronLeft, FiChevronRight, FiFlag, FiPieChart, FiChevronDown, FiMap } from 'react-icons/fi';
+import { useState } from 'react';
 import useAuthStore from '../../store/authStore';
+import { TRACKS } from '../../utils/constants';
 
 const navItems = [
   { to: '/dashboard', Icon: FiHome, label: 'Dashboard' },
@@ -13,6 +15,8 @@ const navItems = [
 export default function Sidebar({ open, onClose, collapsed, onToggle }) {
   const { user, logout } = useAuthStore();
   const navigate = useNavigate();
+  const location = useLocation();
+  const [trackMenuOpen, setTrackMenuOpen] = useState(location.pathname.startsWith('/admin-track'));
 
   const handleLogout = () => { logout(); navigate('/login'); };
   const links = navItems.filter((i) => {
@@ -29,8 +33,57 @@ export default function Sidebar({ open, onClose, collapsed, onToggle }) {
         {collapsed ? <FiChevronRight size={13} /> : <FiChevronLeft size={13} />}
       </button>
 
-      <nav className="flex-1 p-3 space-y-1 mt-2">
-        {links.map(({ to, Icon, label }) => (
+      <nav className="flex-1 p-3 space-y-1 mt-2 overflow-y-auto">
+        {/* Dashboard */}
+        {links.filter(l => l.to === '/dashboard').map(({ to, Icon, label }) => (
+          <NavLink key={to} to={to} onClick={onClose}
+            className={({ isActive }) =>
+              `flex items-center gap-3 px-3 py-3 rounded-lg transition-colors font-medium ${collapsed ? 'justify-center' : ''} ${isActive ? 'bg-primary text-white' : 'text-gray-600 hover:bg-orange-50 hover:text-primary'}`}
+            title={collapsed ? label : ''}>
+            <Icon size={20} />
+            {!collapsed && <span>{label}</span>}
+          </NavLink>
+        ))}
+
+        {/* Admin — Track Dashboards dropdown (right after Dashboard) */}
+        {user?.role === 'admin' && !collapsed && (
+          <div>
+            <button onClick={() => setTrackMenuOpen((o) => !o)}
+              className={`w-full flex items-center justify-between gap-3 px-3 py-3 rounded-lg transition-colors font-medium ${
+                location.pathname.startsWith('/admin-track') ? 'bg-orange-50 text-primary' : 'text-gray-600 hover:bg-orange-50 hover:text-primary'
+              }`}>
+              <div className="flex items-center gap-3">
+                <FiMap size={20} />
+                <span>Track Dashboards</span>
+              </div>
+              <FiChevronDown size={14} className={`transition-transform duration-200 ${trackMenuOpen ? 'rotate-180' : ''}`} />
+            </button>
+            {trackMenuOpen && (
+              <div className="ml-4 mt-1 space-y-0.5 border-l-2 border-orange-100 pl-3">
+                {TRACKS.map((t) => (
+                  <NavLink key={t} to={`/admin-track/${t}`} onClick={onClose}
+                    className={({ isActive }) =>
+                      `block px-3 py-2 rounded-lg text-sm transition-colors ${
+                        isActive ? 'bg-primary text-white font-semibold' : 'text-gray-500 hover:bg-orange-50 hover:text-primary'
+                      }`}>
+                    {t}
+                  </NavLink>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+        {user?.role === 'admin' && collapsed && (
+          <button onClick={() => navigate(`/admin-track/${TRACKS[0]}`)} title="Track Dashboards"
+            className={`w-full flex justify-center px-3 py-3 rounded-lg transition-colors ${
+              location.pathname.startsWith('/admin-track') ? 'bg-primary text-white' : 'text-gray-600 hover:bg-orange-50 hover:text-primary'
+            }`}>
+            <FiMap size={20} />
+          </button>
+        )}
+
+        {/* Remaining links */}
+        {links.filter(l => l.to !== '/dashboard').map(({ to, Icon, label }) => (
           <NavLink key={to} to={to} onClick={onClose}
             className={({ isActive }) =>
               `flex items-center gap-3 px-3 py-3 rounded-lg transition-colors font-medium ${collapsed ? 'justify-center' : ''} ${isActive ? 'bg-primary text-white' : 'text-gray-600 hover:bg-orange-50 hover:text-primary'}`}

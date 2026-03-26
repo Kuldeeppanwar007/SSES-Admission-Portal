@@ -9,6 +9,16 @@ import { FiExternalLink, FiCamera, FiImage, FiFileText, FiUser, FiCreditCard, Fi
 const SUBJECTS = ['B.Tech', 'BCA', 'BBA', 'Bcom', 'Bio', 'Micro'];
 const FUNNEL_STAGES = ['', 'Call Completed', 'Lead Interested', 'Visit Scheduled', 'Visit Completed', 'Admission Closed'];
 
+// Funnel stages allowed per status
+const ALLOWED_FUNNEL = {
+  'Applied':  [],
+  'Calling':  ['Call Completed', 'Lead Interested'],
+  'Verified': ['Visit Scheduled', 'Visit Completed'],
+  'Admitted': ['Admission Closed'],
+  'Rejected': [],
+  'Disabled': [],
+};
+
 const initialForm = {
   name: '', fatherName: '', track: '', mobileNo: '',
   whatsappNo: '', subject: '', fullAddress: '', otherTrack: '',
@@ -210,7 +220,11 @@ export default function StudentForm() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}
+                <select value={form.status} onChange={(e) => {
+                    const newStatus = e.target.value;
+                    const allowed = ALLOWED_FUNNEL[newStatus] || [];
+                    setForm({ ...form, status: newStatus, funnelStage: allowed.includes(form.funnelStage) ? form.funnelStage : '' });
+                  }}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary">
                   {STATUSES.map((s) => <option key={s}>{s}</option>)}
                 </select>
@@ -234,8 +248,12 @@ export default function StudentForm() {
                 <label className="block text-sm font-medium text-gray-700 mb-1">Funnel Stage</label>
                 <select value={form.funnelStage} onChange={(e) => setForm({ ...form, funnelStage: e.target.value })}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary">
-                  {FUNNEL_STAGES.map((s) => <option key={s} value={s}>{s || 'Select Stage'}</option>)}
+                  <option value="">Select Stage</option>
+                  {(ALLOWED_FUNNEL[form.status] || []).map((s) => <option key={s} value={s}>{s}</option>)}
                 </select>
+                {(ALLOWED_FUNNEL[form.status] || []).length === 0 && (
+                  <p className="text-xs text-gray-400 mt-1">No funnel stages for this status</p>
+                )}
               </div>
             </div>
           </div>

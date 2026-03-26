@@ -25,6 +25,8 @@ const studentSchema = new mongoose.Schema({
   remarks: { type: String, default: '' },
   funnelStage: { type: String, default: '' },
   isDisabled: { type: Boolean, default: false },
+  callingPointsAwarded: { type: Boolean, default: false },
+  awardedFunnelStages: [{ type: String }],
   addedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
 }, { timestamps: true });
 

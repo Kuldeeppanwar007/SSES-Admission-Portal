@@ -82,6 +82,12 @@ const FUNNEL_POINTS = {
   'Admission Closed': 100,
 };
 
+const ALLOWED_FUNNEL = {
+  'Calling':  ['Call Completed', 'Lead Interested'],
+  'Verified': ['Visit Scheduled', 'Visit Completed'],
+  'Admitted': ['Admission Closed'],
+};
+
 // Update student
 const updateStudent = async (req, res) => {
   const student = await Student.findById(req.params.id);
@@ -92,12 +98,29 @@ const updateStudent = async (req, res) => {
   const prevStatus = student.status;
   const prevFunnel = student.funnelStage || '';
   const updates = { ...req.body };
+
+  // Validate funnel stage against status
+  const effectiveStatus = updates.status || prevStatus;
+  const allowedFunnels = ALLOWED_FUNNEL[effectiveStatus] || [];
+  if (updates.funnelStage && !allowedFunnels.includes(updates.funnelStage)) {
+    updates.funnelStage = ''; // silently clear invalid funnel stage
+  }
+
+  // If status changed and prevFunnel is no longer valid for new status, rollback those points
+  let pointsDelta = 0;
+  if (updates.status && updates.status !== prevStatus && prevFunnel) {
+    const prevAllowed = ALLOWED_FUNNEL[prevStatus] || [];
+    const newAllowed = ALLOWED_FUNNEL[updates.status] || [];
+    if (prevAllowed.includes(prevFunnel) && !newAllowed.includes(prevFunnel)) {
+      pointsDelta -= FUNNEL_POINTS[prevFunnel] || 0;
+      await Student.findByIdAndUpdate(req.params.id, { $pull: { awardedFunnelStages: prevFunnel } });
+      updates.funnelStage = '';
+    }
+  }
   if (updates.status === 'Disabled') updates.isDisabled = true;
   else if (updates.status && updates.status !== 'Disabled') updates.isDisabled = false;
   DOCS.forEach((d) => { if (req.files?.[d]) updates[d] = req.files[d][0].path; });
   const updated = await Student.findByIdAndUpdate(req.params.id, updates, { new: true });
-
-  let pointsDelta = 0;
 
   // Subject admission points
   if (prevStatus !== 'Admitted' && updates.status === 'Admitted' && updates.subject)
@@ -105,16 +128,19 @@ const updateStudent = async (req, res) => {
   if (prevStatus === 'Admitted' && updates.status !== 'Admitted' && student.subject)
     pointsDelta -= getSubjectPoints(student.track, student.subject);
 
-  // Funnel stage points
+  // Funnel stage points — sirf ek baar per stage per student
   const newFunnel = updates.funnelStage || '';
-  if (newFunnel && newFunnel !== prevFunnel) {
+  const awardedFunnelStages = student.awardedFunnelStages || [];
+  if (newFunnel && newFunnel !== prevFunnel && !awardedFunnelStages.includes(newFunnel)) {
     pointsDelta += FUNNEL_POINTS[newFunnel] || 0;
-    if (prevFunnel) pointsDelta -= FUNNEL_POINTS[prevFunnel] || 0;
+    await Student.findByIdAndUpdate(req.params.id, { $addToSet: { awardedFunnelStages: newFunnel } });
   }
 
-  // Calling status remark points (+5 if remark added while Calling)
-  if (updates.status === 'Calling' && updates.remarks && updates.remarks.trim() && prevStatus !== 'Calling')
+  // Calling status remark points — sirf ek baar milenge per student
+  if (updates.status === 'Calling' && updates.remarks && updates.remarks.trim() && !student.callingPointsAwarded) {
     pointsDelta += 5;
+    await Student.findByIdAndUpdate(req.params.id, { callingPointsAwarded: true });
+  }
 
   if (pointsDelta !== 0 && updated.track) {
     const TrackPoints = require('../models/TrackPoints');
@@ -394,7 +420,38 @@ const getTrackStats = async (req, res) => {
     const TrackPoints = require('../models/TrackPoints');
     const trackPoints = await TrackPoints.findOne({ track });
 
-    res.json({ track, total, applied, verified, admitted, rejected, disabled, subjects, points: trackPoints?.points || 0 });
+    // Status-wise breakdown
+    const statusBreakdown = await Student.aggregate([
+      { $match: { track } },
+      { $group: { _id: '$status', count: { $sum: 1 } } },
+    ]);
+
+    // Funnel-wise breakdown with points earned
+    const FUNNEL_POINTS_MAP = {
+      'Call Completed': 5, 'Lead Interested': 10,
+      'Visit Scheduled': 20, 'Visit Completed': 30, 'Admission Closed': 100,
+    };
+    const funnelBreakdown = await Student.aggregate([
+      { $match: { track, funnelStage: { $ne: '' }, funnelStage: { $exists: true } } },
+      { $group: { _id: '$funnelStage', count: { $sum: 1 } } },
+    ]);
+    const funnelData = funnelBreakdown.map(({ _id, count }) => ({
+      stage: _id,
+      count,
+      pointsPerStudent: FUNNEL_POINTS_MAP[_id] || 0,
+      totalPoints: count * (FUNNEL_POINTS_MAP[_id] || 0),
+    }));
+
+    // Calling points breakdown
+    const callingCount = await Student.countDocuments({ track, callingPointsAwarded: true });
+
+    res.json({
+      track, total, applied, verified, admitted, rejected, disabled, subjects,
+      points: trackPoints?.points || 0,
+      statusBreakdown: statusBreakdown.map(({ _id, count }) => ({ status: _id, count })),
+      funnelBreakdown: funnelData,
+      callingPointsCount: callingCount,
+    });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

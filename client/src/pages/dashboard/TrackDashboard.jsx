@@ -2,7 +2,24 @@ import { useEffect, useState } from 'react';
 import api from '../../api/axios';
 import toast from 'react-hot-toast';
 import useAuthStore from '../../store/authStore';
-import { FiUsers, FiFileText, FiCheckCircle, FiAward, FiXCircle, FiTarget, FiSlash } from 'react-icons/fi';
+import { FiUsers, FiFileText, FiCheckCircle, FiAward, FiXCircle, FiTarget, FiSlash, FiTrendingUp } from 'react-icons/fi';
+
+const STATUS_COLORS = {
+  Applied:  'bg-yellow-100 text-yellow-700',
+  Calling:  'bg-purple-100 text-purple-700',
+  Verified: 'bg-blue-100 text-blue-700',
+  Admitted: 'bg-emerald-100 text-emerald-700',
+  Rejected: 'bg-red-100 text-red-700',
+  Disabled: 'bg-gray-100 text-gray-600',
+};
+
+const FUNNEL_COLORS = {
+  'Call Completed':   'bg-purple-50 text-purple-700 border-purple-100',
+  'Lead Interested':  'bg-blue-50 text-blue-700 border-blue-100',
+  'Visit Scheduled':  'bg-amber-50 text-amber-700 border-amber-100',
+  'Visit Completed':  'bg-orange-50 text-primary border-orange-100',
+  'Admission Closed': 'bg-emerald-50 text-emerald-700 border-emerald-100',
+};
 
 const SUBJECT_COLORS = {
   'B.Tech': 'bg-blue-100 text-blue-700',
@@ -127,6 +144,70 @@ export default function TrackDashboard() {
                 </div>
               );
             })}
+          </div>
+        </div>
+      </div>
+
+      {/* Status + Funnel Breakdown */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Status Breakdown */}
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+          <div className="px-5 py-4 border-b border-gray-50 flex items-center gap-2">
+            <FiUsers size={15} className="text-primary" />
+            <p className="text-sm font-bold text-gray-800">Status Breakdown</p>
+          </div>
+          <div className="divide-y divide-gray-50">
+            {(stats.statusBreakdown || []).sort((a, b) => b.count - a.count).map(({ status, count }) => (
+              <div key={status} className="flex items-center justify-between px-5 py-3 hover:bg-gray-50/60 transition-colors">
+                <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${STATUS_COLORS[status] || 'bg-gray-100 text-gray-600'}`}>
+                  {status}
+                </span>
+                <span className="text-sm font-bold text-gray-800 tabular-nums">{count} students</span>
+              </div>
+            ))}
+            {(stats.statusBreakdown || []).length === 0 && (
+              <p className="px-5 py-6 text-center text-gray-400 text-sm">No data</p>
+            )}
+          </div>
+        </div>
+
+        {/* Funnel Breakdown */}
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+          <div className="px-5 py-4 border-b border-gray-50 flex items-center gap-2">
+            <FiTrendingUp size={15} className="text-primary" />
+            <p className="text-sm font-bold text-gray-800">Funnel Stage Breakdown</p>
+          </div>
+          <div className="divide-y divide-gray-50">
+            {stats.callingPointsCount > 0 && (
+              <div className="flex items-center justify-between px-5 py-3 hover:bg-gray-50/60 transition-colors">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-semibold px-2 py-0.5 rounded-full border bg-purple-50 text-purple-700 border-purple-100">
+                    Calling (with remark)
+                  </span>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm font-bold text-gray-800 tabular-nums">{stats.callingPointsCount} students</p>
+                  <p className="text-xs text-primary font-semibold">+{stats.callingPointsCount * 5} pts</p>
+                </div>
+              </div>
+            )}
+            {(stats.funnelBreakdown || []).sort((a, b) => b.totalPoints - a.totalPoints).map(({ stage, count, pointsPerStudent, totalPoints }) => (
+              <div key={stage} className="flex items-center justify-between px-5 py-3 hover:bg-gray-50/60 transition-colors">
+                <div className="flex items-center gap-2">
+                  <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${FUNNEL_COLORS[stage] || 'bg-gray-50 text-gray-600 border-gray-100'}`}>
+                    {stage}
+                  </span>
+                  <span className="text-xs text-gray-400">(×{pointsPerStudent} pts)</span>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm font-bold text-gray-800 tabular-nums">{count} students</p>
+                  <p className="text-xs text-primary font-semibold">+{totalPoints} pts</p>
+                </div>
+              </div>
+            ))}
+            {(stats.funnelBreakdown || []).length === 0 && !stats.callingPointsCount && (
+              <p className="px-5 py-6 text-center text-gray-400 text-sm">No funnel data</p>
+            )}
           </div>
         </div>
       </div>

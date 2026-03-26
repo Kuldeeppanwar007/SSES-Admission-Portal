@@ -5,6 +5,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import Login from './pages/auth/Login';
 import Dashboard from './pages/dashboard/Dashboard';
 import TrackDashboard from './pages/dashboard/TrackDashboard';
+import AdminTrackDashboard from './pages/dashboard/AdminTrackDashboard';
 import Students from './pages/students/Students';
 import StudentForm from './pages/students/StudentForm';
 import StudentDetail from './pages/students/StudentDetail';
@@ -23,6 +24,11 @@ export default function App() {
           <Route path="/track-dashboard" element={
             <ProtectedRoute roles={['track_incharge']}>
               <TrackDashboard />
+            </ProtectedRoute>
+          } />
+          <Route path="/admin-track/:track" element={
+            <ProtectedRoute roles={['admin']}>
+              <AdminTrackDashboard />
             </ProtectedRoute>
           } />
           <Route path="/students" element={<Students />} />
