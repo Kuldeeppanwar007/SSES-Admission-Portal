@@ -14,12 +14,12 @@ const SUBJECT_COLORS = {
 };
 
 const STAT_META = [
-  { key: 'total',    label: 'Total Students', icon: FiUsers,       gradient: 'from-blue-500 to-blue-600',    bg: 'bg-blue-50',   text: 'text-blue-600' },
-  { key: 'applied',  label: 'Applied',         icon: FiFileText,    gradient: 'from-amber-500 to-orange-500',  bg: 'bg-amber-50',  text: 'text-amber-600' },
-  { key: 'verified', label: 'Verified',         icon: FiCheckCircle, gradient: 'from-violet-500 to-purple-600', bg: 'bg-violet-50', text: 'text-violet-600' },
-  { key: 'admitted', label: 'Admitted',         icon: FiAward,       gradient: 'from-emerald-500 to-green-600', bg: 'bg-emerald-50',text: 'text-emerald-600' },
-  { key: 'rejected', label: 'Rejected',         icon: FiXCircle,     gradient: 'from-rose-500 to-red-600',      bg: 'bg-rose-50',   text: 'text-rose-600' },
-  { key: 'disabled', label: 'Disabled',         icon: FiSlash,       gradient: 'from-gray-500 to-gray-600',     bg: 'bg-gray-50',   text: 'text-gray-600' },
+  { key: 'total',    label: 'Total Students', icon: FiUsers,       iconBg: 'bg-blue-100',    iconColor: 'text-blue-500',   text: 'text-blue-600' },
+  { key: 'applied',  label: 'Applied',         icon: FiFileText,    iconBg: 'bg-amber-100',   iconColor: 'text-amber-500',  text: 'text-amber-600' },
+  { key: 'verified', label: 'Verified',         icon: FiCheckCircle, iconBg: 'bg-violet-100',  iconColor: 'text-violet-500', text: 'text-violet-600' },
+  { key: 'admitted', label: 'Admitted',         icon: FiAward,       iconBg: 'bg-emerald-100', iconColor: 'text-emerald-500',text: 'text-emerald-600' },
+  { key: 'rejected', label: 'Rejected',         icon: FiXCircle,     iconBg: 'bg-rose-100',    iconColor: 'text-rose-500',   text: 'text-rose-600' },
+  { key: 'disabled', label: 'Disabled',         icon: FiSlash,       iconBg: 'bg-gray-100',    iconColor: 'text-gray-400',   text: 'text-gray-500' },
 ];
 
 const SUBJECTS = ['B.Tech', 'BCA', 'BBA', 'Bcom', 'Bio', 'Micro'];
@@ -225,10 +225,10 @@ export default function Dashboard() {
 
       {/* Stat Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
-        {STAT_META.map(({ key, label, icon: Icon, gradient, bg, text }) => (
+        {STAT_META.map(({ key, label, icon: Icon, iconBg, iconColor, text }) => (
           <div key={key} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex flex-col gap-3 hover:shadow-md transition-shadow">
-            <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${gradient} flex items-center justify-center shadow-sm`}>
-              <Icon size={18} className="text-white" />
+            <div className={`w-10 h-10 rounded-xl ${iconBg} flex items-center justify-center`}>
+              <Icon size={18} className={iconColor} />
             </div>
             <div>
               <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">{label}</p>
