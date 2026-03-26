@@ -35,52 +35,76 @@ const DOC_FIELDS = [
   { key: 'aadharCard',        label: 'Aadhar Card',        icon: FiCreditCard, accept: 'image/*,.pdf' },
 ];
 
-// Camera Modal
 function CameraModal({ onCapture, onClose }) {
   const videoRef = useRef(null);
   const streamRef = useRef(null);
+  const [ready, setReady] = useState(false);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setError('Camera not supported in this browser. Use HTTPS or the mobile app.');
+      return;
+    }
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false })
       .then((stream) => {
         streamRef.current = stream;
-        if (videoRef.current) videoRef.current.srcObject = stream;
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          videoRef.current.onloadedmetadata = () => setReady(true);
+        }
       })
-      .catch(() => toast.error('Camera access denied'));
+      .catch((err) => {
+        if (err.name === 'NotAllowedError') setError('Camera permission denied. Please allow camera access in browser settings.');
+        else if (err.name === 'NotFoundError') setError('No camera found on this device.');
+        else setError('Camera unavailable. Try Gallery instead.');
+      });
     return () => streamRef.current?.getTracks().forEach((t) => t.stop());
   }, []);
 
   const capture = () => {
+    const video = videoRef.current;
     const canvas = document.createElement('canvas');
-    canvas.width = videoRef.current.videoWidth;
-    canvas.height = videoRef.current.videoHeight;
-    canvas.getContext('2d').drawImage(videoRef.current, 0, 0);
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    canvas.getContext('2d').drawImage(video, 0, 0);
     canvas.toBlob((blob) => {
-      const file = new File([blob], `capture_${Date.now()}.jpg`, { type: 'image/jpeg' });
+      const file = new File([blob], `photo_${Date.now()}.jpg`, { type: 'image/jpeg' });
       onCapture(file);
       streamRef.current?.getTracks().forEach((t) => t.stop());
       onClose();
-    }, 'image/jpeg', 0.9);
+    }, 'image/jpeg', 0.92);
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-80 z-50 flex flex-col items-center justify-center p-4">
+    <div className="fixed inset-0 bg-black/80 z-50 flex flex-col items-center justify-center p-4">
       <div className="bg-white rounded-2xl overflow-hidden w-full max-w-lg">
         <div className="flex items-center justify-between px-4 py-3 border-b">
           <span className="font-semibold text-gray-800">Take Photo</span>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><FiX size={20} /></button>
+          <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-600"><FiX size={20} /></button>
         </div>
-        <video ref={videoRef} autoPlay playsInline className="w-full" />
-        <div className="p-4 flex justify-center">
-          <button onClick={capture}
-            className="bg-primary text-white px-8 py-2.5 rounded-lg font-semibold hover:bg-primary-dark transition-colors flex items-center gap-2">
-            <FiCamera size={16} /> Capture
-          </button>
-        </div>
+        {error ? (
+          <div className="p-6 text-center">
+            <p className="text-sm text-red-500 mb-4">{error}</p>
+            <button type="button" onClick={onClose}
+              className="px-4 py-2 bg-gray-100 rounded-lg text-sm font-medium text-gray-600">Close</button>
+          </div>
+        ) : (
+          <>
+            <video ref={videoRef} autoPlay playsInline muted className="w-full bg-black" />
+            <div className="p-4 flex justify-center">
+              <button type="button" onClick={capture} disabled={!ready}
+                className="bg-primary text-white px-8 py-2.5 rounded-xl font-semibold hover:bg-primary-dark transition-colors flex items-center gap-2 disabled:opacity-50">
+                <FiCamera size={16} /> {ready ? 'Capture' : 'Loading...'}
+              </button>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
 }
+
 
 export default function StudentForm() {
   const { id } = useParams();
@@ -91,7 +115,7 @@ export default function StudentForm() {
   const [docs, setDocs] = useState({});
   const [existingDocs, setExistingDocs] = useState({});
   const [loading, setLoading] = useState(false);
-  const [cameraFor, setCameraFor] = useState(null); // which docKey camera is open for
+  const [cameraFor, setCameraFor] = useState(null);
 
   useEffect(() => {
     if (isEdit) {
@@ -137,7 +161,6 @@ export default function StudentForm() {
   const DocCard = ({ docKey, label, icon: Icon, accept }) => {
     const existing = existingDocs[docKey];
     const selected = docs[docKey];
-    const isImageOnly = accept === 'image/*';
     return (
       <div className="border border-gray-200 rounded-xl p-4 space-y-3">
         <div className="flex items-center justify-between">
@@ -158,6 +181,7 @@ export default function StudentForm() {
         )}
 
         <div className="flex gap-2">
+          {/* Camera button — getUserMedia on HTTPS, native capture on HTTP */}
           <button type="button"
             onClick={() => setCameraFor(docKey)}
             className="flex-1 flex items-center justify-center gap-1.5 border border-gray-200 rounded-lg py-2 text-xs text-gray-500 hover:border-primary hover:text-primary transition-colors">
@@ -166,7 +190,7 @@ export default function StudentForm() {
           <label className="flex-1 flex items-center justify-center gap-1.5 cursor-pointer border border-gray-200 rounded-lg py-2 text-xs text-gray-500 hover:border-primary hover:text-primary transition-colors">
             <FiImage size={13} /> Gallery
             <input type="file" accept={accept} className="hidden"
-              onChange={(e) => setDocs({ ...docs, [docKey]: e.target.files[0] })} />
+              onChange={(e) => e.target.files[0] && setDocs({ ...docs, [docKey]: e.target.files[0] })} />
           </label>
         </div>
       </div>
@@ -177,11 +201,10 @@ export default function StudentForm() {
     <div className="px-2">
       {cameraFor && (
         <CameraModal
-          onCapture={(file) => setDocs({ ...docs, [cameraFor]: file })}
+          onCapture={(file) => { setDocs((d) => ({ ...d, [cameraFor]: file })); setCameraFor(null); }}
           onClose={() => setCameraFor(null)}
         />
       )}
-
       <div className="flex items-center gap-3 mb-6">
         <button onClick={() => navigate('/students')} className="text-gray-500 hover:text-gray-700">← Back</button>
         <h2 className="text-2xl font-bold text-gray-800">{isEdit ? 'Edit Student' : 'Add Student'}</h2>
