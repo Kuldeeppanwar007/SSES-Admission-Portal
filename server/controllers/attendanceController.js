@@ -54,9 +54,6 @@ const markAttendance = async (req, res) => {
   if (!latitude || !longitude)
     return res.status(400).json({ message: 'Location required' });
 
-  if (accuracy != null && accuracy > 100)
-    return res.status(400).json({ message: 'Location accuracy too low. Move to open area and try again.' });
-
   if (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180)
     return res.status(400).json({ message: 'Invalid coordinates' });
 
