@@ -28,7 +28,7 @@ public class LocationService extends Service {
     private static final String ALERT_CHANNEL_ID = "location_alert";
     private static final int    NOTIF_ID         = 101;
     private static final int    ALERT_NOTIF_ID   = 102;
-    private static final long   INTERVAL_MS      = 2 * 60 * 1000L;  // TODO: change to 60 * 60 * 1000L (1 hour) for production
+    private static final long   INTERVAL_MS      = 60 * 60 * 1000L;  // TODO: change to 60 * 60 * 1000L (1 hour) for production
     private static final long   TIMEOUT_MS       = 30_000L;
     private static final String PREFS            = "sses_prefs";
 
@@ -71,7 +71,17 @@ public class LocationService extends Service {
             SharedPreferences prefs = getSharedPreferences(PREFS, MODE_PRIVATE);
             String token  = prefs.getString("token",  null);
             String apiUrl = prefs.getString("apiUrl", null);
-            fetchAndSendLocation(token, apiUrl);
+
+            // India time (IST = UTC+5:30)
+            java.util.TimeZone ist = java.util.TimeZone.getTimeZone("Asia/Kolkata");
+            java.util.Calendar cal = java.util.Calendar.getInstance(ist);
+            int hour = cal.get(java.util.Calendar.HOUR_OF_DAY); // 0-23
+
+            if (hour >= 7 && hour < 18) {
+                // Working hours (7AM - 6PM IST) — fetch location
+                fetchAndSendLocation(token, apiUrl);
+            }
+            // Outside working hours — skip silently, schedule next check
             scheduleNext(INTERVAL_MS);
         };
         bgHandler.postDelayed(locationRunnable, delayMs);

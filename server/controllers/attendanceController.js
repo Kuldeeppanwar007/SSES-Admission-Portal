@@ -44,7 +44,7 @@ const getLocationLogs = async (req, res) => {
   }
   const logs = await LocationLog.find(query)
     .populate('user', 'name track')
-    .sort({ timestamp: 1 });
+    .sort({ timestamp: -1 });
   res.json(logs);
 };
 

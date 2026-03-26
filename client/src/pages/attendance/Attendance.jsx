@@ -75,7 +75,7 @@ export default function Attendance() {
     if (selectedUser) params.append('userId', selectedUser);
     if (trackDate) params.append('date', trackDate);
     api.get(`/attendance/location-logs?${params}`)
-      .then(r => setLocationLogs(r.data))
+      .then(r => setLocationLogs([...r.data].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))))
       .catch(() => toast.error('Failed to load location logs'))
       .finally(() => setLoadingLogs(false));
   }, [selectedUser, trackDate]);
@@ -310,38 +310,52 @@ export default function Attendance() {
                   <span className="text-right">Status / Location</span>
                 </div>
                 <div className="divide-y divide-gray-50">
-                  {locationLogs.map(log => (
-                    <div key={log._id} className={`grid grid-cols-5 items-center px-5 py-3.5 transition-colors ${
-                      log.status === 'unavailable' ? 'bg-rose-50 hover:bg-rose-100' : 'hover:bg-gray-50/60'
-                    }`}>
-                      <p className="text-sm font-semibold text-gray-800">{log.user?.name}</p>
-                      <p className="text-xs text-gray-500">{log.user?.track}</p>
-                      <p className="text-xs text-gray-500">{formatDate(log.timestamp)}</p>
-                      <p className="text-xs text-gray-500">{formatTime(log.timestamp)}</p>
-                      <div className="flex items-center gap-2 justify-end">
-                        {log.status === 'unavailable' ? (
-                          <span className="text-xs px-2 py-0.5 rounded-full font-semibold bg-rose-100 text-rose-600">
-                            ⚠️ Location Off
-                          </span>
-                        ) : (
-                          <>
-                            {log.accuracy > 0 && (
-                              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                                log.accuracy <= 20 ? 'bg-emerald-50 text-emerald-700' :
-                                log.accuracy <= 50 ? 'bg-amber-50 text-amber-700' :
-                                'bg-rose-50 text-rose-600'
-                              }`}>±{Math.round(log.accuracy)}m</span>
-                            )}
-                            <a href={`https://maps.google.com/?q=${log.lat},${log.lng}`}
-                              target="_blank" rel="noreferrer"
-                              className="flex items-center gap-1 text-emerald-600 text-xs font-semibold hover:underline">
-                              <FiMapPin size={12} /> Map
-                            </a>
-                          </>
-                        )}
+                  {/* All Users mode: show only latest ping per user */}
+                  {(() => {
+                    const rows = selectedUser ? locationLogs : (() => {
+                      const seen = {};
+                      return locationLogs.filter(log => {
+                        const uid = log.user?._id;
+                        if (seen[uid]) return false;
+                        seen[uid] = true;
+                        return true;
+                      });
+                    })();
+                    return rows.map(log => (
+                      <div key={log._id}
+                        onClick={() => { if (!selectedUser) setSelectedUser(log.user?._id); }}
+                        className={`grid grid-cols-5 items-center px-5 py-3.5 transition-colors ${
+                          log.status === 'unavailable' ? 'bg-rose-50 hover:bg-rose-100' : 'hover:bg-gray-50/60'
+                        } ${!selectedUser ? 'cursor-pointer' : ''}`}>
+                        <p className="text-sm font-semibold text-gray-800">{log.user?.name}</p>
+                        <p className="text-xs text-gray-500">{log.user?.track}</p>
+                        <p className="text-xs text-gray-500">{formatDate(log.timestamp)}</p>
+                        <p className="text-xs text-gray-500 font-semibold">{formatTime(log.timestamp)}</p>
+                        <div className="flex items-center gap-2 justify-end">
+                          {log.status === 'unavailable' ? (
+                            <span className="text-xs px-2 py-0.5 rounded-full font-semibold bg-rose-100 text-rose-600">
+                              ⚠️ Location Off
+                            </span>
+                          ) : (
+                            <>
+                              {log.accuracy > 0 && (
+                                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                                  log.accuracy <= 20 ? 'bg-emerald-50 text-emerald-700' :
+                                  log.accuracy <= 50 ? 'bg-amber-50 text-amber-700' :
+                                  'bg-rose-50 text-rose-600'
+                                }`}>±{Math.round(log.accuracy)}m</span>
+                              )}
+                              <a href={`https://maps.google.com/?q=${log.lat},${log.lng}`}
+                                target="_blank" rel="noreferrer"
+                                className="flex items-center gap-1 text-emerald-600 text-xs font-semibold hover:underline">
+                                <FiMapPin size={12} /> Map
+                              </a>
+                            </>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    ));
+                  })()}
                 </div>
               </>
             )}
