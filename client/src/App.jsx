@@ -11,6 +11,7 @@ import StudentForm from './pages/students/StudentForm';
 import StudentDetail from './pages/students/StudentDetail';
 import Users from './pages/users/Users';
 import Targets from './pages/targets/Targets';
+import Attendance from './pages/attendance/Attendance';
 
 export default function App() {
   return (
@@ -43,6 +44,11 @@ export default function App() {
           <Route path="/users" element={
             <ProtectedRoute roles={['admin']}>
               <Users />
+            </ProtectedRoute>
+          } />
+          <Route path="/attendance" element={
+            <ProtectedRoute roles={['admin']}>
+              <Attendance />
             </ProtectedRoute>
           } />
         </Route>

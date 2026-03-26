@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import api from '../../api/axios';
 import toast from 'react-hot-toast';
 import useAuthStore from '../../store/authStore';
-import { FiUsers, FiFileText, FiCheckCircle, FiAward, FiXCircle, FiTarget, FiSlash, FiTrendingUp } from 'react-icons/fi';
+import { FiUsers, FiFileText, FiCheckCircle, FiAward, FiXCircle, FiTarget, FiSlash, FiTrendingUp, FiMapPin } from 'react-icons/fi';
+import { Geolocation } from '@capacitor/geolocation';
 
 const STATUS_COLORS = {
   Applied:  'bg-yellow-100 text-yellow-700',
@@ -39,6 +40,88 @@ const STAT_META = [
   { key: 'disabled', label: 'Disabled', icon: FiSlash,       gradient: 'from-gray-500 to-gray-600',    text: 'text-gray-600' },
 ];
 
+async function fetchLiveLocation() {
+  // Step 1: Request permission explicitly
+  try {
+    const perm = await Geolocation.requestPermissions();
+    if (perm.location !== 'granted' && perm.location !== 'limited') {
+      throw new Error('GPS permission denied. Please allow location access.');
+    }
+  } catch (permErr) {
+    // On web/browser, requestPermissions may not exist — continue anyway
+    if (permErr.message?.includes('denied')) throw permErr;
+  }
+
+  // Step 2: First call to wake up GPS
+  try {
+    await Geolocation.getCurrentPosition({ enableHighAccuracy: true, timeout: 5000, maximumAge: 0 });
+  } catch (_) { /* warm-up attempt, ignore error */ }
+
+  // Step 3: Second call — actual accurate reading
+  try {
+    const pos = await Geolocation.getCurrentPosition({
+      enableHighAccuracy: true,
+      timeout: 15000,
+      maximumAge: 0,
+    });
+    return { latitude: pos.coords.latitude, longitude: pos.coords.longitude, source: 'GPS' };
+  } catch (_) { /* fall through to browser */ }
+
+  // Step 4: Browser fallback (for web)
+  return new Promise((resolve, reject) => {
+    navigator.geolocation.getCurrentPosition(
+      (p) => resolve({ latitude: p.coords.latitude, longitude: p.coords.longitude, source: 'Browser' }),
+      () => reject(new Error('Location permission denied. Please enable GPS.')),
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+    );
+  });
+}
+
+function AttendanceButton() {
+  const [loading, setLoading] = useState(false);
+  const [marked, setMarked] = useState(false);
+  const [locInfo, setLocInfo] = useState(null);
+
+  const handleAttendance = async () => {
+    setLoading(true);
+    try {
+      const loc = await fetchLiveLocation();
+      await api.post('/attendance/mark', { latitude: loc.latitude, longitude: loc.longitude, locationSource: loc.source });
+      setMarked(true);
+      setLocInfo(loc);
+      toast.success(`Attendance marked! (via ${loc.source})`);
+    } catch (err) {
+      toast.error(err.response?.data?.message || err.message || 'Failed to mark attendance');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="flex flex-col items-end gap-1">
+      <button
+        onClick={handleAttendance}
+        disabled={loading || marked}
+        className="flex items-center gap-1.5 text-sm font-semibold px-3 py-1.5 rounded-full border transition-colors
+          disabled:opacity-60 disabled:cursor-not-allowed
+          bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
+      >
+        <FiMapPin size={14} />
+        {loading ? 'Locating...' : marked ? 'Attendance Marked ✓' : 'Mark Attendance'}
+      </button>
+      {locInfo && (
+        <a
+          href={`https://maps.google.com/?q=${locInfo.latitude},${locInfo.longitude}`}
+          target="_blank" rel="noreferrer"
+          className="text-xs text-emerald-600 hover:underline"
+        >
+          📍 {locInfo.latitude.toFixed(5)}, {locInfo.longitude.toFixed(5)}
+        </a>
+      )}
+    </div>
+  );
+}
+
 export default function TrackDashboard() {
   const { user } = useAuthStore();
   const [stats, setStats] = useState(null);
@@ -68,9 +151,12 @@ export default function TrackDashboard() {
           <h2 className="text-2xl font-bold text-gray-900">My Track Dashboard</h2>
           <p className="text-sm text-gray-500 mt-0.5">{user?.track} — detailed overview</p>
         </div>
-        <span className="text-sm bg-orange-50 text-primary font-bold px-3 py-1.5 rounded-full border border-orange-100">
-          🏆 {stats.points} pts
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="text-sm bg-orange-50 text-primary font-bold px-3 py-1.5 rounded-full border border-orange-100">
+            🏆 {stats.points} pts
+          </span>
+          <AttendanceButton />
+        </div>
       </div>
 
       {/* Stat Cards */}

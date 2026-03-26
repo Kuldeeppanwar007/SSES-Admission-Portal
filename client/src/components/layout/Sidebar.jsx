@@ -1,5 +1,5 @@
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
-import { FiHome, FiUsers, FiUserCheck, FiLogOut, FiChevronLeft, FiChevronRight, FiFlag, FiPieChart, FiChevronDown, FiMap } from 'react-icons/fi';
+import { FiHome, FiUsers, FiUserCheck, FiLogOut, FiChevronLeft, FiChevronRight, FiFlag, FiPieChart, FiChevronDown, FiMap, FiCheckSquare } from 'react-icons/fi';
 import { useState } from 'react';
 import useAuthStore from '../../store/authStore';
 import { TRACKS } from '../../utils/constants';
@@ -10,6 +10,7 @@ const navItems = [
   { to: '/students', Icon: FiUsers, label: 'Students' },
   { to: '/targets', Icon: FiFlag, label: 'Targets', adminOnly: true },
   { to: '/users', Icon: FiUserCheck, label: 'Users', adminOnly: true },
+  { to: '/attendance', Icon: FiCheckSquare, label: 'Attendance', adminOnly: true },
 ];
 
 export default function Sidebar({ open, onClose, collapsed, onToggle }) {
