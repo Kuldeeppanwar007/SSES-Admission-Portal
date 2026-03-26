@@ -1,11 +1,54 @@
 const Attendance = require('../models/Attendance');
 const User = require('../models/User');
+const LocationLog = require('../models/LocationLog');
+
+// POST /api/attendance/location  (called by Android foreground service every hour)
+const saveLocation = async (req, res) => {
+  const { lat, lng, accuracy, timestamp } = req.body;
+  if (lat == null || lng == null) return res.status(400).json({ message: 'lat/lng required' });
+
+  // Basic coordinate sanity check
+  if (lat < -90 || lat > 90 || lng < -180 || lng > 180)
+    return res.status(400).json({ message: 'Invalid coordinates' });
+
+  await LocationLog.create({
+    user: req.user._id,
+    lat, lng,
+    accuracy: accuracy ?? -1,
+    timestamp: timestamp ? new Date(Number(timestamp)) : new Date(),
+  });
+  res.status(201).json({ ok: true });
+};
+
+// GET /api/attendance/location-logs?userId=xxx  (admin)
+const getLocationLogs = async (req, res) => {
+  const { userId, date } = req.query;
+  const query = {};
+  if (userId) query.user = userId;
+  if (date) {
+    const start = new Date(date); start.setHours(0, 0, 0, 0);
+    const end = new Date(date); end.setHours(23, 59, 59, 999);
+    query.timestamp = { $gte: start, $lte: end };
+  }
+  const logs = await LocationLog.find(query)
+    .populate('user', 'name track')
+    .sort({ timestamp: 1 });
+  res.json(logs);
+};
 
 // POST /api/attendance/mark
 const markAttendance = async (req, res) => {
-  const { latitude, longitude, locationSource } = req.body;
+  const { latitude, longitude, locationSource, accuracy } = req.body;
   if (!latitude || !longitude)
     return res.status(400).json({ message: 'Location required' });
+
+  // Reject if accuracy worse than 100m (only when accuracy is provided)
+  if (accuracy != null && accuracy > 100)
+    return res.status(400).json({ message: 'Location accuracy too low. Move to open area and try again.' });
+
+  // Basic coordinate sanity
+  if (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180)
+    return res.status(400).json({ message: 'Invalid coordinates' });
 
   const now = new Date();
   const date = now.toISOString().slice(0, 10);
@@ -77,4 +120,4 @@ const getMonthlyStats = async (req, res) => {
   res.json(stats);
 };
 
-module.exports = { markAttendance, getMyAttendance, getAllAttendance, getMonthlyStats };
+module.exports = { markAttendance, getMyAttendance, getAllAttendance, getMonthlyStats, saveLocation, getLocationLogs };
