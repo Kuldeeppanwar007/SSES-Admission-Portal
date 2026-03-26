@@ -1,7 +1,9 @@
 const User = require('../models/User');
 
 const getUsers = async (req, res) => {
-  const users = await User.find().select('-password').sort({ createdAt: -1 });
+  const filter = {};
+  if (req.query.role) filter.role = req.query.role;
+  const users = await User.find(filter).select('-password').sort({ createdAt: -1 });
   res.json(users);
 };
 

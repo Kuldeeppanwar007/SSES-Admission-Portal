@@ -24,35 +24,36 @@ import java.nio.charset.StandardCharsets;
 
 public class LocationService extends Service {
 
-    private static final String CHANNEL_ID = "location_tracking";
-    private static final int NOTIF_ID = 101;
-    private static final long INTERVAL_MS = 60 * 60 * 1000L; // 1 hour
-    private static final float MIN_ACCURACY_METERS = 50f;    // reject if accuracy > 50m
-    private static final long LOCATION_TIMEOUT_MS = 30000L;  // 30 sec timeout
-    private static final String PREFS = "sses_prefs";
+    private static final String CHANNEL_ID       = "location_tracking";
+    private static final String ALERT_CHANNEL_ID = "location_alert";
+    private static final int    NOTIF_ID         = 101;
+    private static final int    ALERT_NOTIF_ID   = 102;
+    private static final long   INTERVAL_MS      = 2 * 60 * 1000L;  // 2 min (testing)
+    private static final float  MIN_ACCURACY_M   = 50f;
+    private static final long   TIMEOUT_MS       = 30_000L;
+    private static final String PREFS            = "sses_prefs";
 
-    private Handler bgHandler;
-    private HandlerThread handlerThread;
-    private Runnable locationRunnable;
+    private Handler               bgHandler;
+    private HandlerThread         handlerThread;
+    private Runnable              locationRunnable;
     private FusedLocationProviderClient fusedClient;
     private CancellationTokenSource activeCts;
-    private boolean isRunning = false;
+    private boolean               isRunning = false;
 
     @Override
     public void onCreate() {
         super.onCreate();
-        fusedClient = LocationServices.getFusedLocationProviderClient(this);
+        fusedClient   = LocationServices.getFusedLocationProviderClient(this);
         handlerThread = new HandlerThread("LocationBgThread");
         handlerThread.start();
         bgHandler = new Handler(handlerThread.getLooper());
-        createNotificationChannel();
+        createNotificationChannels();
     }
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        // Save token+apiUrl to SharedPreferences so they survive service restart
         if (intent != null) {
-            String token = intent.getStringExtra("token");
+            String token  = intent.getStringExtra("token");
             String apiUrl = intent.getStringExtra("apiUrl");
             if (token != null && apiUrl != null) {
                 SharedPreferences.Editor ed = getSharedPreferences(PREFS, MODE_PRIVATE).edit();
@@ -61,22 +62,15 @@ public class LocationService extends Service {
                 ed.apply();
             }
         }
-
-        startForeground(NOTIF_ID, buildNotification());
-
-        // Prevent multiple runnables stacking
-        if (!isRunning) {
-            isRunning = true;
-            scheduleNext(0);
-        }
-
+        startForeground(NOTIF_ID, buildForegroundNotification());
+        if (!isRunning) { isRunning = true; scheduleNext(0); }
         return START_STICKY;
     }
 
     private void scheduleNext(long delayMs) {
         locationRunnable = () -> {
             SharedPreferences prefs = getSharedPreferences(PREFS, MODE_PRIVATE);
-            String token = prefs.getString("token", null);
+            String token  = prefs.getString("token",  null);
             String apiUrl = prefs.getString("apiUrl", null);
             fetchAndSendLocation(token, apiUrl);
             scheduleNext(INTERVAL_MS);
@@ -87,28 +81,100 @@ public class LocationService extends Service {
     private void fetchAndSendLocation(String token, String apiUrl) {
         if (token == null || apiUrl == null) return;
 
-        // Cancel any previous pending request
         if (activeCts != null) activeCts.cancel();
         activeCts = new CancellationTokenSource();
         CancellationTokenSource cts = activeCts;
 
-        // Timeout: cancel after 30s if no location
+        // Timeout handler
         bgHandler.postDelayed(() -> {
-            if (!cts.getToken().isCancellationRequested()) cts.cancel();
-        }, LOCATION_TIMEOUT_MS);
+            if (!cts.getToken().isCancellationRequested()) {
+                cts.cancel();
+                // Timeout = location unavailable
+                showLocationOffNotification();
+                sendUnavailablePing(token, apiUrl);
+            }
+        }, TIMEOUT_MS);
 
         try {
             fusedClient.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, cts.getToken())
                 .addOnSuccessListener(location -> {
-                    if (location == null) return;
-                    // Reject low-accuracy locations
-                    if (location.hasAccuracy() && location.getAccuracy() > MIN_ACCURACY_METERS) return;
+                    if (cts.getToken().isCancellationRequested()) return;
+                    cts.cancel(); // cancel timeout handler
+
+                    if (location == null) {
+                        // Option A + B: notify user, ping backend
+                        showLocationOffNotification();
+                        sendUnavailablePing(token, apiUrl);
+                        return;
+                    }
+                    if (location.hasAccuracy() && location.getAccuracy() > MIN_ACCURACY_M) {
+                        showLocationOffNotification();
+                        sendUnavailablePing(token, apiUrl);
+                        return;
+                    }
+                    // Location OK — dismiss alert notification if showing
+                    dismissLocationOffNotification();
                     sendLocation(location, token, apiUrl);
                 })
-                .addOnFailureListener(e -> e.printStackTrace());
+                .addOnFailureListener(e -> {
+                    e.printStackTrace();
+                    showLocationOffNotification();
+                    sendUnavailablePing(token, apiUrl);
+                });
         } catch (SecurityException e) {
             e.printStackTrace();
+            showLocationOffNotification();
+            sendUnavailablePing(token, apiUrl);
         }
+    }
+
+    // Option B — Show notification to user
+    private void showLocationOffNotification() {
+        Notification notif = new NotificationCompat.Builder(this, ALERT_CHANNEL_ID)
+            .setContentTitle("⚠️ Location Band Hai!")
+            .setContentText("SSES Portal ke liye location on rakhen. Band rehne par attendance block ho sakti hai.")
+            .setSmallIcon(android.R.drawable.ic_dialog_alert)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setAutoCancel(false)
+            .build();
+        getSystemService(NotificationManager.class).notify(ALERT_NOTIF_ID, notif);
+    }
+
+    private void dismissLocationOffNotification() {
+        getSystemService(NotificationManager.class).cancel(ALERT_NOTIF_ID);
+    }
+
+    // Option A — Send unavailable ping to backend (admin ko flag)
+    private void sendUnavailablePing(String token, String apiUrl) {
+        new Thread(() -> {
+            HttpURLConnection conn = null;
+            try {
+                URL url = new URL(apiUrl + "/attendance/location");
+                conn = (HttpURLConnection) url.openConnection();
+                conn.setRequestMethod("POST");
+                conn.setRequestProperty("Content-Type", "application/json");
+                conn.setRequestProperty("Authorization", "Bearer " + token);
+                conn.setConnectTimeout(15000);
+                conn.setReadTimeout(15000);
+                conn.setDoOutput(true);
+
+                JSONObject body = new JSONObject();
+                body.put("status", "unavailable");
+                body.put("timestamp", System.currentTimeMillis());
+
+                byte[] data = body.toString().getBytes(StandardCharsets.UTF_8);
+                conn.setFixedLengthStreamingMode(data.length);
+                OutputStream os = conn.getOutputStream();
+                os.write(data); os.flush(); os.close();
+
+                int code = conn.getResponseCode();
+                if (code == 401) stopSelf();
+            } catch (Exception e) {
+                e.printStackTrace();
+            } finally {
+                if (conn != null) conn.disconnect();
+            }
+        }).start();
     }
 
     private void sendLocation(Location location, String token, String apiUrl) {
@@ -125,22 +191,19 @@ public class LocationService extends Service {
                 conn.setDoOutput(true);
 
                 JSONObject body = new JSONObject();
-                body.put("lat", location.getLatitude());
-                body.put("lng", location.getLongitude());
-                body.put("accuracy", location.hasAccuracy() ? location.getAccuracy() : -1);
+                body.put("lat",       location.getLatitude());
+                body.put("lng",       location.getLongitude());
+                body.put("accuracy",  location.hasAccuracy() ? location.getAccuracy() : -1);
+                body.put("status",    "ok");
                 body.put("timestamp", System.currentTimeMillis());
 
                 byte[] data = body.toString().getBytes(StandardCharsets.UTF_8);
                 conn.setFixedLengthStreamingMode(data.length);
                 OutputStream os = conn.getOutputStream();
-                os.write(data);
-                os.flush();
-                os.close();
+                os.write(data); os.flush(); os.close();
 
                 int code = conn.getResponseCode();
-                // If 401 (token expired), stop service
                 if (code == 401) stopSelf();
-
             } catch (Exception e) {
                 e.printStackTrace();
             } finally {
@@ -149,7 +212,7 @@ public class LocationService extends Service {
         }).start();
     }
 
-    private Notification buildNotification() {
+    private Notification buildForegroundNotification() {
         return new NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("SSES Portal")
             .setContentText("Location tracking active")
@@ -159,11 +222,20 @@ public class LocationService extends Service {
             .build();
     }
 
-    private void createNotificationChannel() {
-        NotificationChannel channel = new NotificationChannel(
+    private void createNotificationChannels() {
+        NotificationManager nm = getSystemService(NotificationManager.class);
+
+        // Foreground service channel (low priority, silent)
+        NotificationChannel trackingCh = new NotificationChannel(
             CHANNEL_ID, "Location Tracking", NotificationManager.IMPORTANCE_LOW);
-        channel.setDescription("Tracks location every hour for attendance");
-        getSystemService(NotificationManager.class).createNotificationChannel(channel);
+        trackingCh.setDescription("Background location tracking for attendance");
+        nm.createNotificationChannel(trackingCh);
+
+        // Alert channel (high priority, makes sound)
+        NotificationChannel alertCh = new NotificationChannel(
+            ALERT_CHANNEL_ID, "Location Alert", NotificationManager.IMPORTANCE_HIGH);
+        alertCh.setDescription("Alert when location is disabled");
+        nm.createNotificationChannel(alertCh);
     }
 
     @Override
