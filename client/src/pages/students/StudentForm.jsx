@@ -7,13 +7,12 @@ import toast from 'react-hot-toast';
 import { FiExternalLink, FiCamera, FiImage, FiFileText, FiUser, FiCreditCard, FiX } from 'react-icons/fi';
 
 const SUBJECTS = ['B.Tech', 'BCA', 'BBA', 'Bcom', 'Bio', 'Micro'];
-const FUNNEL_STAGES = ['', 'Call Completed', 'Lead Interested', 'Visit Scheduled', 'Visit Completed', 'Admission Closed'];
+const FUNNEL_STAGES = ['', 'Call Completed', 'Lead Interested', 'Admission Closed'];
 
 // Funnel stages allowed per status
 const ALLOWED_FUNNEL = {
   'Applied':  [],
   'Calling':  ['Call Completed', 'Lead Interested'],
-  'Verified': ['Visit Scheduled', 'Visit Completed'],
   'Admitted': ['Admission Closed'],
   'Rejected': [],
   'Disabled': [],

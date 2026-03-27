@@ -84,14 +84,11 @@ const getSubjectPoints = (track, subject) => {
 const FUNNEL_POINTS = {
   'Call Completed': 5,
   'Lead Interested': 10,
-  'Visit Scheduled': 20,
-  'Visit Completed': 30,
   'Admission Closed': 100,
 };
 
 const ALLOWED_FUNNEL = {
   'Calling':  ['Call Completed', 'Lead Interested'],
-  'Verified': ['Visit Scheduled', 'Visit Completed'],
   'Admitted': ['Admission Closed'],
 };
 
@@ -398,10 +395,9 @@ const getTrackStats = async (req, res) => {
     if (!track) return res.status(400).json({ message: 'No track assigned' });
 
     const filter = { track };
-    const [total, applied, verified, admitted, rejected] = await Promise.all([
+    const [total, applied, admitted, rejected] = await Promise.all([
       Student.countDocuments(filter),
       Student.countDocuments({ ...filter, status: 'Applied' }),
-      Student.countDocuments({ ...filter, status: 'Verified' }),
       Student.countDocuments({ ...filter, status: 'Admitted' }),
       Student.countDocuments({ ...filter, status: 'Rejected' }),
     ]);
@@ -436,7 +432,7 @@ const getTrackStats = async (req, res) => {
     // Funnel-wise breakdown with points earned
     const FUNNEL_POINTS_MAP = {
       'Call Completed': 5, 'Lead Interested': 10,
-      'Visit Scheduled': 20, 'Visit Completed': 30, 'Admission Closed': 100,
+      'Admission Closed': 100,
     };
     const funnelBreakdown = await Student.aggregate([
       { $match: { track, funnelStage: { $ne: '' }, funnelStage: { $exists: true } } },
@@ -453,7 +449,7 @@ const getTrackStats = async (req, res) => {
     const callingCount = await Student.countDocuments({ track, callingPointsAwarded: true });
 
     res.json({
-      track, total, applied, verified, admitted, rejected, disabled, subjects,
+      track, total, applied, admitted, rejected, disabled, subjects,
       points: trackPoints?.points || 0,
       statusBreakdown: statusBreakdown.map(({ _id, count }) => ({ status: _id, count })),
       funnelBreakdown: funnelData,
@@ -470,7 +466,6 @@ const getStats = async (req, res) => {
     const Target = require('../models/Target');
     const total = await Student.countDocuments();
     const applied = await Student.countDocuments({ status: 'Applied' });
-    const verified = await Student.countDocuments({ status: 'Verified' });
     const admitted = await Student.countDocuments({ status: 'Admitted' });
     const rejected = await Student.countDocuments({ status: 'Rejected' });
     const disabled = await Student.countDocuments({ isDisabled: true });
@@ -513,7 +508,7 @@ const getStats = async (req, res) => {
       points: pointsMap[track] || 0,
     }));
 
-    res.json({ total, applied, verified, admitted, rejected, disabled, unassigned, trackWise });
+    res.json({ total, applied, admitted, rejected, disabled, unassigned, trackWise });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
