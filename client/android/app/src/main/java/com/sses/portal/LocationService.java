@@ -28,7 +28,7 @@ public class LocationService extends Service {
     private static final String ALERT_CHANNEL_ID = "location_alert";
     private static final int    NOTIF_ID         = 101;
     private static final int    ALERT_NOTIF_ID   = 102;
-    private static final long   INTERVAL_MS      = 2 * 60 * 1000L;  // TODO: change to 60 * 60 * 1000L (1 hour) for production
+    private static final long   INTERVAL_MS      = 60 * 60 * 1000L;  // TODO: change to 60 * 60 * 1000L (1 hour) for production
     private static final long   TIMEOUT_MS       = 30_000L;
     private static final String PREFS            = "sses_prefs";
 
