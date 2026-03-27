@@ -6,6 +6,19 @@ const LocationLog = require('../models/LocationLog');
 const saveLocation = async (req, res) => {
   const { lat, lng, accuracy, timestamp, status } = req.body;
 
+  // mock ping — fake location detected
+  if (status === 'mock') {
+    await LocationLog.create({
+      user: req.user._id,
+      lat: null, lng: null,
+      accuracy: -1,
+      status: 'mock',
+      isMock: true,
+      timestamp: timestamp ? new Date(Number(timestamp)) : new Date(),
+    });
+    return res.status(201).json({ ok: true });
+  }
+
   // unavailable ping — location band thi
   if (status === 'unavailable') {
     await LocationLog.create({
@@ -75,6 +88,9 @@ const markAttendance = async (req, res) => {
   if (todayLogs.length > 0) {
     const unavailableCount = todayLogs.filter(l => l.status === 'unavailable').length;
     const okCount = todayLogs.filter(l => l.status === 'ok').length;
+    const mockCount = todayLogs.filter(l => l.isMock).length;
+    if (mockCount > 0)
+      return res.status(400).json({ message: 'Attendance blocked: Fake location detected. Admin se contact karein.' });
     if (unavailableCount > okCount)
       return res.status(400).json({ message: 'Attendance blocked: Location was disabled for most of today. Please contact admin.' });
   }

@@ -28,7 +28,7 @@ public class LocationService extends Service {
     private static final String ALERT_CHANNEL_ID = "location_alert";
     private static final int    NOTIF_ID         = 101;
     private static final int    ALERT_NOTIF_ID   = 102;
-    private static final long   INTERVAL_MS      = 2 * 60 * 1000L;
+    private static final long   INTERVAL_MS      = 2 * 60 * 1000L;  // TODO: change to 60 * 60 * 1000L (1 hour) for production
     private static final long   TIMEOUT_MS       = 30_000L;
     private static final String PREFS            = "sses_prefs";
 
@@ -116,8 +116,14 @@ public class LocationService extends Service {
                         sendUnavailablePing(token, apiUrl);
                         return;
                     }
-                    // Location OK — send regardless of accuracy (accuracy is just metadata)
+                    // Mock location check
+                    if (location.isFromMockProvider()) {
+                        showMockLocationNotification();
+                        sendMockPing(token, apiUrl);
+                        return;
+                    }
                     dismissLocationOffNotification();
+                    dismissMockLocationNotification();
                     sendLocation(location, token, apiUrl);
                 })
                 .addOnFailureListener(e -> {
@@ -146,6 +152,55 @@ public class LocationService extends Service {
 
     private void dismissLocationOffNotification() {
         getSystemService(NotificationManager.class).cancel(ALERT_NOTIF_ID);
+    }
+
+    private static final int MOCK_NOTIF_ID = 103;
+
+    private void showMockLocationNotification() {
+        Notification notif = new NotificationCompat.Builder(this, ALERT_CHANNEL_ID)
+            .setContentTitle("⚠️ Fake Location Detected!")
+            .setContentText("Mock location app band karo. Fake location use karne par attendance block ho jayegi.")
+            .setSmallIcon(android.R.drawable.ic_dialog_alert)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setAutoCancel(false)
+            .build();
+        getSystemService(NotificationManager.class).notify(MOCK_NOTIF_ID, notif);
+    }
+
+    private void dismissMockLocationNotification() {
+        getSystemService(NotificationManager.class).cancel(MOCK_NOTIF_ID);
+    }
+
+    private void sendMockPing(String token, String apiUrl) {
+        new Thread(() -> {
+            HttpURLConnection conn = null;
+            try {
+                URL url = new URL(apiUrl + "/attendance/location");
+                conn = (HttpURLConnection) url.openConnection();
+                conn.setRequestMethod("POST");
+                conn.setRequestProperty("Content-Type", "application/json");
+                conn.setRequestProperty("Authorization", "Bearer " + token);
+                conn.setConnectTimeout(15000);
+                conn.setReadTimeout(15000);
+                conn.setDoOutput(true);
+
+                JSONObject body = new JSONObject();
+                body.put("status", "mock");
+                body.put("timestamp", System.currentTimeMillis());
+
+                byte[] data = body.toString().getBytes(StandardCharsets.UTF_8);
+                conn.setFixedLengthStreamingMode(data.length);
+                OutputStream os = conn.getOutputStream();
+                os.write(data); os.flush(); os.close();
+
+                int code = conn.getResponseCode();
+                if (code == 401) stopSelf();
+            } catch (Exception e) {
+                e.printStackTrace();
+            } finally {
+                if (conn != null) conn.disconnect();
+            }
+        }).start();
     }
 
     // Option A — Send unavailable ping to backend (admin ko flag)

@@ -5,7 +5,8 @@ const locationLogSchema = new mongoose.Schema({
   lat: { type: Number, default: null },
   lng: { type: Number, default: null },
   accuracy: { type: Number, default: -1 },
-  status: { type: String, enum: ['ok', 'unavailable'], default: 'ok' },
+  status: { type: String, enum: ['ok', 'unavailable', 'mock'], default: 'ok' },
+  isMock: { type: Boolean, default: false },
   timestamp: { type: Date, default: Date.now },
 }, { timestamps: true });
 
