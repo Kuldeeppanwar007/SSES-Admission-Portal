@@ -17,7 +17,9 @@ app.use(cors({
       process.env.CLIENT_URL,
       'http://localhost:5173',
       'http://localhost:3000',
-    ].filter(Boolean);
+      'capacitor://localhost',
+      'http://localhost',
+    ];
     if (!origin || allowed.includes(origin)) callback(null, true);
     else callback(new Error('Not allowed by CORS'));
   },
