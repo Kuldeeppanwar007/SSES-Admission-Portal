@@ -5,7 +5,7 @@ const isNative = Capacitor.isNativePlatform();
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || 'https://sses-admission-portal.onrender.com/api',
-  withCredentials: !isNative, // Native app mein cookies kaam nahi karti
+  withCredentials: false,
 });
 
 api.interceptors.request.use((config) => {

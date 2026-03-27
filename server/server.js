@@ -13,7 +13,6 @@ const app = express();
 
 app.use(cors({
   origin: (origin, callback) => {
-    // No origin = mobile app / curl / server-to-server
     if (!origin) return callback(null, true);
     const allowed = [
       process.env.CLIENT_URL,
@@ -21,6 +20,7 @@ app.use(cors({
       'http://localhost:3000',
       'capacitor://localhost',
       'http://localhost',
+      'https://localhost',
     ];
     if (allowed.includes(origin)) return callback(null, true);
     return callback(null, false);
