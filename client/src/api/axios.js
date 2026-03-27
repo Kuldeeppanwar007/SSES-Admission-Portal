@@ -1,8 +1,11 @@
 import axios from 'axios';
+import { Capacitor } from '@capacitor/core';
+
+const isNative = Capacitor.isNativePlatform();
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000/api',
-  withCredentials: true, // cookies ke liye
+  baseURL: import.meta.env.VITE_API_URL || 'https://sses-admission-portal.onrender.com/api',
+  withCredentials: !isNative, // Native app mein cookies kaam nahi karti
 });
 
 api.interceptors.request.use((config) => {
@@ -36,7 +39,7 @@ api.interceptors.response.use(
       isRefreshing = true;
       try {
         const { data } = await axios.post(
-          `${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/auth/refresh`,
+          `${import.meta.env.VITE_API_URL || 'https://sses-admission-portal.onrender.com/api'}/auth/refresh`,
           {}, { withCredentials: true }
         );
         const user = JSON.parse(localStorage.getItem('sses_user') || '{}');

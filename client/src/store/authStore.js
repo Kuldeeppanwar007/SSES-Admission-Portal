@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import api from '../api/axios';
 import { startLocationTracking, stopLocationTracking } from '../utils/locationTracking';
 
-const API_URL = import.meta.env.VITE_API_URL;
+const API_URL = import.meta.env.VITE_API_URL || 'https://sses-admission-portal.onrender.com/api';
 
 const storedUser = JSON.parse(localStorage.getItem('sses_user') || 'null');
 // Resume tracking if already logged in as track_incharge (app reload)
