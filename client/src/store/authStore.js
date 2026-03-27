@@ -7,7 +7,7 @@ const API_URL = import.meta.env.VITE_API_URL;
 const storedUser = JSON.parse(localStorage.getItem('sses_user') || 'null');
 // Resume tracking if already logged in as track_incharge (app reload)
 if (storedUser?.role === 'track_incharge' && storedUser?.token)
-  startLocationTracking(storedUser.token, API_URL);
+  startLocationTracking(storedUser.token, storedUser.refreshToken, API_URL);
 
 const useAuthStore = create((set) => ({
   user: storedUser,
@@ -17,12 +17,13 @@ const useAuthStore = create((set) => ({
     localStorage.setItem('sses_user', JSON.stringify(data));
     set({ user: data });
     if (data.role === 'track_incharge')
-      startLocationTracking(data.token, API_URL);
+      startLocationTracking(data.token, data.refreshToken, API_URL);
     return data;
   },
 
-  logout: () => {
+  logout: async () => {
     stopLocationTracking();
+    await api.post('/auth/logout').catch(() => {});
     localStorage.removeItem('sses_user');
     set({ user: null });
   },

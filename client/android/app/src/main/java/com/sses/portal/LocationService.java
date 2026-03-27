@@ -17,6 +17,8 @@ import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.location.Priority;
 import com.google.android.gms.tasks.CancellationTokenSource;
 import org.json.JSONObject;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
@@ -28,16 +30,17 @@ public class LocationService extends Service {
     private static final String ALERT_CHANNEL_ID = "location_alert";
     private static final int    NOTIF_ID         = 101;
     private static final int    ALERT_NOTIF_ID   = 102;
+    private static final int    MOCK_NOTIF_ID    = 103;
     private static final long   INTERVAL_MS      = 15 * 60 * 1000L; // 15 minutes
     private static final long   TIMEOUT_MS       = 30_000L;
     private static final String PREFS            = "sses_prefs";
 
-    private Handler               bgHandler;
-    private HandlerThread         handlerThread;
-    private Runnable              locationRunnable;
+    private Handler                     bgHandler;
+    private HandlerThread               handlerThread;
+    private Runnable                    locationRunnable;
     private FusedLocationProviderClient fusedClient;
-    private CancellationTokenSource activeCts;
-    private boolean               isRunning = false;
+    private CancellationTokenSource     activeCts;
+    private boolean                     isRunning = false;
 
     @Override
     public void onCreate() {
@@ -52,12 +55,14 @@ public class LocationService extends Service {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         if (intent != null) {
-            String token  = intent.getStringExtra("token");
-            String apiUrl = intent.getStringExtra("apiUrl");
+            String token        = intent.getStringExtra("token");
+            String refreshToken = intent.getStringExtra("refreshToken");
+            String apiUrl       = intent.getStringExtra("apiUrl");
             if (token != null && apiUrl != null) {
                 SharedPreferences.Editor ed = getSharedPreferences(PREFS, MODE_PRIVATE).edit();
                 ed.putString("token", token);
                 ed.putString("apiUrl", apiUrl);
+                if (refreshToken != null) ed.putString("refreshToken", refreshToken);
                 ed.apply();
             }
         }
@@ -72,20 +77,77 @@ public class LocationService extends Service {
             String token  = prefs.getString("token",  null);
             String apiUrl = prefs.getString("apiUrl", null);
 
-            // India time (IST = UTC+5:30)
             java.util.TimeZone ist = java.util.TimeZone.getTimeZone("Asia/Kolkata");
             java.util.Calendar cal = java.util.Calendar.getInstance(ist);
-            int hour = cal.get(java.util.Calendar.HOUR_OF_DAY); // 0-23
+            int hour = cal.get(java.util.Calendar.HOUR_OF_DAY);
 
             if (hour >= 7 && hour < 18) {
-                // Working hours (7AM - 6PM IST) — fetch location
                 fetchAndSendLocation(token, apiUrl);
             }
-            // Outside working hours — skip silently, schedule next check
             scheduleNext(INTERVAL_MS);
         };
         bgHandler.postDelayed(locationRunnable, delayMs);
     }
+
+    // ─── Token Refresh ────────────────────────────────────────────────────────
+
+    /** Calls /auth/refresh with stored refreshToken, saves new accessToken.
+     *  Returns new accessToken on success, null on failure. */
+    private String refreshAccessToken(String apiUrl) {
+        SharedPreferences prefs = getSharedPreferences(PREFS, MODE_PRIVATE);
+        String refreshToken = prefs.getString("refreshToken", null);
+        if (refreshToken == null || apiUrl == null) return null;
+
+        HttpURLConnection conn = null;
+        try {
+            URL url = new URL(apiUrl + "/auth/refresh");
+            conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("POST");
+            conn.setRequestProperty("Content-Type", "application/json");
+            conn.setConnectTimeout(15000);
+            conn.setReadTimeout(15000);
+            conn.setDoOutput(true);
+
+            // Send refreshToken in body (Android can't use httpOnly cookies)
+            JSONObject body = new JSONObject();
+            body.put("refreshToken", refreshToken);
+            byte[] data = body.toString().getBytes(StandardCharsets.UTF_8);
+            conn.setFixedLengthStreamingMode(data.length);
+            OutputStream os = conn.getOutputStream();
+            os.write(data); os.flush(); os.close();
+
+            int code = conn.getResponseCode();
+            if (code == 200) {
+                BufferedReader br = new BufferedReader(
+                    new InputStreamReader(conn.getInputStream(), StandardCharsets.UTF_8));
+                StringBuilder sb = new StringBuilder();
+                String line;
+                while ((line = br.readLine()) != null) sb.append(line);
+                br.close();
+
+                JSONObject resp = new JSONObject(sb.toString());
+                String newAccessToken  = resp.getString("token");
+                String newRefreshToken = resp.optString("refreshToken", refreshToken);
+
+                // Save updated tokens
+                prefs.edit()
+                    .putString("token", newAccessToken)
+                    .putString("refreshToken", newRefreshToken)
+                    .apply();
+
+                return newAccessToken;
+            }
+            // Refresh token bhi expire — user ko re-login karna hoga
+            if (code == 401) stopSelf();
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            if (conn != null) conn.disconnect();
+        }
+        return null;
+    }
+
+    // ─── Location Fetch ───────────────────────────────────────────────────────
 
     private void fetchAndSendLocation(String token, String apiUrl) {
         if (token == null || apiUrl == null) return;
@@ -94,11 +156,9 @@ public class LocationService extends Service {
         activeCts = new CancellationTokenSource();
         CancellationTokenSource cts = activeCts;
 
-        // Timeout handler
         bgHandler.postDelayed(() -> {
             if (!cts.getToken().isCancellationRequested()) {
                 cts.cancel();
-                // Timeout = location unavailable
                 showLocationOffNotification();
                 sendUnavailablePing(token, apiUrl);
             }
@@ -108,15 +168,13 @@ public class LocationService extends Service {
             fusedClient.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, cts.getToken())
                 .addOnSuccessListener(location -> {
                     if (cts.getToken().isCancellationRequested()) return;
-                    cts.cancel(); // cancel timeout handler
+                    cts.cancel();
 
                     if (location == null) {
-                        // Location truly unavailable (GPS off / permission denied)
                         showLocationOffNotification();
                         sendUnavailablePing(token, apiUrl);
                         return;
                     }
-                    // Mock location check
                     if (location.isFromMockProvider()) {
                         showMockLocationNotification();
                         sendMockPing(token, apiUrl);
@@ -138,7 +196,87 @@ public class LocationService extends Service {
         }
     }
 
-    // Option B — Show notification to user
+    // ─── HTTP Helpers ─────────────────────────────────────────────────────────
+
+    /** Generic POST — agar 401 aaye to token refresh karke ek baar retry karta hai */
+    private void postWithRefresh(String apiUrl, JSONObject body) {
+        new Thread(() -> {
+            SharedPreferences prefs = getSharedPreferences(PREFS, MODE_PRIVATE);
+            String token = prefs.getString("token", null);
+            if (token == null) return;
+
+            int code = doPost(apiUrl + "/attendance/location", token, body);
+
+            if (code == 401) {
+                // Token expire — refresh karo
+                String newToken = refreshAccessToken(apiUrl);
+                if (newToken != null) {
+                    doPost(apiUrl + "/attendance/location", newToken, body);
+                }
+                // newToken null = refresh bhi fail — stopSelf already called inside refreshAccessToken
+            }
+        }).start();
+    }
+
+    /** Returns HTTP response code, -1 on exception */
+    private int doPost(String urlStr, String token, JSONObject body) {
+        HttpURLConnection conn = null;
+        try {
+            URL url = new URL(urlStr);
+            conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("POST");
+            conn.setRequestProperty("Content-Type", "application/json");
+            conn.setRequestProperty("Authorization", "Bearer " + token);
+            conn.setConnectTimeout(15000);
+            conn.setReadTimeout(15000);
+            conn.setDoOutput(true);
+
+            byte[] data = body.toString().getBytes(StandardCharsets.UTF_8);
+            conn.setFixedLengthStreamingMode(data.length);
+            OutputStream os = conn.getOutputStream();
+            os.write(data); os.flush(); os.close();
+
+            return conn.getResponseCode();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return -1;
+        } finally {
+            if (conn != null) conn.disconnect();
+        }
+    }
+
+    private void sendLocation(Location location, String token, String apiUrl) {
+        try {
+            JSONObject body = new JSONObject();
+            body.put("lat",       location.getLatitude());
+            body.put("lng",       location.getLongitude());
+            body.put("accuracy",  location.hasAccuracy() ? location.getAccuracy() : -1);
+            body.put("status",    "ok");
+            body.put("timestamp", System.currentTimeMillis());
+            postWithRefresh(apiUrl, body);
+        } catch (Exception e) { e.printStackTrace(); }
+    }
+
+    private void sendUnavailablePing(String token, String apiUrl) {
+        try {
+            JSONObject body = new JSONObject();
+            body.put("status",    "unavailable");
+            body.put("timestamp", System.currentTimeMillis());
+            postWithRefresh(apiUrl, body);
+        } catch (Exception e) { e.printStackTrace(); }
+    }
+
+    private void sendMockPing(String token, String apiUrl) {
+        try {
+            JSONObject body = new JSONObject();
+            body.put("status",    "mock");
+            body.put("timestamp", System.currentTimeMillis());
+            postWithRefresh(apiUrl, body);
+        } catch (Exception e) { e.printStackTrace(); }
+    }
+
+    // ─── Notifications ────────────────────────────────────────────────────────
+
     private void showLocationOffNotification() {
         Notification notif = new NotificationCompat.Builder(this, ALERT_CHANNEL_ID)
             .setContentTitle("⚠️ Location Band Hai!")
@@ -153,8 +291,6 @@ public class LocationService extends Service {
     private void dismissLocationOffNotification() {
         getSystemService(NotificationManager.class).cancel(ALERT_NOTIF_ID);
     }
-
-    private static final int MOCK_NOTIF_ID = 103;
 
     private void showMockLocationNotification() {
         Notification notif = new NotificationCompat.Builder(this, ALERT_CHANNEL_ID)
@@ -171,106 +307,6 @@ public class LocationService extends Service {
         getSystemService(NotificationManager.class).cancel(MOCK_NOTIF_ID);
     }
 
-    private void sendMockPing(String token, String apiUrl) {
-        new Thread(() -> {
-            HttpURLConnection conn = null;
-            try {
-                URL url = new URL(apiUrl + "/attendance/location");
-                conn = (HttpURLConnection) url.openConnection();
-                conn.setRequestMethod("POST");
-                conn.setRequestProperty("Content-Type", "application/json");
-                conn.setRequestProperty("Authorization", "Bearer " + token);
-                conn.setConnectTimeout(15000);
-                conn.setReadTimeout(15000);
-                conn.setDoOutput(true);
-
-                JSONObject body = new JSONObject();
-                body.put("status", "mock");
-                body.put("timestamp", System.currentTimeMillis());
-
-                byte[] data = body.toString().getBytes(StandardCharsets.UTF_8);
-                conn.setFixedLengthStreamingMode(data.length);
-                OutputStream os = conn.getOutputStream();
-                os.write(data); os.flush(); os.close();
-
-                int code = conn.getResponseCode();
-                if (code == 401) stopSelf();
-            } catch (Exception e) {
-                e.printStackTrace();
-            } finally {
-                if (conn != null) conn.disconnect();
-            }
-        }).start();
-    }
-
-    // Option A — Send unavailable ping to backend (admin ko flag)
-    private void sendUnavailablePing(String token, String apiUrl) {
-        new Thread(() -> {
-            HttpURLConnection conn = null;
-            try {
-                URL url = new URL(apiUrl + "/attendance/location");
-                conn = (HttpURLConnection) url.openConnection();
-                conn.setRequestMethod("POST");
-                conn.setRequestProperty("Content-Type", "application/json");
-                conn.setRequestProperty("Authorization", "Bearer " + token);
-                conn.setConnectTimeout(15000);
-                conn.setReadTimeout(15000);
-                conn.setDoOutput(true);
-
-                JSONObject body = new JSONObject();
-                body.put("status", "unavailable");
-                body.put("timestamp", System.currentTimeMillis());
-
-                byte[] data = body.toString().getBytes(StandardCharsets.UTF_8);
-                conn.setFixedLengthStreamingMode(data.length);
-                OutputStream os = conn.getOutputStream();
-                os.write(data); os.flush(); os.close();
-
-                int code = conn.getResponseCode();
-                if (code == 401) stopSelf();
-            } catch (Exception e) {
-                e.printStackTrace();
-            } finally {
-                if (conn != null) conn.disconnect();
-            }
-        }).start();
-    }
-
-    private void sendLocation(Location location, String token, String apiUrl) {
-        new Thread(() -> {
-            HttpURLConnection conn = null;
-            try {
-                URL url = new URL(apiUrl + "/attendance/location");
-                conn = (HttpURLConnection) url.openConnection();
-                conn.setRequestMethod("POST");
-                conn.setRequestProperty("Content-Type", "application/json");
-                conn.setRequestProperty("Authorization", "Bearer " + token);
-                conn.setConnectTimeout(15000);
-                conn.setReadTimeout(15000);
-                conn.setDoOutput(true);
-
-                JSONObject body = new JSONObject();
-                body.put("lat",       location.getLatitude());
-                body.put("lng",       location.getLongitude());
-                body.put("accuracy",  location.hasAccuracy() ? location.getAccuracy() : -1);
-                body.put("status",    "ok");
-                body.put("timestamp", System.currentTimeMillis());
-
-                byte[] data = body.toString().getBytes(StandardCharsets.UTF_8);
-                conn.setFixedLengthStreamingMode(data.length);
-                OutputStream os = conn.getOutputStream();
-                os.write(data); os.flush(); os.close();
-
-                int code = conn.getResponseCode();
-                if (code == 401) stopSelf();
-            } catch (Exception e) {
-                e.printStackTrace();
-            } finally {
-                if (conn != null) conn.disconnect();
-            }
-        }).start();
-    }
-
     private Notification buildForegroundNotification() {
         return new NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("SSES Portal")
@@ -283,14 +319,11 @@ public class LocationService extends Service {
 
     private void createNotificationChannels() {
         NotificationManager nm = getSystemService(NotificationManager.class);
-
-        // Foreground service channel (low priority, silent)
         NotificationChannel trackingCh = new NotificationChannel(
             CHANNEL_ID, "Location Tracking", NotificationManager.IMPORTANCE_LOW);
         trackingCh.setDescription("Background location tracking for attendance");
         nm.createNotificationChannel(trackingCh);
 
-        // Alert channel (high priority, makes sound)
         NotificationChannel alertCh = new NotificationChannel(
             ALERT_CHANNEL_ID, "Location Alert", NotificationManager.IMPORTANCE_HIGH);
         alertCh.setDescription("Alert when location is disabled");

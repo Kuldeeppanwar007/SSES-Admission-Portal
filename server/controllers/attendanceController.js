@@ -4,7 +4,8 @@ const LocationLog = require('../models/LocationLog');
 
 // POST /api/attendance/location  (called by Android foreground service every hour)
 const saveLocation = async (req, res) => {
-  const { lat, lng, accuracy, timestamp, status } = req.body;
+  try {
+    const { lat, lng, accuracy, timestamp, status } = req.body;
 
   // mock ping — fake location detected
   if (status === 'mock') {
@@ -41,8 +42,11 @@ const saveLocation = async (req, res) => {
     accuracy: accuracy ?? -1,
     status: 'ok',
     timestamp: timestamp ? new Date(Number(timestamp)) : new Date(),
-  });
-  res.status(201).json({ ok: true });
+    });
+    res.status(201).json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 };
 
 // GET /api/attendance/location-logs?userId=xxx&date=xxx  (admin)
@@ -63,7 +67,8 @@ const getLocationLogs = async (req, res) => {
 
 // POST /api/attendance/mark
 const markAttendance = async (req, res) => {
-  const { latitude, longitude, locationSource, accuracy } = req.body;
+  try {
+    const { latitude, longitude, locationSource, accuracy } = req.body;
   if (!latitude || !longitude)
     return res.status(400).json({ message: 'Location required' });
 
@@ -99,33 +104,40 @@ const markAttendance = async (req, res) => {
     user: req.user._id, date, time, latitude, longitude,
     locationSource: locationSource || 'Browser',
   });
-  res.status(201).json(record);
+    res.status(201).json(record);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 };
 
 // GET /api/attendance/my
 const getMyAttendance = async (req, res) => {
-  const records = await Attendance.find({ user: req.user._id }).sort({ date: -1 });
-  res.json(records);
+  try {
+    const records = await Attendance.find({ user: req.user._id }).sort({ date: -1 });
+    res.json(records);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 };
 
 // GET /api/attendance/all?from=YYYY-MM-DD&to=YYYY-MM-DD&track=xxx
 const getAllAttendance = async (req, res) => {
-  const { from, to, track } = req.query;
-  const query = {};
-
-  if (from || to) {
-    query.date = {};
-    if (from) query.date.$gte = from;
-    if (to)   query.date.$lte = to;
+  try {
+    const { from, to, track } = req.query;
+    const query = {};
+    if (from || to) {
+      query.date = {};
+      if (from) query.date.$gte = from;
+      if (to)   query.date.$lte = to;
+    }
+    let records = await Attendance.find(query)
+      .populate('user', 'name track')
+      .sort({ date: -1, time: -1 });
+    if (track) records = records.filter(r => r.user?.track === track);
+    res.json(records);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
-
-  let records = await Attendance.find(query)
-    .populate('user', 'name track')
-    .sort({ date: -1, time: -1 });
-
-  if (track) records = records.filter(r => r.user?.track === track);
-
-  res.json(records);
 };
 
 // GET /api/attendance/monthly-stats?month=YYYY-MM&track=xxx

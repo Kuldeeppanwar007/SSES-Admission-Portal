@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import api from '../../api/axios';
 import { TRACKS, ROLES } from '../../utils/constants';
 import toast from 'react-hot-toast';
-import { FiPlus, FiTrash2, FiEdit2 } from 'react-icons/fi';
+import { FiPlus, FiTrash2, FiEdit2, FiEye, FiEyeOff } from 'react-icons/fi';
 
 const emptyForm = { name: '', email: '', password: '', role: 'track_incharge', track: '', isActive: true };
 
@@ -13,6 +13,7 @@ export default function Users() {
   const [form, setForm] = useState(emptyForm);
   const [editId, setEditId] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const tabs = [
     { key: 'all', label: 'All' },
@@ -64,15 +65,27 @@ export default function Users() {
         <div className="bg-white rounded-xl shadow p-6 mb-6">
           <h3 className="font-semibold mb-4">{editId ? 'Edit User' : 'Add New User'}</h3>
           <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {[['Name', 'name', 'text'], ['Email', 'email', 'email'], ['Password', 'password', 'password']].map(([label, key, type]) => (
+            {[['Name', 'name', 'text'], ['Email', 'email', 'email']].map(([label, key, type]) => (
               <div key={key}>
-                <label className="block text-sm font-medium text-gray-700 mb-1">{label}{key !== 'password' && <span className="text-red-500">*</span>}</label>
-                <input type={type} value={form[key]} required={key !== 'password' || !editId}
-                  placeholder={editId && key === 'password' ? 'Leave blank to keep current' : ''}
+                <label className="block text-sm font-medium text-gray-700 mb-1">{label}<span className="text-red-500">*</span></label>
+                <input type={type} value={form[key]} required
                   onChange={(e) => setForm({ ...form, [key]: e.target.value })}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
               </div>
             ))}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Password{!editId && <span className="text-red-500">*</span>}</label>
+              <div className="relative">
+                <input type={showPassword ? 'text' : 'password'} value={form.password} required={!editId}
+                  placeholder={editId ? 'Leave blank to keep current' : ''}
+                  onChange={(e) => setForm({ ...form, password: e.target.value })}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 pr-9 text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
+                <button type="button" onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                  {showPassword ? <FiEyeOff size={16} /> : <FiEye size={16} />}
+                </button>
+              </div>
+            </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
               <select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}

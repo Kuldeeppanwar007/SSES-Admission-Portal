@@ -18,6 +18,7 @@ const userSchema = new mongoose.Schema({
   },
   isActive: { type: Boolean, default: true },
   points: { type: Number, default: 0 },
+  refreshToken: { type: String, default: null },
 }, { timestamps: true });
 
 userSchema.pre('save', async function () {

@@ -8,10 +8,10 @@ const getPlugin = () => {
   catch { return null; }
 };
 
-export const startLocationTracking = (token, apiUrl) => {
+export const startLocationTracking = (token, refreshToken, apiUrl) => {
   const plugin = getPlugin();
   if (!plugin) return;
-  plugin.startTracking({ token, apiUrl });
+  plugin.startTracking({ token, refreshToken, apiUrl });
 };
 
 export const stopLocationTracking = () => {

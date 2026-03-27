@@ -4,33 +4,40 @@ const xlsx = require('xlsx');
 
 // Get all students (admin/manager = all, track_incharge = own track)
 const getStudents = async (req, res) => {
-  const { track, status, search, page = 1, limit = 10 } = req.query;
-  const filter = {};
-  const _limit = Number(limit);
-  const _page = Number(page);
+  try {
+    const { track, status, search, page = 1, limit = 10 } = req.query;
+    const filter = {};
+    const _limit = Math.min(Number(limit), 100); // max 100 per page
+    const _page = Number(page);
 
-  if (req.user.role === 'track_incharge') filter.track = { $regex: `^${req.user.track}$`, $options: 'i' };
-  else if (track) filter.track = { $regex: `^${track}$`, $options: 'i' };
+    if (req.user.role === 'track_incharge') filter.track = { $regex: `^${req.user.track}$`, $options: 'i' };
+    else if (track) filter.track = { $regex: `^${track}$`, $options: 'i' };
 
-  // by default disabled profiles exclude — only show if status=Disabled explicitly requested
-  if (status === 'Disabled') filter.isDisabled = true;
-  else { filter.isDisabled = { $ne: true }; if (status) filter.status = status; }
-  if (search) filter.$or = [
-    { name: { $regex: search, $options: 'i' } },
-    { fatherName: { $regex: search, $options: 'i' } },
-    { mobileNo: { $regex: search, $options: 'i' } },
-    { subject: { $regex: search, $options: 'i' } },
-    { track: { $regex: search, $options: 'i' } },
-  ];
+    if (status === 'Disabled') filter.isDisabled = true;
+    else { filter.isDisabled = { $ne: true }; if (status) filter.status = status; }
 
-  const total = await Student.countDocuments(filter);
-  const students = await Student.find(filter)
-    .populate('addedBy', 'name role')
-    .sort({ sn: 1, createdAt: 1 })
-    .skip((_page - 1) * _limit)
-    .limit(_limit);
+    if (search) {
+      const safeSearch = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); // ReDoS fix
+      filter.$or = [
+        { name: { $regex: safeSearch, $options: 'i' } },
+        { fatherName: { $regex: safeSearch, $options: 'i' } },
+        { mobileNo: { $regex: safeSearch, $options: 'i' } },
+        { subject: { $regex: safeSearch, $options: 'i' } },
+        { track: { $regex: safeSearch, $options: 'i' } },
+      ];
+    }
 
-  res.json({ students, total, page: _page, pages: Math.ceil(total / _limit) });
+    const total = await Student.countDocuments(filter);
+    const students = await Student.find(filter)
+      .populate('addedBy', 'name role')
+      .sort({ sn: 1, createdAt: 1 })
+      .skip((_page - 1) * _limit)
+      .limit(_limit);
+
+    res.json({ students, total, page: _page, pages: Math.ceil(total / _limit) });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 };
 
 // Get single student
