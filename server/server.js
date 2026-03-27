@@ -13,6 +13,8 @@ const app = express();
 
 app.use(cors({
   origin: (origin, callback) => {
+    // No origin = mobile app / curl / server-to-server
+    if (!origin) return callback(null, true);
     const allowed = [
       process.env.CLIENT_URL,
       'http://localhost:5173',
@@ -20,11 +22,13 @@ app.use(cors({
       'capacitor://localhost',
       'http://localhost',
     ];
-    if (!origin || allowed.includes(origin)) callback(null, true);
-    else callback(new Error('Not allowed by CORS'));
+    if (allowed.includes(origin)) return callback(null, true);
+    return callback(null, false);
   },
   credentials: true,
 }));
+
+app.options('*', cors());
 app.use(express.json());
 app.use(cookieParser());
 
