@@ -319,6 +319,10 @@ public class LocationService extends Service {
 
     private void createNotificationChannels() {
         NotificationManager nm = getSystemService(NotificationManager.class);
+
+        // Delete old alert channel to force recreate with new sound settings
+        nm.deleteNotificationChannel(ALERT_CHANNEL_ID);
+
         NotificationChannel trackingCh = new NotificationChannel(
             CHANNEL_ID, "Location Tracking", NotificationManager.IMPORTANCE_LOW);
         trackingCh.setDescription("Background location tracking for attendance");

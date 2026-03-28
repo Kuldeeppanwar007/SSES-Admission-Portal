@@ -109,7 +109,9 @@ public class LocationWorker extends Worker {
                 (android.app.NotificationManager) getApplicationContext()
                     .getSystemService(Context.NOTIFICATION_SERVICE);
 
-            // Create alert channel with sound+vibration if not exists
+            // Delete old channel to force recreate with sound
+            nm.deleteNotificationChannel("location_alert");
+
             android.app.NotificationChannel ch = new android.app.NotificationChannel(
                 "location_alert", "Location Alert", android.app.NotificationManager.IMPORTANCE_HIGH);
             ch.enableVibration(true);
