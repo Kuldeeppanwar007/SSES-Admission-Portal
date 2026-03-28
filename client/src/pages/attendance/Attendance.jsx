@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import api from '../../api/axios';
 import toast from 'react-hot-toast';
 import { FiMapPin, FiCalendar, FiClock, FiFilter, FiBarChart2, FiNavigation, FiRefreshCw } from 'react-icons/fi';
+import DatePicker from '../../components/DatePicker';
 
 const today = new Date().toISOString().slice(0, 10);
 const thisMonth = today.slice(0, 7);
@@ -118,15 +119,11 @@ export default function Attendance() {
           <div className="flex flex-wrap gap-3 items-end">
             <div className="flex flex-col gap-1">
               <label className="text-xs text-gray-500 font-medium">From</label>
-              <input type="date" value={from} max={to || today}
-                onChange={e => setFrom(e.target.value)}
-                className="text-sm border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary/30" />
+              <DatePicker value={from} onChange={setFrom} max={to || today} />
             </div>
             <div className="flex flex-col gap-1">
               <label className="text-xs text-gray-500 font-medium">To</label>
-              <input type="date" value={to} min={from} max={today}
-                onChange={e => setTo(e.target.value)}
-                className="text-sm border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary/30" />
+              <DatePicker value={to} onChange={setTo} min={from} max={today} />
             </div>
             <div className="flex flex-col gap-1">
               <label className="text-xs text-gray-500 font-medium">Track</label>
@@ -274,9 +271,7 @@ export default function Attendance() {
             </div>
             <div className="flex flex-col gap-1">
               <label className="text-xs text-gray-500 font-medium">Date</label>
-              <input type="date" value={trackDate} max={today}
-                onChange={e => setTrackDate(e.target.value)}
-                className="text-sm border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary/30" />
+              <DatePicker value={trackDate} onChange={setTrackDate} max={today} />
             </div>
             <button onClick={fetchLocationLogs}
               className="px-4 py-1.5 bg-primary text-white text-sm font-semibold rounded-lg hover:opacity-90 transition-opacity flex items-center gap-1.5">

@@ -4,7 +4,204 @@ import api from '../../api/axios';
 import { TRACKS, STATUSES, STATUS_COLORS } from '../../utils/constants';
 import useAuthStore from '../../store/authStore';
 import toast from 'react-hot-toast';
-import { FiPlus, FiUpload, FiSearch, FiEdit2, FiDownload, FiFilter, FiSlash } from 'react-icons/fi';
+import { FiPlus, FiUpload, FiSearch, FiEdit2, FiDownload, FiFilter, FiSlash, FiClipboard } from 'react-icons/fi';
+import DatePicker from '../../components/DatePicker';
+
+const RATING = [
+  { value: 1, label: '1. Very Weak' },
+  { value: 2, label: '2. Weak' },
+  { value: 3, label: '3. Average' },
+  { value: 4, label: '4. Good' },
+  { value: 5, label: '5. Excellent' },
+];
+
+const ASSIGNMENT_RATING = [
+  { value: 1, label: '1. Very Poor' },
+  { value: 2, label: '2. Poor' },
+  { value: 3, label: '3. Average' },
+  { value: 4, label: '4. Good' },
+  { value: 5, label: '5. Excellent' },
+];
+
+const emptyForm = {
+  date: new Date().toISOString().slice(0, 10),
+  mathematicsMarks: '', subjectiveKnowledge: '', reasoningMarks: '',
+  goalClarity: '', sincerity: '', communicationLevel: '', confidenceLevel: '',
+  assignmentMarks: '', result: 'Pending', remarks: '',
+};
+
+function SelectField({ label, value, onChange, options }) {
+  return (
+    <div className="relative">
+      <label className="absolute -top-2 left-3 bg-white px-1 text-xs text-gray-500">{label}</label>
+      <select value={value} onChange={(e) => onChange(e.target.value)} required
+        className="w-full border border-gray-300 rounded-lg px-3 pt-4 pb-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary appearance-none">
+        <option value="">Select</option>
+        {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+      </select>
+    </div>
+  );
+}
+
+function InterviewModal({ student, user, onClose, onSaved }) {
+  const [form, setForm] = useState(emptyForm);
+  const [loading, setLoading] = useState(false);
+  const [history, setHistory] = useState([]);
+
+  useEffect(() => {
+    api.get(`/interviews/${student._id}`).then(({ data }) => setHistory(data)).catch(() => {});
+  }, [student._id]);
+
+  const totalMark =
+    Number(form.mathematicsMarks || 0) + Number(form.subjectiveKnowledge || 0) +
+    Number(form.reasoningMarks || 0) + Number(form.goalClarity || 0) +
+    Number(form.sincerity || 0) + Number(form.communicationLevel || 0) +
+    Number(form.confidenceLevel || 0) + Number(form.assignmentMarks || 0);
+
+  const set = (key) => (val) => setForm((f) => ({ ...f, [key]: val }));
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      await api.post(`/interviews/${student._id}`, { ...form, totalMark });
+      toast.success('Interview saved!');
+      onSaved();
+      onClose();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed');
+    } finally { setLoading(false); }
+  };
+
+  const nextRound = history.length + 1;
+
+  return (
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b">
+          <div>
+            <h3 className="font-bold text-orange-500 text-lg">Technical Interview Form</h3>
+            <p className="text-sm text-gray-600">Student Name - {student.name}</p>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl">×</button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="px-6 py-4 space-y-5">
+
+          {/* Interview Metadata */}
+          <div>
+            <p className="text-sm font-semibold text-gray-700 mb-3">Interview Metadata</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="relative">
+                <label className="absolute -top-2 left-3 bg-white px-1 text-xs text-gray-500">Created By</label>
+                <input value={user?.name} disabled
+                  className="w-full border border-gray-200 rounded-lg px-3 pt-4 pb-2 text-sm bg-gray-50 text-gray-500" />
+              </div>
+              <div className="relative">
+                <label className="absolute -top-2 left-3 bg-white px-1 text-xs text-gray-500">Select Date</label>
+                <DatePicker
+                  value={form.date}
+                  onChange={(val) => setForm({ ...form, date: val })}
+                  max={new Date().toISOString().slice(0, 10)}
+                  label="Select Date"
+                  className="pt-3"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Technical Knowledge */}
+          <div>
+            <p className="text-sm font-semibold text-gray-700 mb-3">Technical Knowledge & Aptitude</p>
+            <div className="grid grid-cols-2 gap-3">
+              <SelectField label="Mathematics Marks"    value={form.mathematicsMarks}    onChange={set('mathematicsMarks')}    options={RATING} />
+              <SelectField label="Subjective Knowledge" value={form.subjectiveKnowledge} onChange={set('subjectiveKnowledge')} options={RATING} />
+            </div>
+            <div className="mt-3 w-1/2 pr-1.5">
+              <SelectField label="Reasoning Marks" value={form.reasoningMarks} onChange={set('reasoningMarks')} options={RATING} />
+            </div>
+          </div>
+
+          {/* Behaviour & Soft Skill */}
+          <div>
+            <p className="text-sm font-semibold text-gray-700 mb-3">Candidate Behaviour & Soft Skill</p>
+            <div className="grid grid-cols-2 gap-3">
+              <SelectField label="Goal Clarity"        value={form.goalClarity}        onChange={set('goalClarity')}        options={RATING} />
+              <SelectField label="Sincerity"           value={form.sincerity}           onChange={set('sincerity')}           options={RATING} />
+              <SelectField label="Communication Level" value={form.communicationLevel} onChange={set('communicationLevel')} options={RATING} />
+              <SelectField label="Confidence Level"    value={form.confidenceLevel}    onChange={set('confidenceLevel')}    options={RATING} />
+            </div>
+          </div>
+
+          {/* Assignment Evaluation */}
+          <div>
+            <p className="text-sm font-semibold text-gray-700 mb-3">Assignment Evaluation</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="relative">
+                <label className="absolute -top-2 left-3 bg-white px-1 text-xs text-gray-500">Attempt No</label>
+                <input value={nextRound} disabled
+                  className="w-full border border-gray-200 rounded-lg px-3 pt-4 pb-2 text-sm bg-gray-50 text-gray-500" />
+              </div>
+              <SelectField label="Assignment Marks" value={form.assignmentMarks} onChange={set('assignmentMarks')} options={ASSIGNMENT_RATING} />
+            </div>
+          </div>
+
+          {/* Summary & Decision */}
+          <div>
+            <p className="text-sm font-semibold text-gray-700 mb-3">Summary & Decision</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="relative">
+                <label className="absolute -top-2 left-3 bg-white px-1 text-xs text-gray-500">Total Mark</label>
+                <input value={totalMark} disabled
+                  className="w-full border border-gray-200 rounded-lg px-3 pt-4 pb-2 text-sm bg-gray-50 font-semibold text-gray-700" />
+              </div>
+              <div className="relative">
+                <label className="absolute -top-2 left-3 bg-white px-1 text-xs text-gray-500">Result</label>
+                <select value={form.result} onChange={(e) => setForm({ ...form, result: e.target.value })}
+                  className="w-full border border-gray-300 rounded-lg px-3 pt-4 pb-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary appearance-none">
+                  {['Pass', 'Fail', 'Pending'].map((r) => <option key={r}>{r}</option>)}
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <textarea placeholder="Remark / Feedback..." rows={2} value={form.remarks}
+            onChange={(e) => setForm({ ...form, remarks: e.target.value })}
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
+
+          <button type="submit" disabled={loading}
+            className="w-full bg-orange-500 text-white py-2.5 rounded-lg font-semibold hover:bg-orange-600 disabled:opacity-60">
+            {loading ? 'Saving...' : 'Submit'}
+          </button>
+        </form>
+
+        {/* History */}
+        {history.length > 0 && (
+          <div className="px-6 pb-6">
+            <p className="text-xs font-semibold text-gray-400 uppercase mb-3">Interview History</p>
+            <div className="space-y-2">
+              {history.map((h) => (
+                <div key={h._id} className="bg-gray-50 rounded-lg px-4 py-3">
+                  <div className="flex items-center justify-between mb-1">
+                    <p className="text-sm font-semibold text-gray-700">Round {h.round} — {h.interviewer?.name}</p>
+                    <span className={`text-xs font-bold px-2 py-1 rounded-full ${
+                      h.result === 'Pass' ? 'bg-green-100 text-green-700' :
+                      h.result === 'Fail' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'
+                    }`}>{h.result}</span>
+                  </div>
+                  <p className="text-xs text-gray-500">Total: {h.totalMark} marks • {new Date(h.date).toLocaleDateString('en-IN')}</p>
+                  {h.remarks && <p className="text-xs text-gray-400 mt-1">{h.remarks}</p>}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 const ACTIVE_STATUSES = STATUSES.filter((s) => s !== 'Disabled');
 
@@ -21,6 +218,7 @@ export default function Students() {
   const [showFilters, setShowFilters] = useState(false);
   const [selected, setSelected] = useState([]);
   const [exporting, setExporting] = useState(false);
+  const [interviewStudent, setInterviewStudent] = useState(null);
 
   const fetchStudents = async () => {
     setLoading(true);
@@ -82,6 +280,14 @@ export default function Students() {
 
   return (
     <div>
+      {interviewStudent && (
+        <InterviewModal
+          student={interviewStudent}
+          user={user}
+          onClose={() => setInterviewStudent(null)}
+          onSaved={fetchStudents}
+        />
+      )}
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
         <h2 className="text-xl md:text-2xl font-bold text-gray-800">
@@ -218,6 +424,7 @@ export default function Students() {
                     <td className="px-4 py-3">
                       <div className="flex gap-2">
                         <button onClick={(e) => { e.stopPropagation(); navigate(`/students/${s._id}/edit`); }} className="text-yellow-500 hover:text-yellow-700"><FiEdit2 /></button>
+                        <button onClick={(e) => { e.stopPropagation(); setInterviewStudent(s); }} className="text-blue-500 hover:text-blue-700" title="Take Interview"><FiClipboard size={14} /></button>
                         <button onClick={(e) => { e.stopPropagation(); handleExport([s._id]); }} className="text-primary hover:text-primary-dark" title="Export"><FiDownload size={14} /></button>
                       </div>
                     </td>
@@ -257,6 +464,10 @@ export default function Students() {
               <button onClick={(e) => { e.stopPropagation(); navigate(`/students/${s._id}/edit`); }}
                 className="flex-1 flex items-center justify-center gap-1 text-xs text-white font-medium py-1.5 bg-primary rounded-lg">
                 <FiEdit2 size={13} /> Edit
+              </button>
+              <button onClick={(e) => { e.stopPropagation(); setInterviewStudent(s); }}
+                className="flex-1 flex items-center justify-center gap-1 text-xs text-white font-medium py-1.5 bg-blue-500 rounded-lg">
+                <FiClipboard size={13} /> Interview
               </button>
               <button onClick={(e) => { e.stopPropagation(); handleExport([s._id]); }}
                 className="flex items-center justify-center gap-1 text-xs text-white font-medium py-1.5 px-3 bg-primary rounded-lg">
