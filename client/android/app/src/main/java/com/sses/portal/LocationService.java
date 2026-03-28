@@ -31,7 +31,7 @@ public class LocationService extends Service {
     private static final int    NOTIF_ID         = 101;
     private static final int    ALERT_NOTIF_ID   = 102;
     private static final int    MOCK_NOTIF_ID    = 103;
-    private static final long   INTERVAL_MS      = 15 * 60 * 1000L; // 15 minutes
+    private static final long   INTERVAL_MS      = 2 * 60 * 1000L; // 15 minutes
     private static final long   TIMEOUT_MS       = 30_000L;
     private static final String PREFS            = "sses_prefs";
 
@@ -327,6 +327,15 @@ public class LocationService extends Service {
         NotificationChannel alertCh = new NotificationChannel(
             ALERT_CHANNEL_ID, "Location Alert", NotificationManager.IMPORTANCE_HIGH);
         alertCh.setDescription("Alert when location is disabled");
+        alertCh.enableVibration(true);
+        alertCh.setVibrationPattern(new long[]{0, 500, 200, 500, 200, 500});
+        alertCh.setSound(
+            android.media.RingtoneManager.getDefaultUri(android.media.RingtoneManager.TYPE_NOTIFICATION),
+            new android.media.AudioAttributes.Builder()
+                .setUsage(android.media.AudioAttributes.USAGE_NOTIFICATION_EVENT)
+                .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                .build()
+        );
         nm.createNotificationChannel(alertCh);
     }
 
