@@ -5,9 +5,9 @@ const xlsx = require('xlsx');
 // Get all students (admin/manager = all, track_incharge = own track)
 const getStudents = async (req, res) => {
   try {
-    const { track, status, search, page = 1, limit = 10 } = req.query;
+    const { track, status, search, formSource, page = 1, limit = 10 } = req.query;
     const filter = {};
-    const _limit = Math.min(Number(limit), 100); // max 100 per page
+    const _limit = Math.min(Number(limit), 100);
     const _page = Number(page);
 
     if (req.user.role === 'track_incharge') filter.track = { $regex: `^${req.user.track}$`, $options: 'i' };
@@ -15,6 +15,8 @@ const getStudents = async (req, res) => {
 
     if (status === 'Disabled') filter.isDisabled = true;
     else { filter.isDisabled = { $ne: true }; if (status) filter.status = status; }
+
+    if (formSource) filter.formSource = formSource;
 
     if (search) {
       const safeSearch = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); // ReDoS fix
@@ -30,7 +32,7 @@ const getStudents = async (req, res) => {
     const total = await Student.countDocuments(filter);
     const students = await Student.find(filter)
       .populate('addedBy', 'name role')
-      .sort({ sn: 1, createdAt: 1 })
+      .sort({ createdAt: -1 })
       .skip((_page - 1) * _limit)
       .limit(_limit);
 
@@ -54,7 +56,7 @@ const DOCS = ['photo', 'marksheet10th', 'marksheet12th', 'incomeCertificate', 'j
 // Add student manually
 const addStudent = async (req, res) => {
   const count = await Student.countDocuments();
-  const data = { ...req.body, sn: count + 1, addedBy: req.user._id };
+  const data = { ...req.body, sn: count + 1, addedBy: req.user._id, formSource: req.body.formSource || 'manual' };
   DOCS.forEach((d) => { if (req.files?.[d]) data[d] = req.files[d][0].path; });
   const student = await Student.create(data);
   res.status(201).json(student);
@@ -243,7 +245,7 @@ const mapRowToStudent = (row, addedBy) => {
   const normalizedMap = {};
   Object.keys(fieldMap).forEach((k) => { normalizedMap[normalize(k)] = fieldMap[k]; });
 
-  const student = { addedBy, status: 'Applied' };
+  const student = { addedBy, status: 'Applied', formSource: 'manual' };
   Object.keys(row).forEach((key) => {
     const mapped = normalizedMap[normalize(key)];
     if (mapped) student[mapped] = String(row[key]).trim();
@@ -514,4 +516,43 @@ const getStats = async (req, res) => {
   }
 };
 
-module.exports = { getStudents, getStudent, addStudent, updateStudent, deleteStudent, updateStatus, getStatusHistory, bulkUpload, downloadTemplate, exportStudents, getStats, getTrackStats };
+// Self-registration from external forms (webhook — secured by secret)
+const selfRegister = async (req, res) => {
+  // Verify webhook secret
+  const secret = req.headers['x-webhook-secret'];
+  if (!secret || secret !== process.env.WEBHOOK_SECRET)
+    return res.status(401).json({ message: 'Unauthorized' });
+
+  try {
+    const { formSource, firstName, lastName, fathersName, mobile, email, whatsappNumber, address, ...rest } = req.body;
+
+    if (!firstName || !mobile || !email)
+      return res.status(400).json({ message: 'firstName, mobile, email are required' });
+
+    const validSources = ['btech', 'ssism'];
+    const resolvedSource = validSources.includes(formSource) ? formSource : null;
+
+    // Duplicate check by mobile or email
+    const existing = await Student.findOne({ $or: [{ mobileNo: String(mobile) }, { email }] });
+    if (existing) return res.status(409).json({ message: 'Already registered', id: existing._id });
+
+    const count = await Student.countDocuments();
+    const student = await Student.create({
+      sn: count + 1,
+      name: `${firstName} ${lastName || ''}`.trim(),
+      fatherName: fathersName || '',
+      mobileNo: String(mobile),
+      whatsappNo: whatsappNumber || rest.whatsappNo || '',
+      fullAddress: address || rest.fullAddress || '',
+      email,
+      formSource: resolvedSource,
+      status: 'Applied',
+      ...rest,
+    });
+    res.status(201).json({ message: 'Registration successful', id: student._id });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+module.exports = { getStudents, getStudent, addStudent, updateStudent, deleteStudent, updateStatus, getStatusHistory, bulkUpload, downloadTemplate, exportStudents, getStats, getTrackStats, selfRegister };

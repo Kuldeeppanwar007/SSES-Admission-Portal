@@ -7,6 +7,41 @@ import toast from 'react-hot-toast';
 import { FiExternalLink, FiCamera, FiImage, FiFileText, FiUser, FiCreditCard, FiX } from 'react-icons/fi';
 
 const SUBJECTS = ['B.Tech', 'BCA', 'BBA', 'Bcom', 'Bio', 'Micro'];
+const BTECH_BRANCHES = ['CS', 'IT', 'AI/ML', 'ECE'];
+const SSISM_BRANCHES = ['BCA(ITEG)', 'BBA', 'BSC(BT)', 'BSC(MICRO)', 'B.Com (CA)', 'ITEG Diploma'];
+
+const SUBJECTS_BY_BOARD = {
+  'MP Board': [
+    'Physics, Chemistry, Mathematics (PCM)',
+    'Physics, Chemistry, Biology (PCB)',
+    'Physics, Chemistry, Mathematics, Biology (PCMB)',
+    'Commerce (Accountancy, Business Studies, Economics)',
+    'Arts (History, Geography, Political Science)',
+    'Agriculture',
+    'Home Science',
+    'Computer Science',
+  ],
+  'CBSE': [
+    'Physics, Chemistry, Mathematics (PCM)',
+    'Physics, Chemistry, Biology (PCB)',
+    'Physics, Chemistry, Mathematics, Biology (PCMB)',
+    'Commerce (Accountancy, Business Studies, Economics)',
+    'Humanities (History, Geography, Political Science, Sociology)',
+    'Computer Science',
+    'Information Technology',
+    'Physical Education',
+  ],
+  'International (IB/Cambridge)': [
+    'Science Stream (Physics, Chemistry, Math)',
+    'Science Stream (Physics, Chemistry, Biology)',
+    'Commerce Stream',
+    'Humanities Stream',
+    'Computer Science',
+    'Environmental Systems',
+    'Business Management',
+  ],
+  'Other': ['Other / Enter Manually'],
+};
 const FUNNEL_STAGES = ['', 'Call Completed', 'Lead Interested', 'Admission Closed'];
 
 // Funnel stages allowed per status
@@ -22,6 +57,16 @@ const initialForm = {
   name: '', fatherName: '', track: '', mobileNo: '',
   whatsappNo: '', subject: '', fullAddress: '', otherTrack: '',
   status: 'Applied', remarks: '', funnelStage: '',
+  formSource: '',
+  // Registration fields
+  email: '', schoolName: '', district: '', village: '',
+  whatsappNumber: '', priority1: '', priority2: '', priority3: '',
+  jeeScore: '', persentage12: '', persentage10: '', persentage11: '',
+  branch: '', year: '', joinBatch: '', feesScheme: '',
+  category: '', gender: '', school12Sub: '',
+  dob: '', aadharNo: '', fatherOccupation: '', fatherIncome: '',
+  fatherContactNumber: '', pincode: '', tehsil: '', trackName: '',
+  isTop20: false,
 };
 
 const DOC_FIELDS = [
@@ -121,9 +166,23 @@ export default function StudentForm() {
       api.get(`/students/${id}`).then(({ data }) => {
         setForm({
           name: data.name, fatherName: data.fatherName, track: data.track,
-          mobileNo: data.mobileNo || '', whatsappNo: data.whatsappNo || '',
+          mobileNo: data.mobileNo || '', whatsappNo: data.whatsappNo || data.whatsappNumber || '',
           subject: data.subject || '', fullAddress: data.fullAddress || '',
           otherTrack: data.otherTrack || '', status: data.status, remarks: '', funnelStage: data.funnelStage || '',
+          formSource: data.formSource || '',
+          // Registration fields
+          email: data.email || '', schoolName: data.schoolName || '',
+          district: data.district || '', village: data.village || '',
+          whatsappNumber: data.whatsappNumber || '',
+          priority1: data.priority1 || '', priority2: data.priority2 || '', priority3: data.priority3 || '',
+          jeeScore: data.jeeScore ?? '', persentage12: data.persentage12 ?? '', persentage10: data.persentage10 ?? '',
+          branch: data.branch || '', year: data.year || '', joinBatch: data.joinBatch ?? '',
+          feesScheme: data.feesScheme || '', category: data.category || '', gender: data.gender || '',
+          school12Sub: data.school12Sub || '', dob: data.dob || '', aadharNo: data.aadharNo || '',
+          fatherOccupation: data.fatherOccupation || '', fatherIncome: data.fatherIncome ?? '',
+          fatherContactNumber: data.fatherContactNumber || '', pincode: data.pincode ?? '',
+          tehsil: data.tehsil || '', trackName: data.trackName || '',
+          isTop20: !!data.isTop20, persentage11: data.persentage11 || '',
         });
         const existing = {};
         DOC_FIELDS.forEach(({ key }) => { if (data[key]) existing[key] = data[key]; });
@@ -280,6 +339,143 @@ export default function StudentForm() {
             </div>
           </div>
         )}
+
+        <div>
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Registration Details</p>
+
+          {/* Form Type Selector */}
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-1">Form Type</label>
+            <div className="flex gap-3">
+              {['', 'btech', 'ssism'].map((val) => (
+                <button key={val} type="button"
+                  onClick={() => setForm({ ...form, formSource: val })}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${
+                    form.formSource === val
+                      ? 'bg-primary text-white border-primary'
+                      : 'bg-white text-gray-600 border-gray-300 hover:border-primary'
+                  }`}>
+                  {val === '' ? 'None' : val === 'btech' ? 'B.Tech' : 'SSISM'}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* B.Tech fields */}
+          {form.formSource === 'btech' && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {field('Email', 'email', 'email')}
+                {field('WhatsApp Number', 'whatsappNumber', 'tel')}
+                {field('School Name', 'schoolName')}
+                {field('12th Score (Optional)', 'persentage12', 'number')}
+                {field('JEE Score (Optional)', 'jeeScore', 'number')}
+                {field('District', 'district')}
+                {field('Village / City', 'village')}
+              </div>
+              <div className="border border-gray-200 rounded-xl p-4">
+                <p className="text-sm font-semibold text-gray-700 mb-3">Branch Preferences</p>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  {['priority1', 'priority2', 'priority3'].map((p, i) => (
+                    <div key={p}>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Priority {i + 1}</label>
+                      <select value={form[p]} onChange={(e) => setForm({ ...form, [p]: e.target.value })}
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary">
+                        <option value="">Select</option>
+                        {BTECH_BRANCHES.map((b) => <option key={b}>{b}</option>)}
+                      </select>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              {field('Local Address', 'fullAddress')}
+            </div>
+          )}
+
+          {/* SSISM only fields */}
+          {form.formSource === 'ssism' && (
+            <div className="mt-4 space-y-4">
+              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Personal Details</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {field('Father Name', 'fatherName')}
+                {field('Father Contact', 'fatherContactNumber', 'tel')}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                  <select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary">
+                    <option value="">Select Category</option>
+                    {['General', 'OBC', 'SC', 'ST', 'EWS'].map((c) => <option key={c}>{c}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Gender</label>
+                  <div className="flex gap-4 mt-2">
+                    {['Male', 'Female'].map((g) => (
+                      <label key={g} className="flex items-center gap-2 cursor-pointer text-sm text-gray-700">
+                        <input type="radio" name="gender" value={g}
+                          checked={form.gender === g}
+                          onChange={() => setForm({ ...form, gender: g })}
+                          className="text-primary focus:ring-primary" />
+                        {g}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+                <div className="md:col-span-2 flex items-center gap-2">
+                  <input type="checkbox" id="isTop20" checked={!!form.isTop20}
+                    onChange={(e) => setForm({ ...form, isTop20: e.target.checked })}
+                    className="rounded border-gray-300 text-primary focus:ring-primary cursor-pointer" />
+                  <label htmlFor="isTop20" className="text-sm text-gray-700 cursor-pointer">
+                    Is Top 20 <span className="text-gray-400">(Tick if you got top 20 rank in your class)</span>
+                  </label>
+                </div>
+              </div>
+
+              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide pt-2">Academic Details</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {field('12th School Name', 'schoolName')}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">12th Subject</label>
+                  {(() => {
+                    const allSubjects = Object.values(SUBJECTS_BY_BOARD).flat();
+                    const isManual = form.school12Sub && !allSubjects.includes(form.school12Sub);
+                    const dropdownVal = isManual ? 'Other / Enter Manually' : form.school12Sub;
+                    return (
+                      <>
+                        <select value={dropdownVal}
+                          onChange={(e) => setForm({ ...form, school12Sub: e.target.value === 'Other / Enter Manually' ? '' : e.target.value })}
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary">
+                          <option value="">Select Subject</option>
+                          {Object.entries(SUBJECTS_BY_BOARD).map(([board, subjects]) => (
+                            <optgroup key={board} label={board}>
+                              {subjects.map((s) => <option key={s} value={s}>{s}</option>)}
+                            </optgroup>
+                          ))}
+                        </select>
+                        {(dropdownVal === 'Other / Enter Manually' || isManual) && (
+                          <input type="text" placeholder="Enter subject manually..."
+                            value={isManual ? form.school12Sub : ''}
+                            onChange={(e) => setForm({ ...form, school12Sub: e.target.value })}
+                            className="mt-2 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
+                        )}
+                      </>
+                    );
+                  })()}
+                </div>
+                {field('10th Percentage', 'persentage10', 'number')}
+                {field('11th Percentage', 'persentage11')}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Branch Name</label>
+                  <select value={form.branch} onChange={(e) => setForm({ ...form, branch: e.target.value })}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary">
+                    <option value="">Select Branch</option>
+                    {SSISM_BRANCHES.map((b) => <option key={b}>{b}</option>)}
+                  </select>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
 
         <div>
           <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Documents</p>

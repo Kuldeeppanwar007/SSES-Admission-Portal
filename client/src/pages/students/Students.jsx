@@ -76,19 +76,19 @@ function InterviewModal({ student, user, onClose, onSaved }) {
   const nextRound = history.length + 1;
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={onClose}>
+      <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-xl w-full sm:max-w-lg max-h-[92vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
 
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b">
+        <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b">
           <div>
-            <h3 className="font-bold text-orange-500 text-lg">Technical Interview Form</h3>
-            <p className="text-sm text-gray-600">Student Name - {student.name}</p>
+            <h3 className="font-bold text-primary text-lg">Technical Interview Form</h3>
+            <p className="text-sm text-gray-500">Student — {student.name}</p>
           </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl">×</button>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl leading-none">×</button>
         </div>
 
-        <form onSubmit={handleSubmit} className="px-6 py-4 space-y-5">
+        <form onSubmit={handleSubmit} className="px-4 sm:px-6 py-4 space-y-5">
 
           {/* Interview Metadata */}
           <div>
@@ -172,14 +172,14 @@ function InterviewModal({ student, user, onClose, onSaved }) {
             className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
 
           <button type="submit" disabled={loading}
-            className="w-full bg-orange-500 text-white py-2.5 rounded-lg font-semibold hover:bg-orange-600 disabled:opacity-60">
+            className="w-full bg-primary text-white py-2.5 rounded-lg font-semibold hover:bg-primary-dark disabled:opacity-60 transition-colors">
             {loading ? 'Saving...' : 'Submit'}
           </button>
         </form>
 
         {/* History */}
         {history.length > 0 && (
-          <div className="px-6 pb-6">
+          <div className="px-4 sm:px-6 pb-6">
             <p className="text-xs font-semibold text-gray-400 uppercase mb-3">Interview History</p>
             <div className="space-y-2">
               {history.map((h) => (
@@ -213,7 +213,7 @@ export default function Students() {
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [pages, setPages] = useState(1);
-  const [filters, setFilters] = useState({ track: '', status: '', search: '' });
+  const [filters, setFilters] = useState({ track: '', status: '', search: '', formSource: '' });
   const [loading, setLoading] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [selected, setSelected] = useState([]);
@@ -235,7 +235,7 @@ export default function Students() {
 
   useEffect(() => { fetchStudents(); }, [page, filters, tab]);
 
-  const switchTab = (t) => { setTab(t); setPage(1); setFilters({ track: '', status: '', search: '' }); setSelected([]); };
+  const switchTab = (t) => { setTab(t); setPage(1); setFilters({ track: '', status: '', search: '', formSource: '' }); setSelected([]); };
 
   const toggleSelect = (id) => setSelected((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
   const toggleAll = () => setSelected(selected.length === students.length ? [] : students.map((s) => s._id));
@@ -293,32 +293,31 @@ export default function Students() {
         <h2 className="text-xl md:text-2xl font-bold text-gray-800">
           Students <span className="text-gray-400 text-base">({total})</span>
         </h2>
-        <div className="flex gap-2 flex-wrap">
-          {/* Export button — always visible */}
+        <div className="grid grid-cols-4 gap-1.5 w-full md:w-auto md:flex md:gap-2">
           {selected.length > 0 ? (
             <button onClick={() => handleExport(selected)} disabled={exporting}
-              className="flex items-center gap-1.5 bg-primary text-white px-3 py-2 rounded-lg hover:bg-primary-dark transition-colors text-sm disabled:opacity-60">
-              <FiDownload size={14} /> Export ({selected.length})
+              className="flex items-center justify-center gap-0.5 bg-primary text-white py-1.5 rounded text-xs disabled:opacity-60">
+              <FiDownload size={11} /> Export ({selected.length})
             </button>
           ) : (
             <button onClick={() => handleExport([])} disabled={exporting}
-              className="flex items-center gap-1.5 bg-primary text-white px-3 py-2 rounded-lg hover:bg-primary-dark transition-colors text-sm disabled:opacity-60">
-              <FiDownload size={14} /> <span className="hidden sm:inline">{exporting ? 'Exporting...' : 'Export All'}</span>
+              className="flex items-center justify-center gap-0.5 bg-primary text-white py-1.5 rounded text-xs disabled:opacity-60">
+              <FiDownload size={11} /> Export
             </button>
           )}
           {!isDisabledTab && (
             <>
-              <label className="flex items-center gap-1.5 bg-primary text-white px-3 py-2 rounded-lg cursor-pointer hover:bg-primary-dark transition-colors text-sm">
-                <FiUpload size={14} /> <span className="hidden sm:inline">Bulk Upload</span>
+              <label className="flex items-center justify-center gap-0.5 bg-primary text-white py-1.5 rounded cursor-pointer text-xs">
+                <FiUpload size={11} /> Bulk Upload
                 <input type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleBulkUpload} />
               </label>
               <button onClick={handleDownloadTemplate}
-                className="flex items-center gap-1.5 bg-gray-100 text-gray-700 px-3 py-2 rounded-lg hover:bg-gray-200 transition-colors text-sm border border-gray-300">
-                <FiDownload size={14} /> <span className="hidden sm:inline">Sample Format</span>
+                className="flex items-center justify-center gap-0.5 bg-gray-100 text-gray-700 py-1.5 rounded text-xs border border-gray-300">
+                <FiDownload size={11} /> Sample
               </button>
               <button onClick={() => navigate('/students/add')}
-                className="flex items-center gap-1.5 bg-primary text-white px-3 py-2 rounded-lg hover:bg-primary-dark transition-colors text-sm">
-                <FiPlus size={14} /> <span className="hidden sm:inline">Add Student</span>
+                className="flex items-center justify-center gap-0.5 bg-primary text-white py-1.5 rounded text-xs">
+                <FiPlus size={11} /> Add
               </button>
             </>
           )}
@@ -367,6 +366,13 @@ export default function Students() {
               <option value="">All Status</option>
               {ACTIVE_STATUSES.map((s) => <option key={s}>{s}</option>)}
             </select>
+            <select value={filters.formSource} onChange={(e) => { setFilters({ ...filters, formSource: e.target.value }); setPage(1); }}
+              className="flex-1 min-w-32 border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none">
+              <option value="">All Forms</option>
+              <option value="btech">B.Tech (ITEG)</option>
+              <option value="ssism">SSISM</option>
+              <option value="manual">Manual</option>
+            </select>
           </div>
         )}
       </div>
@@ -398,7 +404,7 @@ export default function Students() {
                     <input type="checkbox" checked={allSelected} onChange={toggleAll}
                       className="rounded border-gray-300 text-primary focus:ring-primary cursor-pointer" />
                   </th>
-                  {['S.N.', 'Name', 'Father Name', 'Track', 'Mobile', 'Subject', 'Status', 'Actions'].map((h) => (
+                  {['S.N.', 'Name', 'Father Name', 'Track', 'Mobile', 'Form', 'Status', 'Actions'].map((h) => (
                     <th key={h} className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">{h}</th>
                   ))}
                 </tr>
@@ -417,14 +423,27 @@ export default function Students() {
                     <td className="px-4 py-3 text-gray-600">{s.fatherName}</td>
                     <td className="px-4 py-3 text-gray-600">{s.track}</td>
                     <td className="px-4 py-3 text-gray-600">{s.mobileNo}</td>
-                    <td className="px-4 py-3 text-gray-600">{s.subject}</td>
+                    <td className="px-4 py-3">
+                      {s.formSource && (
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                          s.formSource === 'btech' ? 'bg-blue-100 text-blue-700' :
+                          s.formSource === 'ssism' ? 'bg-purple-100 text-purple-700' :
+                          'bg-gray-100 text-gray-600'
+                        }`}>
+                          {s.formSource === 'btech' ? 'B.Tech' : s.formSource === 'ssism' ? 'SSISM' : 'Manual'}
+                        </span>
+                      )}
+                    </td>
                     <td className="px-4 py-3">
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${STATUS_COLORS[s.status]}`}>{s.status}</span>
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex gap-2">
                         <button onClick={(e) => { e.stopPropagation(); navigate(`/students/${s._id}/edit`); }} className="text-yellow-500 hover:text-yellow-700"><FiEdit2 /></button>
-                        <button onClick={(e) => { e.stopPropagation(); setInterviewStudent(s); }} className="text-blue-500 hover:text-blue-700" title="Take Interview"><FiClipboard size={14} /></button>
+                        <button onClick={(e) => { e.stopPropagation(); setInterviewStudent(s); }}
+                          className="flex items-center gap-1 text-xs text-white font-medium px-2.5 py-1.5 bg-primary hover:bg-primary-dark rounded-lg transition-colors">
+                          <FiClipboard size={12} /> Interview
+                        </button>
                         <button onClick={(e) => { e.stopPropagation(); handleExport([s._id]); }} className="text-primary hover:text-primary-dark" title="Export"><FiDownload size={14} /></button>
                       </div>
                     </td>
@@ -458,7 +477,15 @@ export default function Students() {
             <div className="grid grid-cols-2 gap-1 text-xs text-gray-500 mb-3">
               {s.track && <span>📍 {s.track}</span>}
               {s.mobileNo && <span>📞 {s.mobileNo}</span>}
-              {s.subject && <span>📚 {s.subject}</span>}
+              {s.formSource && (
+                <span className={`w-fit px-2 py-0.5 rounded-full font-medium ${
+                  s.formSource === 'btech' ? 'bg-blue-100 text-blue-700' :
+                  s.formSource === 'ssism' ? 'bg-purple-100 text-purple-700' :
+                  'bg-gray-100 text-gray-600'
+                }`}>
+                  {s.formSource === 'btech' ? 'B.Tech' : s.formSource === 'ssism' ? 'SSISM' : 'Manual'}
+                </span>
+              )}
             </div>
             <div className="flex gap-2 border-t border-gray-100 pt-2">
               <button onClick={(e) => { e.stopPropagation(); navigate(`/students/${s._id}/edit`); }}
@@ -466,7 +493,7 @@ export default function Students() {
                 <FiEdit2 size={13} /> Edit
               </button>
               <button onClick={(e) => { e.stopPropagation(); setInterviewStudent(s); }}
-                className="flex-1 flex items-center justify-center gap-1 text-xs text-white font-medium py-1.5 bg-blue-500 rounded-lg">
+                className="flex-1 flex items-center justify-center gap-1 text-xs text-white font-medium py-1.5 bg-primary hover:bg-primary-dark rounded-lg transition-colors">
                 <FiClipboard size={13} /> Interview
               </button>
               <button onClick={(e) => { e.stopPropagation(); handleExport([s._id]); }}

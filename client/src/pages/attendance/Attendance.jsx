@@ -157,23 +157,12 @@ export default function Attendance() {
             ) : (
               <div className="divide-y divide-gray-50">
                 {records.map(r => (
-                  <div key={r._id} className="flex items-center justify-between px-5 py-4 hover:bg-gray-50/60 transition-colors flex-wrap gap-3">
-                    <div>
-                      <p className="font-semibold text-gray-800 text-sm">{r.user?.name}</p>
-                      <p className="text-xs text-gray-400 mt-0.5">{r.user?.track}</p>
-                    </div>
-                    <div className="flex items-center gap-4 text-xs text-gray-600">
-                      <span className="flex items-center gap-1">
-                        <FiCalendar size={12} className="text-primary" /> {r.date}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <FiClock size={12} className="text-primary" /> {r.time}
-                      </span>
-                      <a href={`https://maps.google.com/?q=${r.latitude},${r.longitude}`}
-                        target="_blank" rel="noreferrer"
-                        className="flex items-center gap-1 text-emerald-600 font-semibold hover:underline">
-                        <FiMapPin size={12} /> View Location
-                      </a>
+                  <div key={r._id} className="px-4 py-3 hover:bg-gray-50/60 transition-colors">
+                    <div className="flex items-center justify-between mb-1">
+                      <div>
+                        <p className="font-semibold text-gray-800 text-sm">{r.user?.name}</p>
+                        <p className="text-xs text-gray-400">{r.user?.track}</p>
+                      </div>
                       {r.locationSource && (
                         <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
                           r.locationSource === 'GPS' ? 'bg-emerald-50 text-emerald-700' :
@@ -181,6 +170,19 @@ export default function Attendance() {
                           'bg-gray-100 text-gray-500'
                         }`}>{r.locationSource}</span>
                       )}
+                    </div>
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500 mt-1">
+                      <span className="flex items-center gap-1">
+                        <FiCalendar size={11} className="text-primary" /> {r.date}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <FiClock size={11} className="text-primary" /> {r.time}
+                      </span>
+                      <a href={`https://maps.google.com/?q=${r.latitude},${r.longitude}`}
+                        target="_blank" rel="noreferrer"
+                        className="flex items-center gap-1 text-emerald-600 font-semibold hover:underline">
+                        <FiMapPin size={11} /> View Location
+                      </a>
                     </div>
                   </div>
                 ))}
@@ -223,28 +225,49 @@ export default function Attendance() {
               <p className="text-center text-gray-400 py-12 text-sm">No data for this month.</p>
             ) : (
               <>
-                <div className="grid grid-cols-4 px-5 py-3 bg-gray-50 border-b border-gray-100 text-xs font-bold text-gray-500 uppercase tracking-wide">
-                  <span>Name</span><span>Track</span>
-                  <span className="text-center">Present / Days</span>
-                  <span className="text-right">Attendance %</span>
+                {/* Desktop table */}
+                <div className="hidden sm:block">
+                  <div className="grid grid-cols-4 px-5 py-3 bg-gray-50 border-b border-gray-100 text-xs font-bold text-gray-500 uppercase tracking-wide">
+                    <span>Name</span><span>Track</span>
+                    <span className="text-center">Present / Days</span>
+                    <span className="text-right">Attendance %</span>
+                  </div>
+                  <div className="divide-y divide-gray-50">
+                    {monthlyStats.sort((a, b) => b.pct - a.pct).map(s => (
+                      <div key={s.userId} className="grid grid-cols-4 items-center px-5 py-4 hover:bg-gray-50/60 transition-colors">
+                        <p className="text-sm font-semibold text-gray-800">{s.name}</p>
+                        <p className="text-xs text-gray-500">{s.track}</p>
+                        <div className="flex flex-col items-center gap-1">
+                          <span className="text-sm font-bold text-gray-700 tabular-nums">{s.present} / {s.total}</span>
+                          <div className="w-24 bg-gray-100 rounded-full h-1.5">
+                            <div className={`h-1.5 rounded-full transition-all duration-500 ${s.pct >= 75 ? 'bg-emerald-500' : s.pct >= 50 ? 'bg-amber-500' : 'bg-rose-500'}`}
+                              style={{ width: `${Math.min(s.pct, 100)}%` }} />
+                          </div>
+                        </div>
+                        <div className="flex justify-end">
+                          <span className={`text-xs font-bold px-2.5 py-1 rounded-full tabular-nums ${PCT_COLOR(s.pct)}`}>
+                            {s.pct}%
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-                <div className="divide-y divide-gray-50">
+                {/* Mobile cards */}
+                <div className="sm:hidden divide-y divide-gray-50">
                   {monthlyStats.sort((a, b) => b.pct - a.pct).map(s => (
-                    <div key={s.userId} className="grid grid-cols-4 items-center px-5 py-4 hover:bg-gray-50/60 transition-colors">
-                      <p className="text-sm font-semibold text-gray-800">{s.name}</p>
-                      <p className="text-xs text-gray-500">{s.track}</p>
-                      <div className="flex flex-col items-center gap-1">
-                        <span className="text-sm font-bold text-gray-700 tabular-nums">{s.present} / {s.total}</span>
-                        <div className="w-24 bg-gray-100 rounded-full h-1.5">
-                          <div className={`h-1.5 rounded-full transition-all duration-500 ${s.pct >= 75 ? 'bg-emerald-500' : s.pct >= 50 ? 'bg-amber-500' : 'bg-rose-500'}`}
+                    <div key={s.userId} className="px-4 py-3 flex items-center justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-gray-800 truncate">{s.name}</p>
+                        <p className="text-xs text-gray-400">{s.track} &bull; {s.present}/{s.total} days</p>
+                        <div className="w-full bg-gray-100 rounded-full h-1.5 mt-1.5">
+                          <div className={`h-1.5 rounded-full ${s.pct >= 75 ? 'bg-emerald-500' : s.pct >= 50 ? 'bg-amber-500' : 'bg-rose-500'}`}
                             style={{ width: `${Math.min(s.pct, 100)}%` }} />
                         </div>
                       </div>
-                      <div className="flex justify-end">
-                        <span className={`text-xs font-bold px-2.5 py-1 rounded-full tabular-nums ${PCT_COLOR(s.pct)}`}>
-                          {s.pct}%
-                        </span>
-                      </div>
+                      <span className={`text-xs font-bold px-2.5 py-1 rounded-full tabular-nums shrink-0 ${PCT_COLOR(s.pct)}`}>
+                        {s.pct}%
+                      </span>
                     </div>
                   ))}
                 </div>
@@ -297,57 +320,71 @@ export default function Attendance() {
               <p className="text-center text-gray-400 py-12 text-sm">No location data for selected filters.</p>
             ) : (
               <>
-                <div className="grid grid-cols-5 px-5 py-3 bg-gray-50 border-b border-gray-100 text-xs font-bold text-gray-500 uppercase tracking-wide">
-                  <span>Name</span>
-                  <span>Track</span>
-                  <span>Date</span>
-                  <span>Time</span>
-                  <span className="text-right">Status / Location</span>
+                {/* Desktop table */}
+                <div className="hidden sm:block">
+                  <div className="grid grid-cols-5 px-5 py-3 bg-gray-50 border-b border-gray-100 text-xs font-bold text-gray-500 uppercase tracking-wide">
+                    <span>Name</span><span>Track</span><span>Date</span><span>Time</span>
+                    <span className="text-right">Status / Location</span>
+                  </div>
+                  <div className="divide-y divide-gray-50">
+                    {(() => {
+                      const rows = selectedUser ? locationLogs : (() => {
+                        const seen = {};
+                        return locationLogs.filter(log => { const uid = log.user?._id; if (seen[uid]) return false; seen[uid] = true; return true; });
+                      })();
+                      return rows.map(log => (
+                        <div key={log._id} onClick={() => { if (!selectedUser) setSelectedUser(log.user?._id); }}
+                          className={`grid grid-cols-5 items-center px-5 py-3.5 transition-colors ${
+                            log.status === 'unavailable' ? 'bg-rose-50 hover:bg-rose-100' : 'hover:bg-gray-50/60'
+                          } ${!selectedUser ? 'cursor-pointer' : ''}`}>
+                          <p className="text-sm font-semibold text-gray-800">{log.user?.name}</p>
+                          <p className="text-xs text-gray-500">{log.user?.track}</p>
+                          <p className="text-xs text-gray-500">{formatDate(log.timestamp)}</p>
+                          <p className="text-xs text-gray-500 font-semibold">{formatTime(log.timestamp)}</p>
+                          <div className="flex items-center gap-2 justify-end">
+                            {log.status === 'unavailable' ? (
+                              <span className="text-xs px-2 py-0.5 rounded-full font-semibold bg-rose-100 text-rose-600">⚠️ Off</span>
+                            ) : (
+                              <>
+                                {log.accuracy > 0 && (
+                                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                                    log.accuracy <= 20 ? 'bg-emerald-50 text-emerald-700' : log.accuracy <= 50 ? 'bg-amber-50 text-amber-700' : 'bg-rose-50 text-rose-600'
+                                  }`}>±{Math.round(log.accuracy)}m</span>
+                                )}
+                                <a href={`https://maps.google.com/?q=${log.lat},${log.lng}`} target="_blank" rel="noreferrer"
+                                  className="flex items-center gap-1 text-emerald-600 text-xs font-semibold hover:underline">
+                                  <FiMapPin size={12} /> Map
+                                </a>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      ));
+                    })()}
+                  </div>
                 </div>
-                <div className="divide-y divide-gray-50">
-                  {/* All Users mode: show only latest ping per user */}
+                {/* Mobile cards */}
+                <div className="sm:hidden divide-y divide-gray-50">
                   {(() => {
                     const rows = selectedUser ? locationLogs : (() => {
                       const seen = {};
-                      return locationLogs.filter(log => {
-                        const uid = log.user?._id;
-                        if (seen[uid]) return false;
-                        seen[uid] = true;
-                        return true;
-                      });
+                      return locationLogs.filter(log => { const uid = log.user?._id; if (seen[uid]) return false; seen[uid] = true; return true; });
                     })();
                     return rows.map(log => (
-                      <div key={log._id}
-                        onClick={() => { if (!selectedUser) setSelectedUser(log.user?._id); }}
-                        className={`grid grid-cols-5 items-center px-5 py-3.5 transition-colors ${
-                          log.status === 'unavailable' ? 'bg-rose-50 hover:bg-rose-100' : 'hover:bg-gray-50/60'
-                        } ${!selectedUser ? 'cursor-pointer' : ''}`}>
-                        <p className="text-sm font-semibold text-gray-800">{log.user?.name}</p>
-                        <p className="text-xs text-gray-500">{log.user?.track}</p>
-                        <p className="text-xs text-gray-500">{formatDate(log.timestamp)}</p>
-                        <p className="text-xs text-gray-500 font-semibold">{formatTime(log.timestamp)}</p>
-                        <div className="flex items-center gap-2 justify-end">
+                      <div key={log._id} onClick={() => { if (!selectedUser) setSelectedUser(log.user?._id); }}
+                        className={`px-4 py-3 ${log.status === 'unavailable' ? 'bg-rose-50' : ''} ${!selectedUser ? 'cursor-pointer' : ''}`}>
+                        <div className="flex items-center justify-between mb-1">
+                          <p className="text-sm font-semibold text-gray-800">{log.user?.name}</p>
                           {log.status === 'unavailable' ? (
-                            <span className="text-xs px-2 py-0.5 rounded-full font-semibold bg-rose-100 text-rose-600">
-                              ⚠️ Location Off
-                            </span>
+                            <span className="text-xs px-2 py-0.5 rounded-full font-semibold bg-rose-100 text-rose-600">⚠️ Off</span>
                           ) : (
-                            <>
-                              {log.accuracy > 0 && (
-                                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                                  log.accuracy <= 20 ? 'bg-emerald-50 text-emerald-700' :
-                                  log.accuracy <= 50 ? 'bg-amber-50 text-amber-700' :
-                                  'bg-rose-50 text-rose-600'
-                                }`}>±{Math.round(log.accuracy)}m</span>
-                              )}
-                              <a href={`https://maps.google.com/?q=${log.lat},${log.lng}`}
-                                target="_blank" rel="noreferrer"
-                                className="flex items-center gap-1 text-emerald-600 text-xs font-semibold hover:underline">
-                                <FiMapPin size={12} /> Map
-                              </a>
-                            </>
+                            <a href={`https://maps.google.com/?q=${log.lat},${log.lng}`} target="_blank" rel="noreferrer"
+                              className="flex items-center gap-1 text-emerald-600 text-xs font-semibold">
+                              <FiMapPin size={12} /> Map
+                            </a>
                           )}
                         </div>
+                        <p className="text-xs text-gray-400">{log.user?.track} &bull; {formatDate(log.timestamp)} {formatTime(log.timestamp)}</p>
                       </div>
                     ));
                   })()}

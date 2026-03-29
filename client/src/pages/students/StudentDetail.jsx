@@ -65,23 +65,25 @@ export default function StudentDetail() {
 
   return (
     <div className="px-2">
-      <div className="flex items-center gap-3 mb-6">
+      <div className="flex flex-wrap items-center gap-2 mb-6">
         <button onClick={() => navigate('/students')} className="flex items-center gap-1 text-gray-500 hover:text-gray-700 text-sm">
           <FiArrowLeft size={16} /> Back
         </button>
-        <h2 className="text-2xl font-bold text-gray-800">Student Details</h2>
-        <button onClick={() => navigate(`/students/${id}/edit`)}
-          className="ml-auto flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg text-sm hover:bg-primary-dark">
-          <FiEdit2 size={14} /> Edit
-        </button>
-        <button onClick={handleExport} disabled={exporting}
-          className="flex items-center gap-2 border border-orange-200 text-primary px-4 py-2 rounded-lg text-sm hover:bg-orange-50 disabled:opacity-60">
-          <FiDownload size={14} /> {exporting ? 'Exporting...' : 'Export'}
-        </button>
-        <button onClick={handleViewHistory}
-          className="flex items-center gap-2 border border-gray-300 text-gray-600 px-4 py-2 rounded-lg text-sm hover:bg-gray-50">
-          <FiClock size={14} /> History
-        </button>
+        <h2 className="text-xl font-bold text-gray-800">Student Details</h2>
+        <div className="ml-auto flex items-center gap-2 flex-wrap">
+          <button onClick={() => navigate(`/students/${id}/edit`)}
+            className="flex items-center gap-1.5 bg-primary text-white px-3 py-1.5 rounded-lg text-sm hover:bg-primary-dark">
+            <FiEdit2 size={13} /> Edit
+          </button>
+          <button onClick={handleExport} disabled={exporting}
+            className="flex items-center gap-1.5 border border-orange-200 text-primary px-3 py-1.5 rounded-lg text-sm hover:bg-orange-50 disabled:opacity-60">
+            <FiDownload size={13} /> {exporting ? 'Exporting...' : 'Export'}
+          </button>
+          <button onClick={handleViewHistory}
+            className="flex items-center gap-1.5 border border-gray-300 text-gray-600 px-3 py-1.5 rounded-lg text-sm hover:bg-gray-50">
+            <FiClock size={13} /> History
+          </button>
+        </div>
       </div>
 
       <div className="bg-white rounded-xl shadow p-6 mb-4">
@@ -149,9 +151,9 @@ export default function StudentDetail() {
             </select>
             <input placeholder="Remarks (optional)" value={statusForm.remarks}
               onChange={(e) => setStatusForm({ ...statusForm, remarks: e.target.value })}
-              className="flex-1 min-w-48 border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none" />
+              className="flex-1 min-w-0 border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none" />
             <button onClick={handleStatusUpdate} disabled={updating}
-              className="bg-primary text-white px-5 py-2 rounded-lg text-sm hover:bg-primary-dark disabled:opacity-60">
+              className="bg-primary text-white px-5 py-2 rounded-lg text-sm hover:bg-primary-dark disabled:opacity-60 w-full sm:w-auto">
               {updating ? 'Updating...' : 'Update'}
             </button>
           </div>

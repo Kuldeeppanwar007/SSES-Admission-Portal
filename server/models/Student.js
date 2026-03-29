@@ -28,6 +28,55 @@ const studentSchema = new mongoose.Schema({
   callingPointsAwarded: { type: Boolean, default: false },
   awardedFunnelStages: [{ type: String }],
   addedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+
+  // --- Self Registration Fields (from external forms) ---
+  // Common to both forms
+  email:        { type: String, default: null },
+  schoolName:   { type: String, default: null },
+  district:     { type: String, default: null },
+  village:      { type: String, default: null },
+  // B.Tech form specific
+  whatsappNumber: { type: String, default: null },
+  priority1:    { type: String, default: null },
+  priority2:    { type: String, default: null },
+  priority3:    { type: String, default: null },
+  jeeScore:     { type: Number, default: null },
+  // SSISM form specific
+  branch:       { type: String, default: null },
+  year:         { type: String, default: null },
+  joinBatch:    { type: Number, default: null },
+  feesScheme:   { type: String, default: null },
+  category:     { type: String, default: null },
+  gender:       { type: String, default: null },
+  school12Sub:  { type: String, default: null },
+  // Optional in both
+  persentage12: { type: Number, default: null },
+  persentage10: { type: Number, default: null },
+  persentage11: { type: String, default: null },
+  rollNumber12: { type: Number, default: null },
+  rollNumber10: { type: Number, default: null },
+  dob:          { type: String, default: null },
+  aadharNo:     { type: String, default: null },
+  fatherOccupation: { type: String, default: null },
+  fatherIncome: { type: Number, default: null },
+  fatherContactNumber: { type: String, default: null },
+  pincode:      { type: Number, default: null },
+  tehsil:       { type: String, default: null },
+  passout12:    { type: String, default: null },
+  linkSource:   { type: String, default: null },
+  trackName:    { type: String, default: null },
+  // Payment / Registration
+  applicationType:      { type: String, default: null },
+  paymentStatus:        { type: String, enum: ['NO_PAYMENT_REQUIRED', 'INITIATED', 'SUCCESS', 'FAILED', null], default: null },
+  transactionId:        { type: String, default: null },
+  merchantTransactionId:{ type: String, default: null },
+  regFees:              { type: Number, default: null },
+  regFeesStatus:        { type: String, enum: ['Paid', 'Unpaid'], default: 'Unpaid' },
+  regFeeDate:           { type: Date, default: null },
+  regFeeReceiptNo:      { type: String, default: null },
+  receiptS3Url:         { type: String, default: null },
+  externalId:           { type: String, default: null }, // id from external SQL DB
+  formSource:           { type: String, enum: ['btech', 'ssism', 'manual', null], default: null },
 }, { timestamps: true });
 
 module.exports = mongoose.model('Student', studentSchema);

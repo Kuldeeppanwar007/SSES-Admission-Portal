@@ -27,10 +27,10 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-white">
-      <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-8 w-full max-w-md">
+    <div className="min-h-screen flex items-center justify-center bg-white px-4 py-8">
+      <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-6 w-full max-w-md">
         <div className="text-center mb-8">
-          <img src={logo} alt="SSES Logo" className="h-24 object-contain mx-auto mb-3" />
+          <img src={logo} alt="SSES Logo" className="h-16 object-contain mx-auto mb-2" />
           <p className="text-gray-500 text-base font-medium">Admission Portal</p>
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">

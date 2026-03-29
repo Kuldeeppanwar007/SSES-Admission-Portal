@@ -5,10 +5,13 @@ const { upload } = require('../config/cloudinary');
 const { protect, authorizeRoles } = require('../middleware/authMiddleware');
 const {
   getStudents, getStudent, addStudent, updateStudent,
-  deleteStudent, updateStatus, getStatusHistory, bulkUpload, downloadTemplate, exportStudents, getStats, getTrackStats,
+  deleteStudent, updateStatus, getStatusHistory, bulkUpload, downloadTemplate, exportStudents, getStats, getTrackStats, selfRegister,
 } = require('../controllers/studentController');
 
 const memStorage = multer({ storage: multer.memoryStorage() });
+
+// Public self-registration endpoint (no auth required)
+router.post('/self-register', selfRegister);
 
 router.get('/stats', protect, getStats);
 router.get('/track-stats', protect, async (req, res, next) => {
