@@ -296,28 +296,28 @@ export default function Students() {
         <div className="grid grid-cols-4 gap-1.5 w-full md:w-auto md:flex md:gap-2">
           {selected.length > 0 ? (
             <button onClick={() => handleExport(selected)} disabled={exporting}
-              className="flex items-center justify-center gap-0.5 bg-primary text-white py-1.5 rounded text-xs disabled:opacity-60">
-              <FiDownload size={11} /> Export ({selected.length})
+              className="flex items-center justify-center gap-0.5 md:gap-1.5 bg-primary text-white py-1.5 md:px-3 md:py-2 rounded md:rounded-lg text-xs md:text-sm disabled:opacity-60">
+              <FiDownload size={11} className="md:hidden" /><FiDownload size={14} className="hidden md:block" /> <span>Export ({selected.length})</span>
             </button>
           ) : (
             <button onClick={() => handleExport([])} disabled={exporting}
-              className="flex items-center justify-center gap-0.5 bg-primary text-white py-1.5 rounded text-xs disabled:opacity-60">
-              <FiDownload size={11} /> Export
+              className="flex items-center justify-center gap-0.5 md:gap-1.5 bg-primary text-white py-1.5 md:px-3 md:py-2 rounded md:rounded-lg text-xs md:text-sm disabled:opacity-60">
+              <FiDownload size={11} className="md:hidden" /><FiDownload size={14} className="hidden md:block" /> <span>{exporting ? 'Exporting...' : 'Export All'}</span>
             </button>
           )}
           {!isDisabledTab && (
             <>
-              <label className="flex items-center justify-center gap-0.5 bg-primary text-white py-1.5 rounded cursor-pointer text-xs">
-                <FiUpload size={11} /> Bulk Upload
+              <label className="flex items-center justify-center gap-0.5 md:gap-1.5 bg-primary text-white py-1.5 md:px-3 md:py-2 rounded md:rounded-lg cursor-pointer text-xs md:text-sm">
+                <FiUpload size={11} className="md:hidden" /><FiUpload size={14} className="hidden md:block" /> <span>Bulk Upload</span>
                 <input type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleBulkUpload} />
               </label>
               <button onClick={handleDownloadTemplate}
-                className="flex items-center justify-center gap-0.5 bg-gray-100 text-gray-700 py-1.5 rounded text-xs border border-gray-300">
-                <FiDownload size={11} /> Sample
+                className="flex items-center justify-center gap-0.5 md:gap-1.5 bg-gray-100 text-gray-700 py-1.5 md:px-3 md:py-2 rounded md:rounded-lg text-xs md:text-sm border border-gray-300">
+                <FiDownload size={11} className="md:hidden" /><FiDownload size={14} className="hidden md:block" /> <span>Sample</span>
               </button>
               <button onClick={() => navigate('/students/add')}
-                className="flex items-center justify-center gap-0.5 bg-primary text-white py-1.5 rounded text-xs">
-                <FiPlus size={11} /> Add
+                className="flex items-center justify-center gap-0.5 md:gap-1.5 bg-primary text-white py-1.5 md:px-3 md:py-2 rounded md:rounded-lg text-xs md:text-sm">
+                <FiPlus size={11} className="md:hidden" /><FiPlus size={14} className="hidden md:block" /> <span className="md:hidden">Add</span><span className="hidden md:inline">Add Student</span>
               </button>
             </>
           )}

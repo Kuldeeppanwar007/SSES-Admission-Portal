@@ -4,7 +4,7 @@ import { Capacitor } from '@capacitor/core';
 const isNative = Capacitor.isNativePlatform();
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'https://sses-admission-portal.onrender.com/api',
+  baseURL: import.meta.env.VITE_API_URL || 'https://sses-admission-portal-1.onrender.com/api',
   withCredentials: false,
 });
 
@@ -39,7 +39,7 @@ api.interceptors.response.use(
       isRefreshing = true;
       try {
         const { data } = await axios.post(
-          `${import.meta.env.VITE_API_URL || 'https://sses-admission-portal.onrender.com/api'}/auth/refresh`,
+          `${import.meta.env.VITE_API_URL || 'https://sses-admission-portal-1.onrender.com/api'}/auth/refresh`,
           {}, { withCredentials: true }
         );
         const user = JSON.parse(localStorage.getItem('sses_user') || '{}');
