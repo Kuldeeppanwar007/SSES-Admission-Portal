@@ -12,8 +12,13 @@
       "backgroundColor": "#ffffff"
     },
     "SplashScreen": {
-      "launchShowDuration": 1500,
-      "backgroundColor": "#ffffff"
+      "launchShowDuration": 2500,
+      "launchAutoHide": true,
+      "backgroundColor": "#1e3a8a",
+      "androidSplashResourceName": "splash",
+      "showSpinner": false,
+      "splashFullScreen": true,
+      "splashImmersive": true
     }
   }
 }

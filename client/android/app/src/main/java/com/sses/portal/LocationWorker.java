@@ -12,6 +12,8 @@ import com.google.android.gms.location.Priority;
 import com.google.android.gms.tasks.Tasks;
 import com.google.android.gms.tasks.CancellationTokenSource;
 import org.json.JSONObject;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
@@ -39,7 +41,8 @@ public class LocationWorker extends Worker {
             .getSharedPreferences(PREFS, Context.MODE_PRIVATE);
         String token  = prefs.getString("token",  null);
         String apiUrl = prefs.getString("apiUrl", null);
-        if (token == null || apiUrl == null) return Result.failure();
+        if (apiUrl == null) return Result.failure();
+        if (token == null) return Result.failure();
 
         try {
             FusedLocationProviderClient client =
@@ -52,17 +55,17 @@ public class LocationWorker extends Worker {
             );
 
             if (location == null) {
-                sendPing(token, apiUrl, null, -1, "unavailable");
+                sendPingWithRefresh(apiUrl, null, -1, "unavailable");
                 showLocationOffNotif();
                 return Result.success();
             }
 
             dismissLocationOffNotif();
-            sendPing(token, apiUrl, location, location.hasAccuracy() ? location.getAccuracy() : -1, "ok");
+            sendPingWithRefresh(apiUrl, location, location.hasAccuracy() ? location.getAccuracy() : -1, "ok");
             return Result.success();
 
         } catch (SecurityException e) {
-            sendPing(token, apiUrl, null, -1, "unavailable");
+            sendPingWithRefresh(apiUrl, null, -1, "unavailable");
             return Result.success();
         } catch (Exception e) {
             e.printStackTrace();
@@ -70,18 +73,12 @@ public class LocationWorker extends Worker {
         }
     }
 
-    private void sendPing(String token, String apiUrl, Location location, float accuracy, String status) {
-        HttpURLConnection conn = null;
-        try {
-            URL url = new URL(apiUrl + "/attendance/location");
-            conn = (HttpURLConnection) url.openConnection();
-            conn.setRequestMethod("POST");
-            conn.setRequestProperty("Content-Type", "application/json");
-            conn.setRequestProperty("Authorization", "Bearer " + token);
-            conn.setConnectTimeout(15000);
-            conn.setReadTimeout(15000);
-            conn.setDoOutput(true);
+    private void sendPingWithRefresh(String apiUrl, Location location, float accuracy, String status) {
+        SharedPreferences prefs = getApplicationContext().getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+        String token = prefs.getString("token", null);
+        if (token == null) return;
 
+        try {
             JSONObject body = new JSONObject();
             body.put("status", status);
             body.put("timestamp", System.currentTimeMillis());
@@ -91,16 +88,76 @@ public class LocationWorker extends Worker {
                 body.put("accuracy", accuracy);
             }
 
+            int code = doPost(apiUrl + "/attendance/location", token, body);
+            if (code == 401) {
+                String newToken = refreshAccessToken(apiUrl, prefs);
+                if (newToken != null) doPost(apiUrl + "/attendance/location", newToken, body);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private int doPost(String urlStr, String token, JSONObject body) {
+        HttpURLConnection conn = null;
+        try {
+            URL url = new URL(urlStr);
+            conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("POST");
+            conn.setRequestProperty("Content-Type", "application/json");
+            conn.setRequestProperty("Authorization", "Bearer " + token);
+            conn.setConnectTimeout(15000);
+            conn.setReadTimeout(15000);
+            conn.setDoOutput(true);
             byte[] data = body.toString().getBytes(StandardCharsets.UTF_8);
             conn.setFixedLengthStreamingMode(data.length);
             OutputStream os = conn.getOutputStream();
             os.write(data); os.flush(); os.close();
-            conn.getResponseCode();
+            return conn.getResponseCode();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return -1;
+        } finally {
+            if (conn != null) conn.disconnect();
+        }
+    }
+
+    private String refreshAccessToken(String apiUrl, SharedPreferences prefs) {
+        String refreshToken = prefs.getString("refreshToken", null);
+        if (refreshToken == null) return null;
+        HttpURLConnection conn = null;
+        try {
+            URL url = new URL(apiUrl + "/auth/refresh");
+            conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("POST");
+            conn.setRequestProperty("Content-Type", "application/json");
+            conn.setConnectTimeout(15000);
+            conn.setReadTimeout(15000);
+            conn.setDoOutput(true);
+            JSONObject body = new JSONObject();
+            body.put("refreshToken", refreshToken);
+            byte[] data = body.toString().getBytes(StandardCharsets.UTF_8);
+            conn.setFixedLengthStreamingMode(data.length);
+            OutputStream os = conn.getOutputStream();
+            os.write(data); os.flush(); os.close();
+            if (conn.getResponseCode() == 200) {
+                BufferedReader br = new BufferedReader(new InputStreamReader(conn.getInputStream(), StandardCharsets.UTF_8));
+                StringBuilder sb = new StringBuilder();
+                String line;
+                while ((line = br.readLine()) != null) sb.append(line);
+                br.close();
+                JSONObject resp = new JSONObject(sb.toString());
+                String newAccessToken  = resp.getString("token");
+                String newRefreshToken = resp.optString("refreshToken", refreshToken);
+                prefs.edit().putString("token", newAccessToken).putString("refreshToken", newRefreshToken).apply();
+                return newAccessToken;
+            }
         } catch (Exception e) {
             e.printStackTrace();
         } finally {
             if (conn != null) conn.disconnect();
         }
+        return null;
     }
 
     private void showLocationOffNotif() {

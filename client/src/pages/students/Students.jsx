@@ -414,7 +414,7 @@ export default function Students() {
                   <tr><td colSpan={9} className="text-center py-10 text-gray-400">No students found</td></tr>
                 ) : students.map((s, i) => (
                   <tr key={s._id} onClick={() => navigate(`/students/${s._id}`)} className={`hover:bg-gray-50 transition-colors cursor-pointer ${selected.includes(s._id) ? 'bg-orange-50/50' : ''}`}>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                       <input type="checkbox" checked={selected.includes(s._id)} onChange={() => toggleSelect(s._id)}
                         className="rounded border-gray-300 text-primary focus:ring-primary cursor-pointer" />
                     </td>
@@ -465,7 +465,8 @@ export default function Students() {
           <div key={s._id} onClick={() => navigate(`/students/${s._id}`)} className={`bg-white rounded-xl shadow p-4 cursor-pointer ${selected.includes(s._id) ? 'ring-2 ring-primary' : ''}`}>
             <div className="flex items-start justify-between mb-2">
               <div className="flex items-start gap-2">
-                <input type="checkbox" checked={selected.includes(s._id)} onChange={() => toggleSelect(s._id)}
+                <input type="checkbox" checked={selected.includes(s._id)} onChange={(e) => { e.stopPropagation(); toggleSelect(s._id); }}
+                  onClick={(e) => e.stopPropagation()}
                   className="mt-1 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer" />
                 <div>
                   <p className="font-semibold text-gray-800">{(page - 1) * 10 + i + 1}. {s.name}</p>
