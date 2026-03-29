@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import api from '../../api/axios';
 import toast from 'react-hot-toast';
 import useAuthStore from '../../store/authStore';
-import { FiUsers, FiFileText, FiCheckCircle, FiAward, FiXCircle, FiTarget, FiSlash, FiChevronDown, FiGift, FiClock } from 'react-icons/fi';
+import { FiUsers, FiFileText, FiAward, FiXCircle, FiTarget, FiSlash, FiChevronDown, FiGift, FiClock } from 'react-icons/fi';
 
 const SUBJECT_COLORS = {
   'B.Tech': 'bg-blue-100 text-blue-700',
@@ -16,7 +17,6 @@ const SUBJECT_COLORS = {
 const STAT_META = [
   { key: 'total',    label: 'Total Students', icon: FiUsers,       iconBg: 'bg-blue-100',    iconColor: 'text-blue-500',   text: 'text-blue-600' },
   { key: 'applied',  label: 'Applied',         icon: FiFileText,    iconBg: 'bg-amber-100',   iconColor: 'text-amber-500',  text: 'text-amber-600' },
-  { key: 'verified', label: 'Verified',         icon: FiCheckCircle, iconBg: 'bg-violet-100',  iconColor: 'text-violet-500', text: 'text-violet-600' },
   { key: 'admitted', label: 'Admitted',         icon: FiAward,       iconBg: 'bg-emerald-100', iconColor: 'text-emerald-500',text: 'text-emerald-600' },
   { key: 'rejected', label: 'Rejected',         icon: FiXCircle,     iconBg: 'bg-rose-100',    iconColor: 'text-rose-500',   text: 'text-rose-600' },
   { key: 'disabled', label: 'Disabled',         icon: FiSlash,       iconBg: 'bg-gray-100',    iconColor: 'text-gray-400',   text: 'text-gray-500' },
@@ -183,6 +183,7 @@ function LeaderboardSection({ stats, user }) {
 
 export default function Dashboard() {
   const { user } = useAuthStore();
+  const navigate = useNavigate();
   const [stats, setStats] = useState(null);
   const [bonusHistory, setBonusHistory] = useState([]);
   const [distributing, setDistributing] = useState(false);
@@ -224,18 +225,30 @@ export default function Dashboard() {
       </div>
 
       {/* Stat Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
-        {STAT_META.map(({ key, label, icon: Icon, iconBg, iconColor, text }) => (
-          <div key={key} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex flex-col gap-3 hover:shadow-md transition-shadow">
-            <div className={`w-10 h-10 rounded-xl ${iconBg} flex items-center justify-center`}>
-              <Icon size={18} className={iconColor} />
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+        {STAT_META.map(({ key, label, icon: Icon, iconBg, iconColor, text }) => {
+          const isClickable = user?.role === 'admin';
+          const href = key === 'disabled'
+            ? '/students?tab=disabled'
+            : key === 'total'
+            ? '/students'
+            : `/students?status=${key.charAt(0).toUpperCase() + key.slice(1)}`;
+          return (
+            <div key={key}
+              onClick={() => isClickable && navigate(href)}
+              className={`bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex flex-col gap-3 hover:shadow-md transition-shadow ${
+                isClickable ? 'cursor-pointer hover:border-orange-200' : ''
+              }`}>
+              <div className={`w-10 h-10 rounded-xl ${iconBg} flex items-center justify-center`}>
+                <Icon size={18} className={iconColor} />
+              </div>
+              <div>
+                <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">{label}</p>
+                <p className={`text-3xl font-bold mt-0.5 ${text}`}>{stats[key] ?? 0}</p>
+              </div>
             </div>
-            <div>
-              <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">{label}</p>
-              <p className={`text-3xl font-bold mt-0.5 ${text}`}>{stats[key] ?? 0}</p>
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Points Table */}
@@ -327,9 +340,14 @@ export default function Dashboard() {
               const totalAdmitted = subjects.reduce((s, x) => s + x.admitted, 0);
               const pct = totalTarget > 0 ? Math.round((totalAdmitted / totalTarget) * 100) : 0;
               const pctColor = pct >= 75 ? 'bg-emerald-500' : pct >= 40 ? 'bg-amber-500' : 'bg-rose-500';
+              const isClickable = user?.role === 'admin';
 
               return (
-                <div key={track} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden hover:shadow-md transition-shadow">
+                <div key={track}
+                  onClick={() => isClickable && navigate(`/admin-track/${track}`)}
+                  className={`bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden hover:shadow-md transition-shadow ${
+                    isClickable ? 'cursor-pointer hover:border-orange-200' : ''
+                  }`}>
                   {/* Card Header — same as Targets page */}
                   <div className="px-5 py-4 bg-gradient-to-r from-gray-50 to-white border-b border-gray-100 flex items-center justify-between">
                     <div>

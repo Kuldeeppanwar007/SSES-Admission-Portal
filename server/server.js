@@ -5,6 +5,7 @@ const cookieParser = require('cookie-parser');
 const rateLimit = require('express-rate-limit');
 const connectDB = require('./config/db');
 const { scheduleWeeklyBonus } = require('./utils/weeklyBonus');
+const { scheduleFollowupReminders } = require('./utils/followupReminder');
 
 dotenv.config();
 connectDB();
@@ -48,6 +49,7 @@ app.use('/api/users', require('./routes/userRoutes'));
 app.use('/api/targets', require('./routes/targetRoutes'));
 app.use('/api/attendance', require('./routes/attendanceRoutes'));
 app.use('/api/interviews', require('./routes/interviewRoutes'));
+app.use('/api/notifications', require('./routes/notificationRoutes'));
 
 app.get('/', (req, res) => res.send('SSES Admission Portal API Running'));
 
@@ -60,4 +62,5 @@ const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
   scheduleWeeklyBonus();
+  scheduleFollowupReminders();
 });

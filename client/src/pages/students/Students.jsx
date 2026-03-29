@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import api from '../../api/axios';
 import { TRACKS, STATUSES, STATUS_COLORS } from '../../utils/constants';
 import useAuthStore from '../../store/authStore';
 import toast from 'react-hot-toast';
 import { FiPlus, FiUpload, FiSearch, FiEdit2, FiDownload, FiFilter, FiSlash, FiClipboard } from 'react-icons/fi';
 import DatePicker from '../../components/DatePicker';
+import { isOnline, cacheStudents, getCachedStudents } from '../../utils/offlineQueue';
 
 const RATING = [
   { value: 1, label: '1. Very Weak' },
@@ -208,14 +209,20 @@ const ACTIVE_STATUSES = STATUSES.filter((s) => s !== 'Disabled');
 export default function Students() {
   const { user } = useAuthStore();
   const navigate = useNavigate();
-  const [tab, setTab] = useState('active');
+  const [searchParams] = useSearchParams();
+  const [tab, setTab] = useState(() => searchParams.get('tab') || 'active');
   const [students, setStudents] = useState([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [pages, setPages] = useState(1);
-  const [filters, setFilters] = useState({ track: '', status: '', search: '', formSource: '' });
+  const [filters, setFilters] = useState({
+    track: searchParams.get('track') || '',
+    status: searchParams.get('status') || '',
+    search: '',
+    formSource: '',
+  });
   const [loading, setLoading] = useState(false);
-  const [showFilters, setShowFilters] = useState(false);
+  const [showFilters, setShowFilters] = useState(!!(searchParams.get('track') || searchParams.get('status')));
   const [selected, setSelected] = useState([]);
   const [exporting, setExporting] = useState(false);
   const [interviewStudent, setInterviewStudent] = useState(null);
@@ -223,12 +230,23 @@ export default function Students() {
   const fetchStudents = async () => {
     setLoading(true);
     try {
+      if (!isOnline()) {
+        const cached = getCachedStudents();
+        if (cached) {
+          setStudents(cached.data.students);
+          setTotal(cached.data.total);
+          setPages(cached.data.pages);
+          toast('Offline — cached data dikh raha hai', { icon: '📶' });
+        }
+        return;
+      }
       const params = { page, limit: 10, ...filters, ...(tab === 'disabled' ? { status: 'Disabled' } : {}) };
       const { data } = await api.get('/students', { params });
       setStudents(data.students);
       setTotal(data.total);
       setPages(data.pages);
       setSelected([]);
+      if (page === 1 && tab === 'active') cacheStudents(data); // sirf first page cache karo
     } catch { toast.error('Failed to load students'); }
     finally { setLoading(false); }
   };
@@ -404,14 +422,14 @@ export default function Students() {
                     <input type="checkbox" checked={allSelected} onChange={toggleAll}
                       className="rounded border-gray-300 text-primary focus:ring-primary cursor-pointer" />
                   </th>
-                  {['S.N.', 'Name', 'Father Name', 'Track', 'Mobile', 'Form', 'Status', 'Actions'].map((h) => (
+                  {['S.N.', 'Name', 'Father Name', 'Track', 'Mobile', 'Form', 'Status', 'Interview', 'Actions'].map((h) => (
                     <th key={h} className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {students.length === 0 ? (
-                  <tr><td colSpan={9} className="text-center py-10 text-gray-400">No students found</td></tr>
+                  <tr><td colSpan={10} className="text-center py-10 text-gray-400">No students found</td></tr>
                 ) : students.map((s, i) => (
                   <tr key={s._id} onClick={() => navigate(`/students/${s._id}`)} className={`hover:bg-gray-50 transition-colors cursor-pointer ${selected.includes(s._id) ? 'bg-orange-50/50' : ''}`}>
                     <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
@@ -438,12 +456,14 @@ export default function Students() {
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${STATUS_COLORS[s.status]}`}>{s.status}</span>
                     </td>
                     <td className="px-4 py-3">
+                      <button onClick={(e) => { e.stopPropagation(); setInterviewStudent(s); }}
+                        className="flex items-center gap-1 text-xs text-white font-medium px-2.5 py-1.5 bg-primary hover:bg-primary-dark rounded-lg transition-colors">
+                        <FiClipboard size={12} /> Interview
+                      </button>
+                    </td>
+                    <td className="px-4 py-3">
                       <div className="flex gap-2">
                         <button onClick={(e) => { e.stopPropagation(); navigate(`/students/${s._id}/edit`); }} className="text-yellow-500 hover:text-yellow-700"><FiEdit2 /></button>
-                        <button onClick={(e) => { e.stopPropagation(); setInterviewStudent(s); }}
-                          className="flex items-center gap-1 text-xs text-white font-medium px-2.5 py-1.5 bg-primary hover:bg-primary-dark rounded-lg transition-colors">
-                          <FiClipboard size={12} /> Interview
-                        </button>
                         <button onClick={(e) => { e.stopPropagation(); handleExport([s._id]); }} className="text-primary hover:text-primary-dark" title="Export"><FiDownload size={14} /></button>
                       </div>
                     </td>

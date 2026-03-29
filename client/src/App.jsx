@@ -1,5 +1,8 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
+import toast from 'react-hot-toast';
+import { useEffect } from 'react';
+import { setupOfflineSync } from './utils/offlineQueue';
 import Layout from './components/layout/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
 import Login from './pages/auth/Login';
@@ -14,6 +17,11 @@ import Targets from './pages/targets/Targets';
 import Attendance from './pages/attendance/Attendance';
 
 export default function App() {
+  useEffect(() => {
+    setupOfflineSync(({ synced }) => {
+      toast.success(`${synced} pending action${synced > 1 ? 's' : ''} sync ho gaye!`);
+    });
+  }, []);
   return (
     <BrowserRouter>
       <Toaster position="top-right" />
