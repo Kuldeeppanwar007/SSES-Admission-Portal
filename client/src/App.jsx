@@ -5,6 +5,7 @@ import { useEffect } from 'react';
 import { setupOfflineSync } from './utils/offlineQueue';
 import Layout from './components/layout/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
+import PermissionGate from './components/PermissionGate';
 import Login from './pages/auth/Login';
 import Dashboard from './pages/dashboard/Dashboard';
 import TrackDashboard from './pages/dashboard/TrackDashboard';
@@ -23,6 +24,7 @@ export default function App() {
     });
   }, []);
   return (
+    <PermissionGate>
     <BrowserRouter>
       <Toaster position="top-right" />
       <Routes>
@@ -62,5 +64,6 @@ export default function App() {
         </Route>
       </Routes>
     </BrowserRouter>
+    </PermissionGate>
   );
 }
