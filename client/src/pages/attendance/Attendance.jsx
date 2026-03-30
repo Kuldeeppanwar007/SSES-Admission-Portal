@@ -21,6 +21,11 @@ const formatDate = (ts) => new Date(ts).toLocaleDateString('en-IN');
 export default function Attendance() {
   const [tab, setTab] = useState('records');
 
+  // Day View modal
+  const [dvModal, setDvModal] = useState(null); // { userId, name, month }
+  const [dvData, setDvData] = useState(null);
+  const [loadingDv, setLoadingDv] = useState(false);
+
   // Records tab
   const [records, setRecords] = useState([]);
   const [loadingRec, setLoadingRec] = useState(false);
@@ -66,9 +71,34 @@ export default function Attendance() {
 
   const fetchTrackUsers = useCallback(() => {
     api.get('/users?role=track_incharge')
-      .then(r => setTrackUsers(r.data?.users || r.data || []))
+      .then(r => { setTrackUsers(r.data?.users || r.data || []); })
       .catch(() => {});
   }, []);
+
+  const openDayView = (userId, name) => {
+    setDvModal({ userId, name, month });
+    setDvData(null);
+    setLoadingDv(true);
+    api.get(`/attendance/day-view?userId=${userId}&month=${month}`)
+      .then(r => setDvData(r.data))
+      .catch(() => toast.error('Failed to load day view'))
+      .finally(() => setLoadingDv(false));
+  };
+
+  const changeDvMonth = (dir) => {
+    setDvModal(prev => {
+      const [y, m] = prev.month.split('-').map(Number);
+      const d = new Date(y, m - 1 + dir, 1);
+      const newMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      setDvData(null);
+      setLoadingDv(true);
+      api.get(`/attendance/day-view?userId=${prev.userId}&month=${newMonth}`)
+        .then(r => setDvData(r.data))
+        .catch(() => toast.error('Failed to load day view'))
+        .finally(() => setLoadingDv(false));
+      return { ...prev, month: newMonth };
+    });
+  };
 
   const fetchLocationLogs = useCallback(() => {
     setLoadingLogs(true);
@@ -227,14 +257,15 @@ export default function Attendance() {
               <>
                 {/* Desktop table */}
                 <div className="hidden sm:block">
-                  <div className="grid grid-cols-4 px-5 py-3 bg-gray-50 border-b border-gray-100 text-xs font-bold text-gray-500 uppercase tracking-wide">
+                  <div className="grid grid-cols-5 px-5 py-3 bg-gray-50 border-b border-gray-100 text-xs font-bold text-gray-500 uppercase tracking-wide">
                     <span>Name</span><span>Track</span>
                     <span className="text-center">Present / Days</span>
-                    <span className="text-right">Attendance %</span>
+                    <span className="text-center">Attendance %</span>
+                    <span className="text-right">Action</span>
                   </div>
                   <div className="divide-y divide-gray-50">
                     {monthlyStats.sort((a, b) => b.pct - a.pct).map(s => (
-                      <div key={s.userId} className="grid grid-cols-4 items-center px-5 py-4 hover:bg-gray-50/60 transition-colors">
+                      <div key={s.userId} className="grid grid-cols-5 items-center px-5 py-4 hover:bg-gray-50/60 transition-colors">
                         <p className="text-sm font-semibold text-gray-800">{s.name}</p>
                         <p className="text-xs text-gray-500">{s.track}</p>
                         <div className="flex flex-col items-center gap-1">
@@ -244,10 +275,16 @@ export default function Attendance() {
                               style={{ width: `${Math.min(s.pct, 100)}%` }} />
                           </div>
                         </div>
-                        <div className="flex justify-end">
+                        <div className="flex justify-center">
                           <span className={`text-xs font-bold px-2.5 py-1 rounded-full tabular-nums ${PCT_COLOR(s.pct)}`}>
                             {s.pct}%
                           </span>
+                        </div>
+                        <div className="flex justify-end">
+                          <button onClick={() => openDayView(s.userId, s.name)}
+                            className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors">
+                            <FiCalendar size={11} /> Day View
+                          </button>
                         </div>
                       </div>
                     ))}
@@ -265,9 +302,15 @@ export default function Attendance() {
                             style={{ width: `${Math.min(s.pct, 100)}%` }} />
                         </div>
                       </div>
-                      <span className={`text-xs font-bold px-2.5 py-1 rounded-full tabular-nums shrink-0 ${PCT_COLOR(s.pct)}`}>
-                        {s.pct}%
-                      </span>
+                      <div className="flex flex-col items-end gap-1.5 shrink-0">
+                        <span className={`text-xs font-bold px-2.5 py-1 rounded-full tabular-nums ${PCT_COLOR(s.pct)}`}>
+                          {s.pct}%
+                        </span>
+                        <button onClick={() => openDayView(s.userId, s.name)}
+                          className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors">
+                          <FiCalendar size={11} /> Day View
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -393,6 +436,91 @@ export default function Attendance() {
             )}
           </div>
         </>
+      )}
+      {/* ── DAY VIEW MODAL ── */}
+      {dvModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4" onClick={() => setDvModal(null)}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col" onClick={e => e.stopPropagation()}>
+
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+              <div>
+                <p className="font-bold text-gray-800 text-lg">{dvModal.name}</p>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <button onClick={() => changeDvMonth(-1)}
+                    className="text-gray-400 hover:text-primary font-bold text-base leading-none">&#8249;</button>
+                  <p className="text-xs text-gray-500 font-semibold min-w-[90px] text-center">
+                    {new Date(dvModal.month + '-02').toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })}
+                  </p>
+                  <button onClick={() => changeDvMonth(1)}
+                    disabled={dvModal.month >= thisMonth}
+                    className="text-gray-400 hover:text-primary font-bold text-base leading-none disabled:opacity-30">&#8250;</button>
+                </div>
+              </div>
+              <button onClick={() => setDvModal(null)} className="text-gray-400 hover:text-gray-600 text-2xl font-bold leading-none">&times;</button>
+            </div>
+
+            {loadingDv ? (
+              <div className="flex justify-center items-center h-48">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+              </div>
+            ) : dvData && (
+              <>
+                {/* Summary */}
+                <div className="flex gap-5 px-6 py-3 bg-gray-50 border-b border-gray-100 text-sm font-semibold">
+                  <span className="text-emerald-600">✓ Present: {dvData.days.filter(d => d.present).length}</span>
+                  <span className="text-rose-500">✗ Absent: {dvData.days.filter(d => !d.present && new Date(d.date).getDay() !== 0).length}</span>
+                  <span className="text-violet-500">● Sunday: {dvData.days.filter(d => new Date(d.date).getDay() === 0).length}</span>
+                </div>
+
+                {/* Day cards grid - week wise rows */}
+                <div className="overflow-y-auto flex-1 p-4">
+                  {/* Weekday headers */}
+                  <div className="grid grid-cols-7 gap-1 mb-1">
+                    {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d => (
+                      <div key={d} className={`text-center text-[10px] font-bold uppercase py-1 ${
+                        d === 'Sun' ? 'text-violet-400' : 'text-gray-400'
+                      }`}>{d}</div>
+                    ))}
+                  </div>
+                  {/* Weeks */}
+                  {(() => {
+                    const firstDay = new Date(dvModal.month + '-01').getDay(); // 0=Sun
+                    const allDays = [...Array(firstDay).fill(null), ...dvData.days];
+                    const weeks = [];
+                    for (let i = 0; i < allDays.length; i += 7)
+                      weeks.push(allDays.slice(i, i + 7));
+                    return weeks.map((week, wi) => (
+                      <div key={wi} className="grid grid-cols-7 gap-1 mb-1">
+                        {week.map((day, di) => {
+                          if (!day) return <div key={di} />;
+                          const isSunday = new Date(day.date).getDay() === 0;
+                          const d = new Date(day.date).getDate();
+                          return (
+                            <div key={day.date} className={`rounded-lg flex flex-col items-center py-1.5 border ${
+                              isSunday ? 'bg-violet-50 border-violet-200' :
+                              day.present ? 'bg-emerald-50 border-emerald-200' :
+                              'bg-rose-50 border-rose-200'
+                            }`}>
+                              <span className={`text-sm font-bold ${
+                                isSunday ? 'text-violet-600' : day.present ? 'text-emerald-700' : 'text-rose-600'
+                              }`}>{d}</span>
+                              <span className={`text-[9px] font-semibold ${
+                                isSunday ? 'text-violet-400' : day.present ? 'text-emerald-500' : 'text-rose-400'
+                              }`}>
+                                {isSunday ? 'Off' : day.present ? (day.time ? day.time.slice(0,5) : 'P') : 'A'}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ));
+                  })()}
+                </div>
+              </>
+            )}
+          </div>
+        </div>
       )}
     </div>
   );

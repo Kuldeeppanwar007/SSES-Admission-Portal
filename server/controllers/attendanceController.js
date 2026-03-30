@@ -169,4 +169,27 @@ const getMonthlyStats = async (req, res) => {
   res.json(stats);
 };
 
-module.exports = { markAttendance, getMyAttendance, getAllAttendance, getMonthlyStats, saveLocation, getLocationLogs };
+// GET /api/attendance/day-view?userId=xxx&month=YYYY-MM
+const getDayView = async (req, res) => {
+  const { userId, month } = req.query;
+  if (!userId || !month) return res.status(400).json({ message: 'userId and month required' });
+
+  const [year, mon] = month.split('-').map(Number);
+  const daysInMonth = new Date(year, mon, 0).getDate();
+  const from = `${month}-01`;
+  const to   = `${month}-${String(daysInMonth).padStart(2, '0')}`;
+
+  const records = await Attendance.find({ user: userId, date: { $gte: from, $lte: to } }).select('date time');
+  const presentDates = new Set(records.map(r => r.date));
+
+  const days = [];
+  for (let d = 1; d <= daysInMonth; d++) {
+    const date = `${month}-${String(d).padStart(2, '0')}`;
+    const rec = records.find(r => r.date === date);
+    days.push({ date, present: presentDates.has(date), time: rec?.time || null });
+  }
+
+  res.json({ userId, month, days });
+};
+
+module.exports = { markAttendance, getMyAttendance, getAllAttendance, getMonthlyStats, saveLocation, getLocationLogs, getDayView };
