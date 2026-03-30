@@ -450,7 +450,12 @@ export default function Students() {
                         className="rounded border-gray-300 text-primary focus:ring-primary cursor-pointer" />
                     </td>
                     <td className="px-4 py-3 text-gray-500">{(page - 1) * 10 + i + 1}</td>
-                    <td className="px-4 py-3 font-medium text-gray-800">{s.name}</td>
+                    <td className="px-4 py-3 font-medium text-gray-800">
+                      <span className="flex items-center gap-1.5">
+                        {s.finalInterview?.result && <span className="text-emerald-500 text-base leading-none" title="Final Interview Done">★</span>}
+                        {s.name}
+                      </span>
+                    </td>
                     <td className="px-4 py-3 text-gray-600">{s.fatherName}</td>
                     <td className="px-4 py-3 text-gray-600">{s.track}</td>
                     <td className="px-4 py-3 text-gray-600">{s.mobileNo}</td>
@@ -511,7 +516,7 @@ export default function Students() {
                   onClick={(e) => e.stopPropagation()}
                   className="mt-1 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer" />
                 <div>
-                  <p className="font-semibold text-gray-800">{(page - 1) * 10 + i + 1}. {s.name}</p>
+                  <p className="font-semibold text-gray-800">{(page - 1) * 10 + i + 1}. {s.name} {s.finalInterview?.result && <span className="text-emerald-500">★</span>}</p>
                   <p className="text-sm text-gray-500">{s.fatherName}</p>
                 </div>
               </div>

@@ -77,6 +77,13 @@ const studentSchema = new mongoose.Schema({
   receiptS3Url:         { type: String, default: null },
   externalId:           { type: String, default: null }, // id from external SQL DB
   formSource:           { type: String, enum: ['btech', 'ssism', 'manual', null], default: null },
+  finalInterview: {
+    round:   { type: Number, default: null },
+    remarks: { type: String, default: '' },
+    result:  { type: String, enum: ['Pass', 'Fail', 'Pending', null], default: null },
+    doneBy:  { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+    doneAt:  { type: Date, default: null },
+  },
 }, { timestamps: true });
 
 module.exports = mongoose.model('Student', studentSchema);

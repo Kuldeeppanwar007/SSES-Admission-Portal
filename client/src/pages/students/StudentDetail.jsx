@@ -17,6 +17,8 @@ export default function StudentDetail() {
   const [history, setHistory] = useState([]);
   const [exporting, setExporting] = useState(false);
   const [interviews, setInterviews] = useState([]);
+  const [finalForm, setFinalForm] = useState(null); // null = closed, {} = open
+  const [finalLoading, setFinalLoading] = useState(false);
 
   const handleExport = async () => {
     setExporting(true);
@@ -39,6 +41,19 @@ export default function StudentDetail() {
       .then(({ data }) => setInterviews(data))
       .catch(() => {});
   }, [id]);
+
+  const handleFinalInterview = async (e) => {
+    e.preventDefault();
+    setFinalLoading(true);
+    try {
+      await api.post(`/interviews/${id}/final`, finalForm);
+      toast.success('Final interview saved!');
+      setFinalForm(null);
+      const { data } = await api.get(`/students/${id}`);
+      setStudent(data);
+    } catch { toast.error('Failed to save'); }
+    finally { setFinalLoading(false); }
+  };
 
   const handleStatusUpdate = async () => {
     setUpdating(true);
@@ -166,7 +181,15 @@ export default function StudentDetail() {
       {/* Interview History */}
       {interviews.length > 0 && (
         <div className="bg-white rounded-xl shadow p-6 mt-4">
-          <p className="font-semibold text-gray-800 mb-4">Interview History</p>
+          <div className="flex items-center justify-between mb-4">
+            <p className="font-semibold text-gray-800">Interview History</p>
+            {user?.role === 'admin' && (
+              <button onClick={() => setFinalForm({ remarks: '', result: 'Pending' })}
+                className="flex items-center gap-1.5 bg-primary text-white px-3 py-1.5 rounded-lg text-sm font-semibold hover:bg-primary-dark transition-colors">
+                ★ Take Final Interview
+              </button>
+            )}
+          </div>
           <div className="space-y-4">
             {interviews.map((h) => (
               <div key={h._id} className="border border-gray-100 rounded-xl p-4">
@@ -205,6 +228,43 @@ export default function StudentDetail() {
                 {h.remarks && <p className="text-xs text-gray-500">💬 {h.remarks}</p>}
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* Final Interview Modal */}
+      {finalForm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setFinalForm(null)}>
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+              <h3 className="font-bold text-gray-800">Take Final Interview</h3>
+              <button onClick={() => setFinalForm(null)} className="text-gray-400 hover:text-gray-600 text-xl font-bold leading-none">&times;</button>
+            </div>
+            <form onSubmit={handleFinalInterview} className="px-5 py-4 space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Round</label>
+                <input value={interviews.length + 1} disabled
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-gray-50 text-gray-500" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Remark</label>
+                <textarea rows={3} value={finalForm.remarks}
+                  onChange={e => setFinalForm({ ...finalForm, remarks: e.target.value })}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Result</label>
+                <select value={finalForm.result}
+                  onChange={e => setFinalForm({ ...finalForm, result: e.target.value })}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary">
+                  {['Pass', 'Fail', 'Pending'].map(r => <option key={r}>{r}</option>)}
+                </select>
+              </div>
+              <button type="submit" disabled={finalLoading}
+                className="w-full bg-primary text-white py-2.5 rounded-lg font-semibold hover:bg-primary-dark disabled:opacity-60 transition-colors">
+                {finalLoading ? 'Saving...' : 'Submit'}
+              </button>
+            </form>
           </div>
         </div>
       )}

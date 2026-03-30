@@ -1,4 +1,5 @@
 const Interview = require('../models/Interview');
+const Student = require('../models/Student');
 
 const addInterview = async (req, res) => {
   try {
@@ -54,4 +55,20 @@ const getInterviews = async (req, res) => {
   }
 };
 
-module.exports = { addInterview, getInterviews };
+const addFinalInterview = async (req, res) => {
+  try {
+    const { remarks, result } = req.body;
+    const lastInterview = await Interview.findOne({ student: req.params.studentId }).sort({ round: -1 });
+    const round = lastInterview ? lastInterview.round + 1 : 1;
+    const updated = await Student.findByIdAndUpdate(
+      req.params.studentId,
+      { finalInterview: { round, remarks: remarks || '', result: result || 'Pending', doneBy: req.user._id, doneAt: new Date() } },
+      { new: true }
+    ).populate('finalInterview.doneBy', 'name');
+    res.json(updated.finalInterview);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+module.exports = { addInterview, getInterviews, addFinalInterview };
