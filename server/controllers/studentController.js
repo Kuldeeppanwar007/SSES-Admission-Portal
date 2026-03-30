@@ -36,7 +36,20 @@ const getStudents = async (req, res) => {
       .skip((_page - 1) * _limit)
       .limit(_limit);
 
-    res.json({ students, total, page: _page, pages: Math.ceil(total / _limit) });
+    // Attach interviewCount to each student
+    const Interview = require('../models/Interview');
+    const ids = students.map(s => s._id);
+    const counts = await Interview.aggregate([
+      { $match: { student: { $in: ids } } },
+      { $group: { _id: '$student', count: { $sum: 1 } } },
+    ]);
+    const countMap = {};
+    counts.forEach(({ _id, count }) => { countMap[_id.toString()] = count; });
+    const studentsWithCount = students.map(s => ({
+      ...s.toObject(), interviewCount: countMap[s._id.toString()] || 0,
+    }));
+
+    res.json({ students: studentsWithCount, total, page: _page, pages: Math.ceil(total / _limit) });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

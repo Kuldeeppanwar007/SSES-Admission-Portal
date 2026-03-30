@@ -47,10 +47,14 @@ function SelectField({ label, value, onChange, options }) {
 function InterviewModal({ student, user, onClose, onSaved }) {
   const [form, setForm] = useState(emptyForm);
   const [loading, setLoading] = useState(false);
-  const [history, setHistory] = useState([]);
+  const [prevRound, setPrevRound] = useState(null);
+  const [nextRound, setNextRound] = useState(1);
 
   useEffect(() => {
-    api.get(`/interviews/${student._id}`).then(({ data }) => setHistory(data)).catch(() => {});
+    api.get(`/interviews/${student._id}`).then(({ data }) => {
+      setNextRound(data.length + 1);
+      if (data.length > 0) setPrevRound(data[data.length - 1]);
+    }).catch(() => {});
   }, [student._id]);
 
   const totalMark =
@@ -60,6 +64,12 @@ function InterviewModal({ student, user, onClose, onSaved }) {
     Number(form.confidenceLevel || 0) + Number(form.assignmentMarks || 0);
 
   const set = (key) => (val) => setForm((f) => ({ ...f, [key]: val }));
+
+  const FIELD_LABEL = {
+    mathematicsMarks: 'Mathematics', subjectiveKnowledge: 'Subjective Knowledge',
+    reasoningMarks: 'Reasoning', goalClarity: 'Goal Clarity', sincerity: 'Sincerity',
+    communicationLevel: 'Communication', confidenceLevel: 'Confidence', assignmentMarks: 'Assignment',
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -74,11 +84,9 @@ function InterviewModal({ student, user, onClose, onSaved }) {
     } finally { setLoading(false); }
   };
 
-  const nextRound = history.length + 1;
-
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={onClose}>
-      <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-xl w-full sm:max-w-lg max-h-[92vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+      <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-xl w-full sm:max-w-3xl max-h-[92vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
 
         {/* Header */}
         <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b">
@@ -90,6 +98,33 @@ function InterviewModal({ student, user, onClose, onSaved }) {
         </div>
 
         <form onSubmit={handleSubmit} className="px-4 sm:px-6 py-4 space-y-5">
+
+          {/* Previous Round Data */}
+          {prevRound && (
+            <div className="bg-orange-50 border border-orange-200 rounded-xl p-4">
+              <p className="text-xs font-bold text-primary uppercase tracking-wide mb-3">Round {prevRound.round} — Previous Data ({prevRound.interviewer?.name})</p>
+              <div className="grid grid-cols-4 gap-2">
+                {Object.keys(FIELD_LABEL).map(key => prevRound[key] != null && (
+                  <div key={key} className="bg-white rounded-lg px-3 py-2 border border-orange-100">
+                    <p className="text-[10px] text-gray-400">{FIELD_LABEL[key]}</p>
+                    <p className="text-sm font-bold text-gray-700">{prevRound[key]} / 5</p>
+                  </div>
+                ))}
+                <div className="bg-white rounded-lg px-3 py-2 border border-orange-100">
+                  <p className="text-[10px] text-gray-400">Total</p>
+                  <p className="text-sm font-bold text-primary">{prevRound.totalMark}</p>
+                </div>
+                <div className="bg-white rounded-lg px-3 py-2 border border-orange-100">
+                  <p className="text-[10px] text-gray-400">Result</p>
+                  <p className={`text-sm font-bold ${
+                    prevRound.result === 'Pass' ? 'text-emerald-600' :
+                    prevRound.result === 'Fail' ? 'text-rose-600' : 'text-amber-600'
+                  }`}>{prevRound.result}</p>
+                </div>
+              </div>
+              {prevRound.remarks && <p className="text-xs text-gray-500 mt-2">💬 {prevRound.remarks}</p>}
+            </div>
+          )}
 
           {/* Interview Metadata */}
           <div>
@@ -177,28 +212,6 @@ function InterviewModal({ student, user, onClose, onSaved }) {
             {loading ? 'Saving...' : 'Submit'}
           </button>
         </form>
-
-        {/* History */}
-        {history.length > 0 && (
-          <div className="px-4 sm:px-6 pb-6">
-            <p className="text-xs font-semibold text-gray-400 uppercase mb-3">Interview History</p>
-            <div className="space-y-2">
-              {history.map((h) => (
-                <div key={h._id} className="bg-gray-50 rounded-lg px-4 py-3">
-                  <div className="flex items-center justify-between mb-1">
-                    <p className="text-sm font-semibold text-gray-700">Round {h.round} — {h.interviewer?.name}</p>
-                    <span className={`text-xs font-bold px-2 py-1 rounded-full ${
-                      h.result === 'Pass' ? 'bg-green-100 text-green-700' :
-                      h.result === 'Fail' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'
-                    }`}>{h.result}</span>
-                  </div>
-                  <p className="text-xs text-gray-500">Total: {h.totalMark} marks • {new Date(h.date).toLocaleDateString('en-IN')}</p>
-                  {h.remarks && <p className="text-xs text-gray-400 mt-1">{h.remarks}</p>}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );
@@ -422,7 +435,7 @@ export default function Students() {
                     <input type="checkbox" checked={allSelected} onChange={toggleAll}
                       className="rounded border-gray-300 text-primary focus:ring-primary cursor-pointer" />
                   </th>
-                  {['S.N.', 'Name', 'Father Name', 'Track', 'Mobile', 'Form', 'Status', 'Interview', 'Actions'].map((h) => (
+                  {['S.N.', 'Name', 'Father Name', 'Track', 'Mobile', 'Form', 'Status', 'Attempt', 'Interview', 'Actions'].map((h) => (
                     <th key={h} className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">{h}</th>
                   ))}
                 </tr>
@@ -454,6 +467,15 @@ export default function Students() {
                     </td>
                     <td className="px-4 py-3">
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${STATUS_COLORS[s.status]}`}>{s.status}</span>
+                    </td>
+                    <td className="px-4 py-3">
+                      {s.interviewCount > 0 ? (
+                        <span className="text-xs font-bold px-2 py-1 rounded-full bg-orange-50 text-primary border border-orange-200">
+                          Round {s.interviewCount}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-gray-300">—</span>
+                      )}
                     </td>
                     <td className="px-4 py-3">
                       <button onClick={(e) => { e.stopPropagation(); setInterviewStudent(s); }}

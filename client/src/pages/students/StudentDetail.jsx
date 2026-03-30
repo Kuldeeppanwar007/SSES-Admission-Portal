@@ -16,6 +16,7 @@ export default function StudentDetail() {
   const [showHistory, setShowHistory] = useState(false);
   const [history, setHistory] = useState([]);
   const [exporting, setExporting] = useState(false);
+  const [interviews, setInterviews] = useState([]);
 
   const handleExport = async () => {
     setExporting(true);
@@ -34,6 +35,9 @@ export default function StudentDetail() {
     api.get(`/students/${id}`)
       .then(({ data }) => { setStudent(data); setStatusForm({ status: data.status, remarks: '' }); })
       .catch(() => toast.error('Failed to load student'));
+    api.get(`/interviews/${id}`)
+      .then(({ data }) => setInterviews(data))
+      .catch(() => {});
   }, [id]);
 
   const handleStatusUpdate = async () => {
@@ -159,6 +163,52 @@ export default function StudentDetail() {
           </div>
 
         </div>
+      {/* Interview History */}
+      {interviews.length > 0 && (
+        <div className="bg-white rounded-xl shadow p-6 mt-4">
+          <p className="font-semibold text-gray-800 mb-4">Interview History</p>
+          <div className="space-y-4">
+            {interviews.map((h) => (
+              <div key={h._id} className="border border-gray-100 rounded-xl p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-bold text-primary bg-orange-50 border border-orange-200 px-3 py-1 rounded-full">Round {h.round}</span>
+                    <span className="text-sm text-gray-500">{h.interviewer?.name}</span>
+                    <span className="text-xs text-gray-400">{new Date(h.date).toLocaleDateString('en-IN')}</span>
+                  </div>
+                  <span className={`text-xs font-bold px-3 py-1 rounded-full ${
+                    h.result === 'Pass' ? 'bg-emerald-100 text-emerald-700' :
+                    h.result === 'Fail' ? 'bg-rose-100 text-rose-600' : 'bg-amber-100 text-amber-700'
+                  }`}>{h.result}</span>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
+                  {[
+                    ['Mathematics', h.mathematicsMarks],
+                    ['Subjective Knowledge', h.subjectiveKnowledge],
+                    ['Reasoning', h.reasoningMarks],
+                    ['Goal Clarity', h.goalClarity],
+                    ['Sincerity', h.sincerity],
+                    ['Communication', h.communicationLevel],
+                    ['Confidence', h.confidenceLevel],
+                    ...(h.assignmentMarks != null ? [['Assignment', h.assignmentMarks]] : []),
+                  ].map(([label, val]) => (
+                    <div key={label} className="bg-gray-50 rounded-lg px-3 py-2">
+                      <p className="text-[10px] text-gray-400">{label}</p>
+                      <p className="text-sm font-bold text-gray-700">{val} / 5</p>
+                    </div>
+                  ))}
+                  <div className="bg-orange-50 rounded-lg px-3 py-2 border border-orange-100">
+                    <p className="text-[10px] text-gray-400">Total</p>
+                    <p className="text-sm font-bold text-primary">{h.totalMark}</p>
+                  </div>
+                </div>
+                {h.remarks && <p className="text-xs text-gray-500">💬 {h.remarks}</p>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Status History Modal */}
       {showHistory && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 p-4">
