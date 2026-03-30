@@ -4,8 +4,19 @@ import { Camera } from '@capacitor/camera';
 import { PushNotifications } from '@capacitor/push-notifications';
 import { Capacitor } from '@capacitor/core';
 import { App } from '@capacitor/app';
+import { registerPlugin } from '@capacitor/core';
+
+const LocationTracking = registerPlugin('LocationTracking');
 
 const PERMISSIONS = [
+  {
+    key: 'battery',
+    label: 'Background Activity',
+    reason: 'Required to track attendance even when app is in background.',
+    check: async () => LocationTracking.checkBatteryOptimization(),
+    request: async () => { await LocationTracking.requestBatteryOptimization(); },
+    granted: (s) => s.granted === true,
+  },
   {
     key: 'location',
     label: 'Location',
@@ -33,8 +44,27 @@ const PERMISSIONS = [
 ];
 
 async function checkAllGranted() {
-  const results = await Promise.all(PERMISSIONS.map((p) => p.check()));
-  return PERMISSIONS.every((p, i) => p.granted(results[i]));
+  try {
+    const results = await Promise.all(PERMISSIONS.map((p) => p.check()));
+    return PERMISSIONS.every((p, i) => p.granted(results[i]));
+  } catch {
+    return false;
+  }
+}
+
+// Request permissions one by one so Android shows each dialog sequentially
+async function requestAllSequentially() {
+  for (const p of PERMISSIONS) {
+    try {
+      // Battery dialog is fire-and-forget; small delay so system dialog appears before next
+      if (p.key === 'battery') {
+        await p.request();
+        await new Promise(r => setTimeout(r, 1500));
+      } else {
+        await p.request();
+      }
+    } catch { /* ignore */ }
+  }
 }
 
 export default function PermissionGate({ children }) {
@@ -45,17 +75,27 @@ export default function PermissionGate({ children }) {
     checkAllGranted().then((ok) => setStatus(ok ? 'granted' : 'needed'));
   }, []);
 
-  const handleRequest = async () => {
-    try {
-      const results = await Promise.all(PERMISSIONS.map((p) => p.request()));
-      const allGranted = PERMISSIONS.every((p, i) => p.granted(results[i]));
-      setStatus(allGranted ? 'granted' : 'denied');
-    } catch {
-      setStatus('denied');
-    }
+  const recheck = async () => {
+    const ok = await checkAllGranted();
+    setStatus(ok ? 'granted' : 'denied');
   };
 
-  const openSettings = () => App.openUrl({ url: 'app-settings:' });
+  const handleRequest = async () => {
+    await requestAllSequentially();
+    await recheck();
+  };
+
+  const openSettings = async () => {
+    await App.openUrl({ url: 'app-settings:' });
+  };
+
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+    const listener = App.addListener('appStateChange', ({ isActive }) => {
+      if (isActive && (status === 'denied' || status === 'needed')) recheck();
+    });
+    return () => { listener.then(l => l.remove()); };
+  }, [status]);
 
   if (status === 'checking') return (
     <div className="min-h-screen flex items-center justify-center bg-white">
@@ -81,7 +121,7 @@ export default function PermissionGate({ children }) {
           {PERMISSIONS.map(({ key, label, reason }) => (
             <li key={key} className="flex gap-3 items-start bg-gray-50 rounded-xl p-3">
               <span className="text-lg mt-0.5">
-                {key === 'location' ? '📍' : key === 'camera' ? '📷' : '🔔'}
+                {key === 'battery' ? '🔋' : key === 'location' ? '📍' : key === 'camera' ? '📷' : '🔔'}
               </span>
               <div>
                 <p className="text-sm font-semibold text-gray-700">{label}</p>

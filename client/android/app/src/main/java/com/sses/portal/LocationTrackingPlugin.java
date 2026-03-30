@@ -2,7 +2,10 @@ package com.sses.portal;
 
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.net.Uri;
 import android.os.Build;
+import android.os.PowerManager;
+import android.provider.Settings;
 import androidx.work.Constraints;
 import androidx.work.ExistingPeriodicWorkPolicy;
 import androidx.work.NetworkType;
@@ -19,6 +22,31 @@ public class LocationTrackingPlugin extends Plugin {
 
     private static final String WORK_TAG = "sses_location_work";
     private static final String PREFS    = "sses_prefs";
+
+    @PluginMethod
+    public void checkBatteryOptimization(PluginCall call) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            PowerManager pm = (PowerManager) getContext().getSystemService(android.content.Context.POWER_SERVICE);
+            boolean ignored = pm.isIgnoringBatteryOptimizations(getContext().getPackageName());
+            com.getcapacitor.JSObject ret = new com.getcapacitor.JSObject();
+            ret.put("granted", ignored);
+            call.resolve(ret);
+        } else {
+            com.getcapacitor.JSObject ret = new com.getcapacitor.JSObject();
+            ret.put("granted", true);
+            call.resolve(ret);
+        }
+    }
+
+    @PluginMethod
+    public void requestBatteryOptimization(PluginCall call) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            Intent intent = new Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS);
+            intent.setData(Uri.parse("package:" + getContext().getPackageName()));
+            getActivity().startActivity(intent);
+        }
+        call.resolve();
+    }
 
     @PluginMethod
     public void startTracking(PluginCall call) {
