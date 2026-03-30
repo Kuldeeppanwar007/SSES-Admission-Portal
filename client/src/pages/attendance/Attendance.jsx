@@ -3,6 +3,7 @@ import api from '../../api/axios';
 import toast from 'react-hot-toast';
 import { FiMapPin, FiCalendar, FiClock, FiFilter, FiBarChart2, FiNavigation, FiRefreshCw } from 'react-icons/fi';
 import DatePicker from '../../components/DatePicker';
+import TrackingMap from '../../components/TrackingMap';
 
 const today = new Date().toISOString().slice(0, 10);
 const thisMonth = today.slice(0, 7);
@@ -46,6 +47,8 @@ export default function Attendance() {
   const [locationLogs, setLocationLogs] = useState([]);
   const [loadingLogs, setLoadingLogs] = useState(false);
   const [autoRefresh, setAutoRefresh] = useState(false);
+  const [tlData, setTlData] = useState(null);
+  const [loadingTl, setLoadingTl] = useState(false);
 
   const fetchRecords = useCallback(() => {
     setLoadingRec(true);
@@ -111,9 +114,46 @@ export default function Attendance() {
       .finally(() => setLoadingLogs(false));
   }, [selectedUser, trackDate]);
 
+  const fetchTimeline = useCallback(() => {
+    if (!selectedUser) return;
+    setLoadingTl(true);
+    api.get(`/attendance/timeline?userId=${selectedUser}&date=${trackDate}`)
+      .then(r => {
+        setTlData(r.data);
+        // Background geocoding — sirf first, last, stopped points
+        const pts = r.data.points;
+        const toGeocode = pts
+          .map((pt, idx) => ({ idx, lat: pt.lat, lng: pt.lng }))
+          .filter((_, idx) => idx === 0 || idx === pts.length - 1 || pts[idx].isStopped);
+        if (toGeocode.length === 0) return;
+        api.post('/attendance/geocode', { points: toGeocode })
+          .then(res => {
+            setTlData(prev => {
+              if (!prev) return prev;
+              const updated = [...prev.points];
+              res.data.forEach(({ idx, location }) => { updated[idx] = { ...updated[idx], location }; });
+              return { ...prev, points: updated };
+            });
+          })
+          .catch(() => {});
+      })
+      .catch(() => toast.error('Failed to load timeline'))
+      .finally(() => setLoadingTl(false));
+  }, [selectedUser, trackDate]);
+
   useEffect(() => { if (tab === 'records') fetchRecords(); }, [tab, fetchRecords]);
   useEffect(() => { if (tab === 'monthly') fetchMonthly(); }, [tab, fetchMonthly]);
-  useEffect(() => { if (tab === 'tracking') { fetchTrackUsers(); fetchLocationLogs(); } }, [tab, fetchTrackUsers, fetchLocationLogs]);
+  useEffect(() => {
+    if (tab === 'tracking') {
+      fetchTrackUsers();
+      fetchLocationLogs();
+      if (selectedUser) fetchTimeline();
+    }
+  }, [tab, fetchTrackUsers, fetchLocationLogs, fetchTimeline, selectedUser]);
+
+  useEffect(() => {
+    if (tab === 'tracking' && selectedUser) fetchTimeline();
+  }, [selectedUser, trackDate, fetchTimeline, tab]);
 
   // Auto-refresh every 2 min when enabled
   useEffect(() => {
@@ -327,9 +367,9 @@ export default function Attendance() {
           <div className="flex flex-wrap gap-3 items-end">
             <div className="flex flex-col gap-1">
               <label className="text-xs text-gray-500 font-medium">User</label>
-              <select value={selectedUser} onChange={e => setSelectedUser(e.target.value)}
-                className="text-sm border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary/30 min-w-[160px]">
-                <option value="">All Users</option>
+              <select value={selectedUser} onChange={e => { setSelectedUser(e.target.value); setTlData(null); }}
+                className="text-sm border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary/30 min-w-[180px]">
+                <option value="">Select User</option>
                 {trackUsers.map(u => (
                   <option key={u._id} value={u._id}>{u.name} ({u.track})</option>
                 ))}
@@ -337,11 +377,11 @@ export default function Attendance() {
             </div>
             <div className="flex flex-col gap-1">
               <label className="text-xs text-gray-500 font-medium">Date</label>
-              <DatePicker value={trackDate} onChange={setTrackDate} max={today} />
+              <DatePicker value={trackDate} onChange={v => { setTrackDate(v); setTlData(null); }} max={today} />
             </div>
-            <button onClick={fetchLocationLogs}
+            <button onClick={() => { fetchLocationLogs(); if (selectedUser) fetchTimeline(); }}
               className="px-4 py-1.5 bg-primary text-white text-sm font-semibold rounded-lg hover:opacity-90 transition-opacity flex items-center gap-1.5">
-              <FiRefreshCw size={13} /> Refresh
+              <FiRefreshCw size={13} /> Load
             </button>
             <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer select-none">
               <input type="checkbox" checked={autoRefresh} onChange={e => setAutoRefresh(e.target.checked)}
@@ -350,91 +390,130 @@ export default function Attendance() {
             </label>
           </div>
 
-          {!loadingLogs && (
-            <p className="text-xs text-gray-400">{locationLogs.length} location ping{locationLogs.length !== 1 ? 's' : ''} found</p>
+          {/* No user selected */}
+          {!selectedUser && (
+            <p className="text-center text-gray-400 text-sm py-12">Select a user to view their timeline.</p>
           )}
 
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-            {loadingLogs ? (
-              <div className="flex justify-center items-center h-40">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-              </div>
-            ) : locationLogs.length === 0 ? (
-              <p className="text-center text-gray-400 py-12 text-sm">No location data for selected filters.</p>
-            ) : (
-              <>
-                {/* Desktop table */}
-                <div className="hidden sm:block">
-                  <div className="grid grid-cols-5 px-5 py-3 bg-gray-50 border-b border-gray-100 text-xs font-bold text-gray-500 uppercase tracking-wide">
-                    <span>Name</span><span>Track</span><span>Date</span><span>Time</span>
-                    <span className="text-right">Status / Location</span>
-                  </div>
-                  <div className="divide-y divide-gray-50">
-                    {(() => {
-                      const rows = selectedUser ? locationLogs : (() => {
-                        const seen = {};
-                        return locationLogs.filter(log => { const uid = log.user?._id; if (seen[uid]) return false; seen[uid] = true; return true; });
-                      })();
-                      return rows.map(log => (
-                        <div key={log._id} onClick={() => { if (!selectedUser) setSelectedUser(log.user?._id); }}
-                          className={`grid grid-cols-5 items-center px-5 py-3.5 transition-colors ${
-                            log.status === 'unavailable' ? 'bg-rose-50 hover:bg-rose-100' : 'hover:bg-gray-50/60'
-                          } ${!selectedUser ? 'cursor-pointer' : ''}`}>
-                          <p className="text-sm font-semibold text-gray-800">{log.user?.name}</p>
-                          <p className="text-xs text-gray-500">{log.user?.track}</p>
-                          <p className="text-xs text-gray-500">{formatDate(log.timestamp)}</p>
-                          <p className="text-xs text-gray-500 font-semibold">{formatTime(log.timestamp)}</p>
-                          <div className="flex items-center gap-2 justify-end">
-                            {log.status === 'unavailable' ? (
-                              <span className="text-xs px-2 py-0.5 rounded-full font-semibold bg-rose-100 text-rose-600">⚠️ Off</span>
-                            ) : (
-                              <>
-                                {log.accuracy > 0 && (
-                                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                                    log.accuracy <= 20 ? 'bg-emerald-50 text-emerald-700' : log.accuracy <= 50 ? 'bg-amber-50 text-amber-700' : 'bg-rose-50 text-rose-600'
-                                  }`}>±{Math.round(log.accuracy)}m</span>
-                                )}
-                                <a href={`https://maps.google.com/?q=${log.lat},${log.lng}`} target="_blank" rel="noreferrer"
-                                  className="flex items-center gap-1 text-emerald-600 text-xs font-semibold hover:underline">
-                                  <FiMapPin size={12} /> Map
-                                </a>
-                              </>
-                            )}
-                          </div>
-                        </div>
-                      ));
-                    })()}
-                  </div>
+          {/* Timeline */}
+          {selectedUser && (
+            <>
+              {loadingTl ? (
+                <div className="flex justify-center items-center h-40">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
                 </div>
-                {/* Mobile cards */}
-                <div className="sm:hidden divide-y divide-gray-50">
-                  {(() => {
-                    const rows = selectedUser ? locationLogs : (() => {
-                      const seen = {};
-                      return locationLogs.filter(log => { const uid = log.user?._id; if (seen[uid]) return false; seen[uid] = true; return true; });
-                    })();
-                    return rows.map(log => (
-                      <div key={log._id} onClick={() => { if (!selectedUser) setSelectedUser(log.user?._id); }}
-                        className={`px-4 py-3 ${log.status === 'unavailable' ? 'bg-rose-50' : ''} ${!selectedUser ? 'cursor-pointer' : ''}`}>
-                        <div className="flex items-center justify-between mb-1">
-                          <p className="text-sm font-semibold text-gray-800">{log.user?.name}</p>
-                          {log.status === 'unavailable' ? (
-                            <span className="text-xs px-2 py-0.5 rounded-full font-semibold bg-rose-100 text-rose-600">⚠️ Off</span>
-                          ) : (
-                            <a href={`https://maps.google.com/?q=${log.lat},${log.lng}`} target="_blank" rel="noreferrer"
-                              className="flex items-center gap-1 text-emerald-600 text-xs font-semibold">
-                              <FiMapPin size={12} /> Map
-                            </a>
-                          )}
-                        </div>
-                        <p className="text-xs text-gray-400">{log.user?.track} &bull; {formatDate(log.timestamp)} {formatTime(log.timestamp)}</p>
+              ) : tlData && tlData.points.length === 0 ? (
+                <p className="text-center text-gray-400 text-sm py-12">No location data for this date.</p>
+              ) : tlData && (
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+
+                  {/* Summary bar */}
+                  <div className="flex flex-wrap gap-5 px-5 py-3 bg-gray-50 border-b border-gray-100">
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg">📍</span>
+                      <div>
+                        <p className="text-[10px] text-gray-400 uppercase font-semibold">Total Distance</p>
+                        <p className="text-sm font-bold text-gray-800">
+                          {tlData.totalDistance >= 1000
+                            ? `${(tlData.totalDistance / 1000).toFixed(2)} km`
+                            : `${tlData.totalDistance} m`}
+                        </p>
                       </div>
-                    ));
-                  })()}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg">⏱️</span>
+                      <div>
+                        <p className="text-[10px] text-gray-400 uppercase font-semibold">First Ping</p>
+                        <p className="text-sm font-bold text-gray-800">{formatTime(tlData.points[0].timestamp)}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg">🏁</span>
+                      <div>
+                        <p className="text-[10px] text-gray-400 uppercase font-semibold">Last Ping</p>
+                        <p className="text-sm font-bold text-gray-800">{formatTime(tlData.points[tlData.points.length - 1].timestamp)}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg">🛑</span>
+                      <div>
+                        <p className="text-[10px] text-gray-400 uppercase font-semibold">Stops</p>
+                        <p className="text-sm font-bold text-gray-800">{tlData.totalStops}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg">📶</span>
+                      <div>
+                        <p className="text-[10px] text-gray-400 uppercase font-semibold">Pings</p>
+                        <p className="text-sm font-bold text-gray-800">{tlData.points.length}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Map + Timeline side by side */}
+                  <div className="flex flex-col lg:flex-row">
+
+                    {/* Map */}
+                    <div className="lg:w-3/5 p-4 border-b lg:border-b-0 lg:border-r border-gray-100">
+                      <TrackingMap points={tlData.points} />
+                      {/* Legend */}
+                      <div className="flex flex-wrap gap-3 mt-3 text-xs text-gray-500">
+                        <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-emerald-500 inline-block"></span> Start</span>
+                        <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-rose-500 inline-block"></span> End</span>
+                        <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-amber-400 inline-block"></span> Stopped</span>
+                        <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-indigo-500 inline-block"></span> Moving</span>
+                      </div>
+                    </div>
+
+                    {/* Timeline list */}
+                    <div className="lg:w-2/5 overflow-y-auto max-h-[420px] px-5 py-4 space-y-0">
+                      {tlData.points.map((pt, i) => {
+                        const isFirst = i === 0;
+                        const isLast  = i === tlData.points.length - 1;
+                        return (
+                          <div key={i} className="flex gap-3">
+                            {/* dot + line */}
+                            <div className="flex flex-col items-center">
+                              <div className={`w-3 h-3 rounded-full border-2 mt-1 shrink-0 ${
+                                isFirst ? 'bg-emerald-500 border-emerald-500' :
+                                isLast  ? 'bg-rose-500 border-rose-500' :
+                                pt.isStopped ? 'bg-amber-400 border-amber-400' :
+                                'bg-indigo-500 border-indigo-500'
+                              }`} />
+                              {!isLast && <div className="w-0.5 bg-gray-200 flex-1 my-0.5 min-h-[20px]" />}
+                            </div>
+                            {/* content */}
+                            <div className="pb-3 flex-1">
+                              <div className="flex items-start justify-between gap-2">
+                                <div>
+                                  <p className="text-xs font-bold text-gray-700">{formatTime(pt.timestamp)}</p>
+                                  {pt.location && <p className="text-[11px] text-gray-500">{pt.location}</p>}
+                                  <div className="flex flex-wrap gap-1 mt-0.5">
+                                    {isFirst && <span className="text-[10px] font-semibold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full">🟢 Start</span>}
+                                    {isLast && !isFirst && <span className="text-[10px] font-semibold text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded-full">🔴 End</span>}
+                                    {pt.isStopped && <span className="text-[10px] font-semibold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded-full">🛑 Stopped</span>}
+                                  </div>
+                                </div>
+                                <a href={`https://maps.google.com/?q=${pt.lat},${pt.lng}`} target="_blank" rel="noreferrer"
+                                  className="text-[10px] text-primary font-semibold hover:underline shrink-0 flex items-center gap-0.5">
+                                  <FiMapPin size={10} /> Map
+                                </a>
+                              </div>
+                              {i > 0 && (
+                                <p className="text-[10px] text-gray-400 mt-0.5">
+                                  +{pt.distFromPrev >= 1000 ? `${(pt.distFromPrev/1000).toFixed(2)} km` : `${pt.distFromPrev} m`}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
                 </div>
-              </>
-            )}
-          </div>
+              )}
+            </>
+          )}
         </>
       )}
       {/* ── DAY VIEW MODAL ── */}

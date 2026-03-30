@@ -65,6 +65,71 @@ const getLocationLogs = async (req, res) => {
   res.json(logs);
 };
 
+// Haversine distance in meters
+function haversine(lat1, lng1, lat2, lng2) {
+  const R = 6371000;
+  const toRad = d => d * Math.PI / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+// Reverse geocode using OpenStreetMap Nominatim (free, no key)
+async function reverseGeocode(lat, lng) {
+  try {
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&zoom=16&addressdetails=1`,
+      { headers: { 'User-Agent': 'SSES-Admission-Portal/1.0' } }
+    );
+    const data = await res.json();
+    const a = data.address || {};
+    // Village/town/city + district
+    const place = a.village || a.town || a.suburb || a.city_district || a.city || a.county || '';
+    const district = a.state_district || a.district || '';
+    return [place, district].filter(Boolean).join(', ') || data.display_name?.split(',').slice(0, 2).join(',') || '';
+  } catch { return ''; }
+}
+
+// GET /api/attendance/timeline?userId=xxx&date=YYYY-MM-DD
+const getTimeline = async (req, res) => {
+  const { userId, date } = req.query;
+  if (!userId || !date) return res.status(400).json({ message: 'userId and date required' });
+
+  const start = new Date(date); start.setHours(0, 0, 0, 0);
+  const end   = new Date(date); end.setHours(23, 59, 59, 999);
+
+  const logs = await LocationLog.find({
+    user: userId, timestamp: { $gte: start, $lte: end }, status: 'ok', lat: { $ne: null },
+  }).sort({ timestamp: 1 });
+
+  if (logs.length === 0) return res.json({ points: [], totalDistance: 0, totalStops: 0 });
+
+  const STOP_THRESHOLD = 150; // meters — agar itne se kam move kiya to stop
+  const points = [];
+  let totalDistance = 0;
+
+  for (let i = 0; i < logs.length; i++) {
+    const cur = logs[i];
+    let distFromPrev = 0;
+    if (i > 0) {
+      const prev = logs[i - 1];
+      distFromPrev = haversine(prev.lat, prev.lng, cur.lat, cur.lng);
+      totalDistance += distFromPrev;
+    }
+    points.push({
+      lat: cur.lat, lng: cur.lng,
+      timestamp: cur.timestamp,
+      accuracy: cur.accuracy,
+      distFromPrev: Math.round(distFromPrev),
+      isStopped: distFromPrev < STOP_THRESHOLD && i > 0,
+    });
+  }
+
+  const totalStops = points.filter(p => p.isStopped).length;
+  res.json({ points, totalDistance: Math.round(totalDistance), totalStops });
+};
+
 // POST /api/attendance/mark
 const markAttendance = async (req, res) => {
   try {
@@ -192,4 +257,19 @@ const getDayView = async (req, res) => {
   res.json({ userId, month, days });
 };
 
-module.exports = { markAttendance, getMyAttendance, getAllAttendance, getMonthlyStats, saveLocation, getLocationLogs, getDayView };
+// POST /api/attendance/geocode  body: [{idx, lat, lng}, ...]
+// Returns location names for given coordinates
+const geocodePoints = async (req, res) => {
+  const { points } = req.body;
+  if (!Array.isArray(points) || points.length === 0) return res.json([]);
+  const delay = ms => new Promise(r => setTimeout(r, ms));
+  const results = [];
+  for (const pt of points) {
+    const location = await reverseGeocode(pt.lat, pt.lng);
+    results.push({ idx: pt.idx, location });
+    await delay(1100);
+  }
+  res.json(results);
+};
+
+module.exports = { markAttendance, getMyAttendance, getAllAttendance, getMonthlyStats, saveLocation, getLocationLogs, getDayView, getTimeline, geocodePoints };
