@@ -53,13 +53,13 @@ async function checkAllGranted() {
 }
 
 // Request permissions one by one so Android shows each dialog sequentially
-async function requestAllSequentially() {
+async function requestAllSequentially(onBatteryRequested) {
   for (const p of PERMISSIONS) {
     try {
-      // Battery dialog is fire-and-forget; small delay so system dialog appears before next
       if (p.key === 'battery') {
         await p.request();
-        await new Promise(r => setTimeout(r, 1500));
+        // Battery dialog is a system activity — wait for appStateChange to recheck
+        await onBatteryRequested();
       } else {
         await p.request();
       }
@@ -68,7 +68,7 @@ async function requestAllSequentially() {
 }
 
 export default function PermissionGate({ children }) {
-  const [status, setStatus] = useState('checking'); // checking | needed | denied | granted
+  const [status, setStatus] = useState('checking');
 
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) { setStatus('granted'); return; }
@@ -78,17 +78,24 @@ export default function PermissionGate({ children }) {
   const recheck = async () => {
     const ok = await checkAllGranted();
     setStatus(ok ? 'granted' : 'denied');
+    return ok;
   };
 
   const handleRequest = async () => {
-    await requestAllSequentially();
+    // Battery dialog ke baad app focus wapas aane ka wait karo
+    const waitForFocus = () => new Promise((resolve) => {
+      const sub = App.addListener('appStateChange', ({ isActive }) => {
+        if (isActive) { sub.then(l => l.remove()); resolve(); }
+      });
+    });
+
+    await requestAllSequentially(waitForFocus);
     await recheck();
   };
 
-  const openSettings = async () => {
-    await App.openUrl({ url: 'app-settings:' });
-  };
+  const openSettings = async () => App.openUrl({ url: 'app-settings:' });
 
+  // Settings se wapas aane pe recheck
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
     const listener = App.addListener('appStateChange', ({ isActive }) => {
