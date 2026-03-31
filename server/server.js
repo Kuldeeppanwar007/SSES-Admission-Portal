@@ -19,6 +19,7 @@ app.use(cors({
       process.env.CLIENT_URL,
       'http://localhost:5173',
       'http://localhost:3000',
+      'http://localhost:3010',
       'capacitor://localhost',
       'http://localhost',
       'https://localhost',
@@ -58,7 +59,7 @@ app.use((err, req, res, next) => {
   res.status(500).json({ message: err.message || 'Server Error' });
 });
 
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 3009;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
   scheduleWeeklyBonus();

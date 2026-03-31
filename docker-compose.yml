@@ -2,7 +2,7 @@ services:
   backend:
     build: ./server
     ports:
-      - "5000:5000"
+      - "3009:3009"
     env_file:
       - ./server/.env
     restart: unless-stopped
@@ -10,7 +10,7 @@ services:
   frontend:
     build: ./client
     ports:
-      - "80:80"
+      - "3010:3010"
     depends_on:
       - backend
     restart: unless-stopped
