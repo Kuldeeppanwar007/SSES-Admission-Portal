@@ -233,6 +233,7 @@ export default function Students() {
     status: searchParams.get('status') || '',
     search: '',
     formSource: '',
+    interviewFilter: '',
   });
   const [loading, setLoading] = useState(false);
   const [showFilters, setShowFilters] = useState(!!(searchParams.get('track') || searchParams.get('status')));
@@ -253,7 +254,7 @@ export default function Students() {
         }
         return;
       }
-      const params = { page, limit: 10, ...filters, ...(tab === 'disabled' ? { status: 'Disabled' } : {}) };
+      const params = { page, limit: 10, ...filters, ...(tab === 'disabled' ? { status: 'Disabled' } : {}), ...(filters.interviewFilter ? { interviewFilter: filters.interviewFilter } : {}) };
       const { data } = await api.get('/students', { params });
       setStudents(data.students);
       setTotal(data.total);
@@ -266,7 +267,7 @@ export default function Students() {
 
   useEffect(() => { fetchStudents(); }, [page, filters, tab]);
 
-  const switchTab = (t) => { setTab(t); setPage(1); setFilters({ track: '', status: '', search: '', formSource: '' }); setSelected([]); };
+  const switchTab = (t) => { setTab(t); setPage(1); setFilters({ track: '', status: '', search: '', formSource: '', interviewFilter: '' }); setSelected([]); };
 
   const toggleSelect = (id) => setSelected((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
   const toggleAll = () => setSelected(selected.length === students.length ? [] : students.map((s) => s._id));
@@ -404,6 +405,12 @@ export default function Students() {
               <option value="ssism">SSISM</option>
               <option value="manual">Manual</option>
             </select>
+            <select value={filters.interviewFilter} onChange={(e) => { setFilters({ ...filters, interviewFilter: e.target.value }); setPage(1); }}
+              className="flex-1 min-w-32 border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none">
+              <option value="">All Interviews</option>
+              <option value="hasAttempts">Has Attempts</option>
+              <option value="finalCleared">Final Cleared</option>
+            </select>
           </div>
         )}
       </div>
@@ -436,7 +443,7 @@ export default function Students() {
                       className="rounded border-gray-300 text-primary focus:ring-primary cursor-pointer" />
                   </th>
                   {['S.N.', 'Name', 'Father Name', 'Track', 'Mobile', 'Form', 'Status', 'Attempt', 'Interview', 'Actions'].map((h) => (
-                    <th key={h} className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">{h}</th>
+                    <th key={h} className={`px-4 py-3 text-xs font-semibold uppercase text-gray-500 ${h === 'Attempt' ? 'text-center' : 'text-left'}`}>{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -473,11 +480,15 @@ export default function Students() {
                     <td className="px-4 py-3">
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${STATUS_COLORS[s.status]}`}>{s.status}</span>
                     </td>
-                    <td className="px-4 py-3">
-                      {s.interviewCount > 0 ? (
-                        <span className="text-xs font-bold px-2 py-1 rounded-full bg-orange-50 text-primary border border-orange-200">
-                          Round {s.interviewCount}
-                        </span>
+                    <td className="px-4 py-3 text-center">
+                      {s.finalInterview?.result === 'Pass' ? (
+                        <span className="text-xs font-bold px-2 py-1 rounded-full bg-emerald-100 text-emerald-700">✓ Final Cleared</span>
+                      ) : s.finalInterview?.result === 'Fail' ? (
+                        <span className="text-xs font-bold px-2 py-1 rounded-full bg-rose-100 text-rose-600">✗ Final Failed</span>
+                      ) : s.finalInterview?.result === 'Pending' ? (
+                        <span className="text-xs font-bold px-2 py-1 rounded-full bg-amber-100 text-amber-700">⏳ Final Pending</span>
+                      ) : s.interviewCount > 0 ? (
+                        <span className="text-xs font-bold px-2 py-1 rounded-full bg-orange-50 text-primary border border-orange-200">Round {s.interviewCount}</span>
                       ) : (
                         <span className="text-xs text-gray-300">—</span>
                       )}
@@ -534,6 +545,15 @@ export default function Students() {
                   {s.formSource === 'btech' ? 'B.Tech' : s.formSource === 'ssism' ? 'SSISM' : 'Manual'}
                 </span>
               )}
+              {s.finalInterview?.result === 'Pass' ? (
+                <span className="w-fit px-2 py-0.5 rounded-full font-bold bg-emerald-100 text-emerald-700">✓ Final Cleared</span>
+              ) : s.finalInterview?.result === 'Fail' ? (
+                <span className="w-fit px-2 py-0.5 rounded-full font-bold bg-rose-100 text-rose-600">✗ Final Failed</span>
+              ) : s.finalInterview?.result === 'Pending' ? (
+                <span className="w-fit px-2 py-0.5 rounded-full font-bold bg-amber-100 text-amber-700">⏳ Final Pending</span>
+              ) : s.interviewCount > 0 ? (
+                <span className="w-fit px-2 py-0.5 rounded-full font-bold bg-orange-50 text-primary border border-orange-200">Round {s.interviewCount}</span>
+              ) : null}
             </div>
             <div className="flex gap-2 border-t border-gray-100 pt-2">
               <button onClick={(e) => { e.stopPropagation(); navigate(`/students/${s._id}/edit`); }}

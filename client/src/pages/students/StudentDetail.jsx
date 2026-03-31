@@ -179,7 +179,7 @@ export default function StudentDetail() {
 
         </div>
       {/* Interview History */}
-      {interviews.length > 0 && (
+      {(interviews.length > 0 || student.finalInterview?.result) && (
         <div className="bg-white rounded-xl shadow p-6 mt-4">
           <div className="flex items-center justify-between mb-4">
             <p className="font-semibold text-gray-800">Interview History</p>
@@ -228,6 +228,30 @@ export default function StudentDetail() {
                 {h.remarks && <p className="text-xs text-gray-500">💬 {h.remarks}</p>}
               </div>
             ))}
+
+            {/* Final Interview Card */}
+            {student.finalInterview?.result && (
+              <div className="border-2 border-primary/30 bg-orange-50/40 rounded-xl p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-bold bg-primary text-white px-3 py-1 rounded-full">★ Final Interview</span>
+                    {student.finalInterview.doneBy?.name && (
+                      <span className="text-sm text-gray-500">{student.finalInterview.doneBy.name}</span>
+                    )}
+                    {student.finalInterview.doneAt && (
+                      <span className="text-xs text-gray-400">{new Date(student.finalInterview.doneAt).toLocaleDateString('en-IN')}</span>
+                    )}
+                  </div>
+                  <span className={`text-xs font-bold px-3 py-1 rounded-full ${
+                    student.finalInterview.result === 'Pass' ? 'bg-emerald-100 text-emerald-700' :
+                    student.finalInterview.result === 'Fail' ? 'bg-rose-100 text-rose-600' : 'bg-amber-100 text-amber-700'
+                  }`}>{student.finalInterview.result}</span>
+                </div>
+                {student.finalInterview.remarks && (
+                  <p className="text-xs text-gray-500">💬 {student.finalInterview.remarks}</p>
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}

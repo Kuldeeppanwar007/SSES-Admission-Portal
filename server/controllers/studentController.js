@@ -5,7 +5,7 @@ const xlsx = require('xlsx');
 // Get all students (admin/manager = all, track_incharge = own track)
 const getStudents = async (req, res) => {
   try {
-    const { track, status, search, formSource, page = 1, limit = 10 } = req.query;
+    const { track, status, search, formSource, interviewFilter, page = 1, limit = 10 } = req.query;
     const filter = {};
     const _limit = Math.min(Number(limit), 100);
     const _page = Number(page);
@@ -17,6 +17,15 @@ const getStudents = async (req, res) => {
     else { filter.isDisabled = { $ne: true }; if (status) filter.status = status; }
 
     if (formSource) filter.formSource = formSource;
+
+    if (interviewFilter === 'finalCleared') {
+      filter['finalInterview.result'] = 'Pass';
+    } else if (interviewFilter === 'hasAttempts') {
+      const Interview = require('../models/Interview');
+      const studentIdsWithInterviews = await Interview.distinct('student');
+      filter._id = { $in: studentIdsWithInterviews };
+      filter['finalInterview.result'] = { $ne: 'Pass' };
+    }
 
     if (search) {
       const safeSearch = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); // ReDoS fix
@@ -57,7 +66,9 @@ const getStudents = async (req, res) => {
 
 // Get single student
 const getStudent = async (req, res) => {
-  const student = await Student.findById(req.params.id).populate('addedBy', 'name role');
+  const student = await Student.findById(req.params.id)
+    .populate('addedBy', 'name role')
+    .populate('finalInterview.doneBy', 'name');
   if (!student) return res.status(404).json({ message: 'Student not found' });
   if (req.user.role === 'track_incharge' && student.track !== req.user.track)
     return res.status(403).json({ message: 'Access denied' });
