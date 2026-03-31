@@ -33,15 +33,32 @@ app.options('*', cors());
 app.use(express.json());
 app.use(cookieParser());
 
-// Rate limiting — login pe max 10 attempts per 15 min per IP
-const loginLimiter = rateLimit({
+// Global rate limit — poore API pe 200 requests per 15 min per IP
+app.use(rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 200,
+  message: { message: 'Too many requests. Try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+}));
+
+// Login — max 10 attempts per 15 min per IP
+app.use('/api/auth/login', rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 10,
   message: { message: 'Too many login attempts. Try again after 15 minutes.' },
   standardHeaders: true,
   legacyHeaders: false,
-});
-app.use('/api/auth/login', loginLimiter);
+}));
+
+// Refresh token — max 30 attempts per 15 min per IP
+app.use('/api/auth/refresh', rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  message: { message: 'Too many refresh attempts. Try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+}));
 
 app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/students', require('./routes/studentRoutes'));
