@@ -44,6 +44,7 @@ api.interceptors.response.use(
         );
         const user = JSON.parse(localStorage.getItem('sses_user') || '{}');
         user.token = data.token;
+        if (data.refreshToken) user.refreshToken = data.refreshToken;
         localStorage.setItem('sses_user', JSON.stringify(user));
         processQueue(null, data.token);
         original.headers.Authorization = `Bearer ${data.token}`;

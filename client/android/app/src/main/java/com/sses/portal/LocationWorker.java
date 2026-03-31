@@ -35,7 +35,7 @@ public class LocationWorker extends Worker {
         // IST time check: only 7AM - 6PM
         Calendar cal = Calendar.getInstance(TimeZone.getTimeZone("Asia/Kolkata"));
         int hour = cal.get(Calendar.HOUR_OF_DAY);
-        if (hour < 7 || hour >= 18) return Result.success();
+        if (hour < 7 || hour >= 21) return Result.success();
 
         SharedPreferences prefs = getApplicationContext()
             .getSharedPreferences(PREFS, Context.MODE_PRIVATE);
