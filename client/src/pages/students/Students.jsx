@@ -535,10 +535,10 @@ export default function Students() {
                       </button>
                     </td>
                     <td className="px-4 py-3">
-                      <div className="flex gap-2">
-                        <button onClick={(e) => { e.stopPropagation(); navigate(`/students/${s._id}/edit`); }} className="text-yellow-500 hover:text-yellow-700"><FiEdit2 /></button>
-                        <button onClick={(e) => { e.stopPropagation(); handleExport([s._id]); }} className="text-primary hover:text-primary-dark" title="Export"><FiDownload size={14} /></button>
-                      </div>
+                      <button onClick={(e) => { e.stopPropagation(); navigate(`/students/${s._id}/edit`); }}
+                        className="flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 bg-primary hover:bg-primary-dark text-white rounded-lg transition-colors">
+                        <FiEdit2 size={11} /> Edit
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -592,16 +592,12 @@ export default function Students() {
             </div>
             <div className="flex gap-2 border-t border-gray-100 pt-2">
               <button onClick={(e) => { e.stopPropagation(); navigate(`/students/${s._id}/edit`); }}
-                className="flex-1 flex items-center justify-center gap-1 text-xs text-white font-medium py-1.5 bg-primary rounded-lg">
+                className="flex-1 flex items-center justify-center gap-1 text-xs text-white font-medium py-1.5 bg-primary hover:bg-primary-dark rounded-lg transition-colors">
                 <FiEdit2 size={13} /> Edit
               </button>
               <button onClick={(e) => { e.stopPropagation(); setInterviewStudent(s); }}
                 className="flex-1 flex items-center justify-center gap-1 text-xs text-white font-medium py-1.5 bg-primary hover:bg-primary-dark rounded-lg transition-colors">
                 <FiClipboard size={13} /> Interview
-              </button>
-              <button onClick={(e) => { e.stopPropagation(); handleExport([s._id]); }}
-                className="flex items-center justify-center gap-1 text-xs text-white font-medium py-1.5 px-3 bg-primary rounded-lg">
-                <FiDownload size={13} />
               </button>
             </div>
           </div>
