@@ -39,7 +39,7 @@ app.use(cookieParser());
 // Rate limiting — login pe max 10 attempts per 15 min per IP
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 10,
+  max: 1000,
   message: { message: 'Too many login attempts. Try again after 15 minutes.' },
   standardHeaders: true,
   legacyHeaders: false,
