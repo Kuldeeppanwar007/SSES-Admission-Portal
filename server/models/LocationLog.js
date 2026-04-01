@@ -10,7 +10,7 @@ const locationLogSchema = new mongoose.Schema({
   timestamp: { type: Date, default: Date.now },
 }, { timestamps: true });
 
-// Auto-delete logs older than 30 days
-locationLogSchema.index({ timestamp: 1 }, { expireAfterSeconds: 30 * 24 * 60 * 60 });
+// Auto-delete logs older than 7 days (50 users ke saath storage bachane ke liye)
+locationLogSchema.index({ timestamp: 1 }, { expireAfterSeconds: 7 * 24 * 60 * 60 });
 
 module.exports = mongoose.model('LocationLog', locationLogSchema);
