@@ -593,7 +593,15 @@ const getStats = async (req, res) => {
       points: pointsMap[track] || 0,
     }));
 
-    res.json({ total, applied, admitted, rejected, disabled, unassigned, trackWise });
+    // B.Tech branch-wise admitted count (priority1 field)
+    const btechBranches = await Student.aggregate([
+      { $match: { status: 'Admitted', formSource: 'btech', priority1: { $nin: [null, ''] } } },
+      { $group: { _id: '$priority1', admitted: { $sum: 1 } } },
+    ]);
+    const btechByBranch = {};
+    btechBranches.forEach(({ _id, admitted }) => { btechByBranch[_id] = admitted; });
+
+    res.json({ total, applied, admitted, rejected, disabled, unassigned, trackWise, btechByBranch });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

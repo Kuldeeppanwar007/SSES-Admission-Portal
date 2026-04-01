@@ -5,6 +5,93 @@ import toast from 'react-hot-toast';
 import useAuthStore from '../../store/authStore';
 import { FiUsers, FiFileText, FiAward, FiXCircle, FiTarget, FiSlash, FiChevronDown, FiGift, FiClock } from 'react-icons/fi';
 
+// SSISM branch capacity limits
+const SSISM_BRANCHES = [
+  { label: 'BCA',           subject: 'BCA',   limit: 120, color: 'text-violet-600', bg: 'bg-violet-50', border: 'border-violet-200', bar: 'bg-violet-500' },
+  { label: 'BBA',           subject: 'BBA',   limit: 120, color: 'text-amber-600',  bg: 'bg-amber-50',  border: 'border-amber-200',  bar: 'bg-amber-500'  },
+  { label: 'BSC (BT)',      subject: 'Bio',   limit: 60,  color: 'text-rose-600',   bg: 'bg-rose-50',   border: 'border-rose-200',   bar: 'bg-rose-500'   },
+  { label: 'BSC (MICRO)',   subject: 'Micro', limit: 60,  color: 'text-cyan-600',   bg: 'bg-cyan-50',   border: 'border-cyan-200',   bar: 'bg-cyan-500'   },
+  { label: 'B.COM (CA)',    subject: 'Bcom',  limit: 60,  color: 'text-emerald-600',bg: 'bg-emerald-50',border: 'border-emerald-200',bar: 'bg-emerald-500'},
+  { label: 'ITEG DIPLOMA',  subject: 'B.Tech',limit: null,color: 'text-blue-600',   bg: 'bg-blue-50',   border: 'border-blue-200',   bar: 'bg-blue-500'   },
+];
+
+function CapacityCard({ label, admitted, limit, color, bg, border, bar }) {
+  const remaining = limit !== null ? Math.max(0, limit - admitted) : null;
+  const pct       = limit ? Math.min(Math.round((admitted / limit) * 100), 100) : null;
+  const isFull    = limit !== null && remaining === 0;
+  return (
+    <div className={`bg-white rounded-2xl border ${border} shadow-sm p-4 flex flex-col gap-2`}>
+      <p className={`text-xs font-bold uppercase tracking-wide ${color}`}>{label}</p>
+      <div className="flex items-end justify-between">
+        <div>
+          <p className="text-2xl font-bold text-gray-800">{admitted}</p>
+          <p className="text-xs text-gray-400">{limit !== null ? `of ${limit}` : 'No limit set'}</p>
+        </div>
+        {remaining !== null && (
+          <p className={`text-sm font-bold ${isFull ? 'text-rose-500' : 'text-emerald-600'}`}>
+            {isFull ? 'Full' : `${remaining} left`}
+          </p>
+        )}
+      </div>
+      {pct !== null && (
+        <div>
+          <div className="w-full bg-gray-100 rounded-full h-1.5">
+            <div className={`h-1.5 rounded-full transition-all duration-700 ${isFull ? 'bg-rose-500' : bar}`}
+              style={{ width: `${pct}%` }} />
+          </div>
+          <p className="text-xs text-gray-400 mt-1 text-right">{pct}%</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SSISMCapacityCards({ trackWise }) {
+  const admittedBySubject = {};
+  (trackWise || []).forEach(({ subjects }) => {
+    (subjects || []).forEach(({ subject, admitted }) => {
+      admittedBySubject[subject] = (admittedBySubject[subject] || 0) + (admitted || 0);
+    });
+  });
+
+  return (
+    <div>
+      <div className="flex items-center gap-2 mb-3">
+        <span className="text-sm font-bold text-gray-700 uppercase tracking-wide">SSISM Branch Capacity</span>
+        <div className="flex-1 h-px bg-gray-200" />
+      </div>
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+        {SSISM_BRANCHES.map((b) => (
+          <CapacityCard key={b.label} {...b} admitted={admittedBySubject[b.subject] || 0} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+const BTECH_BRANCHES = [
+  { label: 'CS',    key: 'CS',    limit: 60, color: 'text-blue-600',   bg: 'bg-blue-50',   border: 'border-blue-200',   bar: 'bg-blue-500'   },
+  { label: 'IT',    key: 'IT',    limit: 60, color: 'text-indigo-600', bg: 'bg-indigo-50', border: 'border-indigo-200', bar: 'bg-indigo-500' },
+  { label: 'AI/ML', key: 'AI/ML', limit: 60, color: 'text-purple-600', bg: 'bg-purple-50', border: 'border-purple-200', bar: 'bg-purple-500' },
+  { label: 'ECE',   key: 'ECE',   limit: 60, color: 'text-teal-600',   bg: 'bg-teal-50',   border: 'border-teal-200',   bar: 'bg-teal-500'   },
+];
+
+function BTechCapacityCards({ btechByBranch }) {
+  return (
+    <div>
+      <div className="flex items-center gap-2 mb-3">
+        <span className="text-sm font-bold text-gray-700 uppercase tracking-wide">B.Tech Branch Capacity</span>
+        <div className="flex-1 h-px bg-gray-200" />
+      </div>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {BTECH_BRANCHES.map((b) => (
+          <CapacityCard key={b.label} {...b} admitted={btechByBranch?.[b.key] || 0} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 const SUBJECT_COLORS = {
   'B.Tech': 'bg-blue-100 text-blue-700',
   'BCA':    'bg-violet-100 text-violet-700',
@@ -250,6 +337,12 @@ export default function Dashboard() {
           );
         })}
       </div>
+
+      {/* SSISM Branch Capacity */}
+      <SSISMCapacityCards trackWise={stats.trackWise || []} />
+
+      {/* B.Tech Branch Capacity */}
+      <BTechCapacityCards btechByBranch={stats.btechByBranch || {}} />
 
       {/* Points Table */}
       {(stats.trackWise || []).length > 0 && (
