@@ -209,15 +209,22 @@ const RANK_STYLES = [
 
 function LeaderboardSection({ stats, user }) {
   const [open, setOpen] = useState(false);
-  const sorted = [...stats.trackWise].sort((a, b) => (b.points || 0) - (a.points || 0));
-  const maxPts = sorted.reduce((m, t) => Math.max(m, t.points || 0), 1);
+
+  // Composite score = rawPoints + calling efficiency bonus
+  // callingEfficiency (0-100) * 5 = max 500 bonus pts
+  // Isse 100% calling wala track meaningful boost pata hai
+  const withComposite = stats.trackWise.map((t) => ({
+    ...t,
+    compositeScore: (t.points || 0) + Math.round((t.callingEfficiency || 0) * 5),
+  }));
+  const sorted = [...withComposite].sort((a, b) => b.compositeScore - a.compositeScore);
+  const maxScore = sorted.reduce((m, t) => Math.max(m, t.compositeScore), 1);
   const myRank = user?.role === 'track_incharge'
     ? sorted.findIndex((t) => t.track === user.track) + 1
     : null;
 
   return (
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-      {/* Header — always visible */}
       <button onClick={() => setOpen((o) => !o)}
         className="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-50/60 transition-colors">
         <div className="flex items-center gap-3">
@@ -231,13 +238,19 @@ function LeaderboardSection({ stats, user }) {
         <FiChevronDown size={16} className={`text-gray-400 transition-transform duration-300 ${open ? 'rotate-180' : ''}`} />
       </button>
 
-      {/* Collapsible list */}
       {open && (
         <div className="border-t border-gray-50">
-          {sorted.map(({ track, points }, i) => {
+          <div className="px-5 py-2 bg-gray-50/60 border-b border-gray-100">
+            <p className="text-xs text-gray-400">Rank = Points + Calling Efficiency Bonus (max +500) — 100% calling wala track upar aayega</p>
+          </div>
+          {sorted.map(({ track, points, compositeScore, calledCount, totalCount, callingEfficiency }, i) => {
             const isMe = user?.role === 'track_incharge' && user?.track === track;
             const rank = RANK_STYLES[i] || { bg: 'bg-gray-100', text: 'text-gray-500', emoji: null };
-            const barW = Math.round(((points || 0) / maxPts) * 100);
+            const barW = Math.round((compositeScore / maxScore) * 100);
+            const effColor = callingEfficiency >= 75 ? 'text-emerald-600 bg-emerald-50 border-emerald-200'
+                           : callingEfficiency >= 40 ? 'text-amber-600 bg-amber-50 border-amber-200'
+                           : 'text-rose-500 bg-rose-50 border-rose-200';
+            const effBonus = Math.round((callingEfficiency || 0) * 5);
             return (
               <div key={track}
                 className={`flex items-center gap-4 px-5 py-3 border-b border-gray-50 last:border-0 transition-colors ${
@@ -247,18 +260,29 @@ function LeaderboardSection({ stats, user }) {
                   {rank.emoji || i + 1}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <span className={`text-sm font-semibold truncate ${isMe ? 'text-primary' : 'text-gray-800'}`}>{track}</span>
                     {isMe && <span className="text-xs bg-orange-100 text-primary font-bold px-1.5 py-0.5 rounded-full">You</span>}
+                    {totalCount > 0 && (
+                      <span className={`text-xs font-bold px-1.5 py-0.5 rounded-full border ${effColor}`}
+                        title={`${calledCount} of ${totalCount} called — +${effBonus} bonus pts`}>
+                        📞 {callingEfficiency}%
+                      </span>
+                    )}
                   </div>
                   <div className="w-full bg-gray-100 rounded-full h-1.5 mt-1.5">
                     <div className={`h-1.5 rounded-full transition-all duration-700 ${isMe ? 'bg-primary' : 'bg-gray-400'}`}
                       style={{ width: `${barW}%` }} />
                   </div>
                 </div>
-                <span className={`text-sm font-bold tabular-nums shrink-0 ${isMe ? 'text-primary' : 'text-gray-700'}`}>
-                  {points || 0} <span className="text-xs font-medium text-gray-400">pts</span>
-                </span>
+                <div className="text-right shrink-0">
+                  <p className={`text-sm font-bold tabular-nums ${isMe ? 'text-primary' : 'text-gray-700'}`}>
+                    {compositeScore} <span className="text-xs font-medium text-gray-400">pts</span>
+                  </p>
+                  <p className="text-xs text-gray-400 tabular-nums">
+                    {points} + <span className="text-emerald-600 font-semibold">+{effBonus}</span>
+                  </p>
+                </div>
               </div>
             );
           })}

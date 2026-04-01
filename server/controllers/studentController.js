@@ -118,6 +118,9 @@ const ALLOWED_FUNNEL = {
   'Admitted': ['Admission Closed'],
 };
 
+// Calling points — flat 5 pts per student (ek baar), leaderboard efficiency se rank hoga
+const CALLING_POINTS_PER_STUDENT = 5;
+
 // Update student
 const updateStudent = async (req, res) => {
   const student = await Student.findById(req.params.id);
@@ -191,10 +194,10 @@ const updateStudent = async (req, res) => {
       }
     }
 
-    // Calling points migrate karo
+    // Calling points — track badla to migrate karo
     if (updated.callingPointsAwarded) {
-      await TrackPoints.findOneAndUpdate({ track: prevTrack }, { $inc: { points: -5 } }, { upsert: true });
-      await TrackPoints.findOneAndUpdate({ track: newTrack },  { $inc: { points:  5 } }, { upsert: true });
+      await TrackPoints.findOneAndUpdate({ track: prevTrack }, { $inc: { points: -CALLING_POINTS_PER_STUDENT } }, { upsert: true });
+      await TrackPoints.findOneAndUpdate({ track: newTrack },  { $inc: { points:  CALLING_POINTS_PER_STUDENT } }, { upsert: true });
     }
 
     // pointsDelta reset — track migration already handle ho gayi upar
@@ -215,9 +218,9 @@ const updateStudent = async (req, res) => {
       await Student.findByIdAndUpdate(req.params.id, { $addToSet: { awardedFunnelStages: newFunnel } });
     }
 
-    // Calling status remark points — sirf ek baar milenge per student
+    // Calling status remark points — sirf ek baar per student, flat 5 pts
     if (updates.status === 'Calling' && updates.remarks && updates.remarks.trim() && !student.callingPointsAwarded) {
-      pointsDelta += 5;
+      pointsDelta += CALLING_POINTS_PER_STUDENT;
       await Student.findByIdAndUpdate(req.params.id, { callingPointsAwarded: true });
     }
 
@@ -530,8 +533,10 @@ const getTrackStats = async (req, res) => {
       totalPoints: count * (FUNNEL_POINTS_MAP[_id] || 0),
     }));
 
-    // Calling points breakdown
+    // Calling points breakdown + efficiency
     const callingCount = await Student.countDocuments({ track, callingPointsAwarded: true });
+    const totalActive  = await Student.countDocuments({ track, isDisabled: { $ne: true } });
+    const callingEfficiency = totalActive > 0 ? Math.round((callingCount / totalActive) * 100) : 0;
 
     res.json({
       track, total, applied, admitted, rejected, disabled, subjects,
@@ -539,6 +544,7 @@ const getTrackStats = async (req, res) => {
       statusBreakdown: statusBreakdown.map(({ _id, count }) => ({ status: _id, count })),
       funnelBreakdown: funnelData,
       callingPointsCount: callingCount,
+      callingEfficiency,
     });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -587,10 +593,27 @@ const getStats = async (req, res) => {
       if (!trackMap[track]) trackMap[track] = { subjects: {} };
     });
 
+    // Har track ki calling efficiency calculate karo
+    const callingData = await Student.aggregate([
+      { $match: { isDisabled: { $ne: true } } },
+      { $group: {
+        _id: '$track',
+        total: { $sum: 1 },
+        called: { $sum: { $cond: ['$callingPointsAwarded', 1, 0] } },
+      }},
+    ]);
+    const callingMap = {};
+    callingData.forEach(({ _id, total, called }) => {
+      callingMap[_id] = { calledCount: called, totalCount: total, efficiency: total > 0 ? Math.round((called / total) * 100) : 0 };
+    });
+
     const trackWise = Object.entries(trackMap).map(([track, { subjects }]) => ({
       track,
       subjects: Object.entries(subjects).map(([subject, data]) => ({ subject, ...data })),
       points: pointsMap[track] || 0,
+      calledCount:      callingMap[track]?.calledCount  || 0,
+      totalCount:       callingMap[track]?.totalCount   || 0,
+      callingEfficiency:callingMap[track]?.efficiency   || 0,
     }));
 
     // B.Tech branch-wise admitted count (priority1 field)
