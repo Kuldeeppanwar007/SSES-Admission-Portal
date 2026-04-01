@@ -18,7 +18,7 @@ app.use(cors({
     const allowed = [
       process.env.CLIENT_URL,
       'http://localhost:5173',
-      'https://mtk.central.ssism.org/',
+      'https://mkt.central.ssism.org/',
       'http://mkt.central.ssism.org/',
       'http://localhost:3000',
       'http://localhost:3010',
