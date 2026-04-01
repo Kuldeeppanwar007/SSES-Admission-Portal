@@ -3,6 +3,7 @@ const router = express.Router();
 const multer = require('multer');
 const { upload } = require('../config/cloudinary');
 const { protect, authorizeRoles } = require('../middleware/authMiddleware');
+const { validate, schemas } = require('../middleware/validate');
 const {
   getStudents, getStudent, addStudent, updateStudent,
   deleteStudent, updateStatus, getStatusHistory, bulkUpload, downloadTemplate, exportStudents, getStats, getTrackStats, selfRegister,
@@ -11,7 +12,7 @@ const {
 const memStorage = multer({ storage: multer.memoryStorage() });
 
 // Public self-registration endpoint (no auth required)
-router.post('/self-register', selfRegister);
+router.post('/self-register', validate(schemas.selfRegister), selfRegister);
 
 router.get('/stats', protect, getStats);
 router.get('/track-stats', protect, async (req, res, next) => {
@@ -64,6 +65,6 @@ router.put('/:id', protect, upload.fields([
 ]), updateStudent);
 router.delete('/:id', protect, authorizeRoles('admin', 'manager'), deleteStudent);
 router.get('/:id/status-history', protect, getStatusHistory);
-router.patch('/:id/status', protect, authorizeRoles('admin', 'manager', 'track_incharge'), updateStatus);
+router.patch('/:id/status', protect, authorizeRoles('admin', 'manager', 'track_incharge'), validate(schemas.updateStatus), updateStatus);
 
 module.exports = router;
