@@ -401,13 +401,14 @@ export default function Dashboard() {
                 </div>
               </div>
               <button onClick={handleManualBonus} disabled={distributing || alreadyDone}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-colors shadow-sm ${
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-colors shadow-sm shrink-0 ${
                   alreadyDone
                     ? 'bg-gray-100 text-gray-400 cursor-not-allowed shadow-none'
                     : 'bg-primary text-white hover:bg-primary-dark shadow-orange-200 disabled:opacity-60'
                 }`}>
                 <FiGift size={14} />
-                {alreadyDone ? 'Already Distributed This Week' : distributing ? 'Distributing...' : 'Distribute Now'}
+                <span className="hidden sm:inline">{alreadyDone ? 'Already Distributed This Week' : distributing ? 'Distributing...' : 'Distribute Now'}</span>
+                <span className="sm:hidden">{alreadyDone ? 'Done' : distributing ? '...' : 'Distribute'}</span>
               </button>
             </div>
 

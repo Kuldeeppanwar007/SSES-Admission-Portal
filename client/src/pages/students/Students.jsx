@@ -344,16 +344,16 @@ export default function Students() {
         <h2 className="text-xl md:text-2xl font-bold text-gray-800">
           Students <span className="text-gray-400 text-base">({total})</span>
         </h2>
-        <div className="grid grid-cols-4 gap-1.5 w-full md:w-auto md:flex md:gap-2">
+        <div className="flex flex-wrap gap-1.5 w-full md:w-auto md:flex md:gap-2">
           {selected.length > 0 ? (
             <button onClick={() => handleExport(selected)} disabled={exporting}
-              className="flex items-center justify-center gap-0.5 md:gap-1.5 bg-primary text-white py-1.5 md:px-3 md:py-2 rounded md:rounded-lg text-xs md:text-sm disabled:opacity-60">
-              <FiDownload size={11} className="md:hidden" /><FiDownload size={14} className="hidden md:block" /> <span>Export ({selected.length})</span>
+              className="flex items-center justify-center gap-1 bg-primary text-white px-3 py-1.5 rounded-lg text-xs md:text-sm disabled:opacity-60">
+              <FiDownload size={12} /> <span>Export ({selected.length})</span>
             </button>
           ) : (
             <button onClick={() => handleExport([])} disabled={exporting}
-              className="flex items-center justify-center gap-0.5 md:gap-1.5 bg-primary text-white py-1.5 md:px-3 md:py-2 rounded md:rounded-lg text-xs md:text-sm disabled:opacity-60">
-              <FiDownload size={11} className="md:hidden" /><FiDownload size={14} className="hidden md:block" /> <span>{exporting ? 'Exporting...' : 'Export All'}</span>
+              className="flex items-center justify-center gap-1 bg-primary text-white px-3 py-1.5 rounded-lg text-xs md:text-sm disabled:opacity-60">
+              <FiDownload size={12} /> <span>{exporting ? 'Exporting...' : 'Export All'}</span>
             </button>
           )}
           {!isDisabledTab && (
@@ -377,14 +377,14 @@ export default function Students() {
               </button> */}
 
               <a href="https://central.ssism.org/self_registration" target="_blank" rel="noopener noreferrer"
-                className="flex items-center justify-center gap-0.5 md:gap-1.5 bg-primary text-white py-1.5 md:px-3 md:py-2 rounded md:rounded-lg text-xs md:text-sm">
-                <FiExternalLink size={11} className="md:hidden" /><FiExternalLink size={14} className="hidden md:block" />
-                <span className="md:hidden">SSISM</span><span className="hidden md:inline">SSISM Form</span>
+                className="flex items-center justify-center gap-1 bg-primary text-white px-3 py-1.5 rounded-lg text-xs md:text-sm">
+                <FiExternalLink size={12} />
+                <span>SSISM Form</span>
               </a>
               <a href="https://ssec.ssism.org/apply" target="_blank" rel="noopener noreferrer"
-                className="flex items-center justify-center gap-0.5 md:gap-1.5 bg-primary text-white py-1.5 md:px-3 md:py-2 rounded md:rounded-lg text-xs md:text-sm">
-                <FiExternalLink size={11} className="md:hidden" /><FiExternalLink size={14} className="hidden md:block" />
-                <span className="md:hidden">SSEC</span><span className="hidden md:inline">SSEC Form</span>
+                className="flex items-center justify-center gap-1 bg-primary text-white px-3 py-1.5 rounded-lg text-xs md:text-sm">
+                <FiExternalLink size={12} />
+                <span>SSEC Form</span>
               </a>
             </>
           )}
@@ -562,17 +562,17 @@ export default function Students() {
                   onClick={(e) => e.stopPropagation()}
                   className="mt-1 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer" />
                 <div>
-                  <p className="font-semibold text-gray-800">{(page - 1) * 10 + i + 1}. {s.name} {s.finalInterview?.result && <span className="text-emerald-500">★</span>}</p>
-                  <p className="text-sm text-gray-500">{s.fatherName}</p>
+                  <p className="font-semibold text-gray-800 truncate max-w-[180px]">{(page - 1) * 10 + i + 1}. {s.name} {s.finalInterview?.result && <span className="text-emerald-500">★</span>}</p>
+                  <p className="text-sm text-gray-500 truncate max-w-[180px]">{s.fatherName}</p>
                 </div>
               </div>
               <span className={`px-2 py-1 rounded-full text-xs font-medium shrink-0 ${STATUS_COLORS[s.status]}`}>{s.status}</span>
             </div>
-            <div className="grid grid-cols-2 gap-1 text-xs text-gray-500 mb-3">
-              {s.track && <span>📍 {s.track}</span>}
-              {s.mobileNo && <span>📞 {s.mobileNo}</span>}
+            <div className="flex flex-wrap gap-1 text-xs text-gray-500 mb-3">
+              {s.track && <span className="flex items-center gap-0.5">📍 {s.track}</span>}
+              {s.mobileNo && <span className="flex items-center gap-0.5">📞 {s.mobileNo}</span>}
               {s.formSource && (
-                <span className={`w-fit px-2 py-0.5 rounded-full font-medium ${
+                <span className={`px-2 py-0.5 rounded-full font-medium ${
                   s.formSource === 'btech' ? 'bg-blue-100 text-blue-700' :
                   s.formSource === 'ssism' ? 'bg-purple-100 text-purple-700' :
                   'bg-gray-100 text-gray-600'
@@ -581,13 +581,13 @@ export default function Students() {
                 </span>
               )}
               {s.finalInterview?.result === 'Pass' ? (
-                <span className="w-fit px-2 py-0.5 rounded-full font-bold bg-emerald-100 text-emerald-700">✓ Final Cleared</span>
+                <span className="px-2 py-0.5 rounded-full font-bold bg-emerald-100 text-emerald-700">✓ Final Cleared</span>
               ) : s.finalInterview?.result === 'Fail' ? (
-                <span className="w-fit px-2 py-0.5 rounded-full font-bold bg-rose-100 text-rose-600">✗ Final Failed</span>
+                <span className="px-2 py-0.5 rounded-full font-bold bg-rose-100 text-rose-600">✗ Final Failed</span>
               ) : s.finalInterview?.result === 'Pending' ? (
-                <span className="w-fit px-2 py-0.5 rounded-full font-bold bg-amber-100 text-amber-700">⏳ Final Pending</span>
+                <span className="px-2 py-0.5 rounded-full font-bold bg-amber-100 text-amber-700">⏳ Final Pending</span>
               ) : s.interviewCount > 0 ? (
-                <span className="w-fit px-2 py-0.5 rounded-full font-bold bg-orange-50 text-primary border border-orange-200">Round {s.interviewCount}</span>
+                <span className="px-2 py-0.5 rounded-full font-bold bg-orange-50 text-primary border border-orange-200">Round {s.interviewCount}</span>
               ) : null}
             </div>
             <div className="flex gap-2 border-t border-gray-100 pt-2">

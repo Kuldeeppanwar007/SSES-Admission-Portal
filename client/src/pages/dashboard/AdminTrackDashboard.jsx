@@ -61,14 +61,13 @@ export default function AdminTrackDashboard() {
       {/* Header */}
       <div className="flex items-start justify-between flex-wrap gap-3">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">{track} — Track Dashboard</h2>
+          <h2 className="text-xl md:text-2xl font-bold text-gray-900">{track} — Track Dashboard</h2>
           <p className="text-sm text-gray-500 mt-0.5">Individual track overview</p>
         </div>
-        <div className="flex items-center gap-3">
-          <span className="text-sm bg-orange-50 text-primary font-bold px-3 py-1.5 rounded-full border border-orange-100">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-sm bg-orange-50 text-primary font-bold px-3 py-1.5 rounded-full border border-orange-100 shrink-0">
             🏆 {stats?.points || 0} pts
           </span>
-          {/* Track switcher */}
           <div className="relative">
             <select value={track}
               onChange={(e) => navigate(`/admin-track/${e.target.value}`)}

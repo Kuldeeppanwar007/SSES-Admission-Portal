@@ -172,12 +172,14 @@ const handleViewHistory = async () => {
 
   return (
     <div className="px-2">
-      <div className="flex flex-wrap items-center gap-2 mb-6">
-        <button onClick={() => navigate('/students')} className="flex items-center gap-1 text-gray-500 hover:text-gray-700 text-sm">
-          <FiArrowLeft size={16} /> Back
-        </button>
-        <h2 className="text-xl font-bold text-gray-800">Student Details</h2>
-        <div className="ml-auto flex items-center gap-2 flex-wrap">
+      <div className="flex flex-col gap-2 mb-6">
+        <div className="flex items-center gap-2">
+          <button onClick={() => navigate('/students')} className="flex items-center gap-1 text-gray-500 hover:text-gray-700 text-sm shrink-0">
+            <FiArrowLeft size={16} /> Back
+          </button>
+          <h2 className="text-xl font-bold text-gray-800">Student Details</h2>
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
           <button onClick={() => navigate(`/students/${id}/edit`)}
             className="flex items-center gap-1.5 bg-primary text-white px-3 py-1.5 rounded-lg text-sm hover:bg-primary-dark">
             <FiEdit2 size={13} /> Edit

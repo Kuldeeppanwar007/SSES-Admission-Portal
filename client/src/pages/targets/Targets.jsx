@@ -75,7 +75,7 @@ export default function Targets() {
           </div>
           <p className="text-sm font-bold text-gray-800">Set Target</p>
         </div>
-        <form onSubmit={handleSubmit} className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <form onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <div className="flex flex-col gap-1">
             <label className="text-xs font-medium text-gray-500">Track</label>
             <select value={form.track} onChange={(e) => setForm({ ...form, track: e.target.value })}

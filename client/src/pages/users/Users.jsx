@@ -175,11 +175,11 @@ export default function Users() {
             </div>
             <div className="flex gap-2 pt-1 border-t border-gray-100">
               <button onClick={() => handleEdit(u)}
-                className="flex items-center gap-1 text-xs text-primary hover:text-primary-dark font-medium">
+                className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors">
                 <FiEdit2 size={13} /> Edit
               </button>
               <button onClick={() => handleDelete(u._id)}
-                className="flex items-center gap-1 text-xs text-red-500 hover:text-red-700 font-medium ml-auto">
+                className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-rose-50 text-rose-500 hover:bg-rose-100 transition-colors ml-auto">
                 <FiTrash2 size={13} /> Delete
               </button>
             </div>
