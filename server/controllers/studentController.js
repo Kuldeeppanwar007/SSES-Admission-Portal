@@ -131,7 +131,18 @@ const updateStudent = async (req, res) => {
   const prevStatus = student.status;
   const prevFunnel = student.funnelStage || '';
   const prevTrack  = student.track || '';
-  const updates = { ...req.body };
+
+  // Whitelist — sirf allowed fields accept karo, raw req.body directly use mat karo
+  const ALLOWED_FIELDS = ['status', 'remarks', 'funnelStage', 'subject',
+    'name', 'fatherName', 'track', 'mobileNo', 'whatsappNo', 'fullAddress', 'otherTrack',
+    'formSource', 'email', 'schoolName', 'district', 'village', 'whatsappNumber',
+    'priority1', 'priority2', 'priority3', 'jeeScore', 'persentage12', 'persentage10',
+    'persentage11', 'branch', 'year', 'joinBatch', 'feesScheme', 'category', 'gender',
+    'school12Sub', 'dob', 'aadharNo', 'fatherOccupation', 'fatherIncome',
+    'fatherContactNumber', 'pincode', 'tehsil', 'trackName',
+  ];
+  const updates = {};
+  ALLOWED_FIELDS.forEach((f) => { if (req.body[f] !== undefined) updates[f] = req.body[f]; });
 
   // Validate funnel stage against status
   const effectiveStatus = updates.status || prevStatus;

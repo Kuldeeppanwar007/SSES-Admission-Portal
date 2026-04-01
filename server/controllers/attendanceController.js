@@ -2,6 +2,29 @@ const Attendance = require('../models/Attendance');
 const User = require('../models/User');
 const LocationLog = require('../models/LocationLog');
 
+// IST helpers
+const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
+
+// Returns current IST date string YYYY-MM-DD
+const getISTDateString = () => {
+  const now = new Date(Date.now() + IST_OFFSET_MS);
+  return now.toISOString().slice(0, 10);
+};
+
+// Returns current IST time string HH:MM:SS
+const getISTTimeString = () => {
+  const now = new Date(Date.now() + IST_OFFSET_MS);
+  return now.toISOString().slice(11, 19);
+};
+
+// Returns UTC Date range for a given IST date string (YYYY-MM-DD)
+const getISTDayRange = (istDateStr) => {
+  // IST day starts at UTC 18:30 previous day, ends at UTC 18:29:59 same day
+  const start = new Date(`${istDateStr}T00:00:00+05:30`);
+  const end   = new Date(`${istDateStr}T23:59:59.999+05:30`);
+  return { start, end };
+};
+
 // POST /api/attendance/location  (called by Android foreground service every hour)
 const saveLocation = async (req, res) => {
   try {
@@ -55,8 +78,7 @@ const getLocationLogs = async (req, res) => {
   const query = {};
   if (userId) query.user = userId;
   if (date) {
-    const start = new Date(date); start.setHours(0, 0, 0, 0);
-    const end = new Date(date); end.setHours(23, 59, 59, 999);
+    const { start, end } = getISTDayRange(date);
     query.timestamp = { $gte: start, $lte: end };
   }
   const logs = await LocationLog.find(query)
@@ -96,8 +118,7 @@ const getTimeline = async (req, res) => {
   const { userId, date } = req.query;
   if (!userId || !date) return res.status(400).json({ message: 'userId and date required' });
 
-  const start = new Date(date); start.setHours(0, 0, 0, 0);
-  const end   = new Date(date); end.setHours(23, 59, 59, 999);
+  const { start, end } = getISTDayRange(date);
 
   const logs = await LocationLog.find({
     user: userId, timestamp: { $gte: start, $lte: end }, status: 'ok', lat: { $ne: null },
@@ -140,17 +161,15 @@ const markAttendance = async (req, res) => {
   if (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180)
     return res.status(400).json({ message: 'Invalid coordinates' });
 
-  const now = new Date();
-  const date = now.toISOString().slice(0, 10);
-  const time = now.toTimeString().slice(0, 8);
+  const date  = getISTDateString();
+  const time  = getISTTimeString();
 
   const existing = await Attendance.findOne({ user: req.user._id, date });
   if (existing)
     return res.status(400).json({ message: 'Attendance already marked for today' });
 
-  // Option C: Block attendance if location was unavailable today (more unavailable than ok)
-  const todayStart = new Date(date); todayStart.setHours(0, 0, 0, 0);
-  const todayEnd = new Date(date); todayEnd.setHours(23, 59, 59, 999);
+  // IST day range use karo location log check ke liye
+  const { start: todayStart, end: todayEnd } = getISTDayRange(date);
   const todayLogs = await LocationLog.find({
     user: req.user._id,
     timestamp: { $gte: todayStart, $lte: todayEnd },

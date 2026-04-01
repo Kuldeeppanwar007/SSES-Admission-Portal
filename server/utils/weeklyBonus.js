@@ -4,14 +4,17 @@ const WeeklyBonus = require('../models/WeeklyBonus');
 
 const BONUS = { 1: 200, 2: 150, 3: 100 };
 
-// Get Monday of current week (to use as unique week identifier)
+// Get Monday of current week in IST
 const getWeekStart = () => {
-  const now = new Date();
-  const day = now.getDay(); // 0=Sun, 6=Sat
-  const diff = now.getDate() - day + (day === 0 ? -6 : 1);
-  const monday = new Date(now.setDate(diff));
-  monday.setHours(0, 0, 0, 0);
-  return monday;
+  const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
+  const nowIST = new Date(Date.now() + IST_OFFSET_MS);
+  const day  = nowIST.getUTCDay(); // 0=Sun in IST
+  const diff = nowIST.getUTCDate() - day + (day === 0 ? -6 : 1);
+  const monday = new Date(nowIST);
+  monday.setUTCDate(diff);
+  monday.setUTCHours(0, 0, 0, 0);
+  // Convert back to actual UTC (subtract IST offset)
+  return new Date(monday.getTime() - IST_OFFSET_MS);
 };
 
 const runWeeklyBonus = async () => {
