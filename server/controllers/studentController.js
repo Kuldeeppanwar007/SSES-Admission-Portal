@@ -438,7 +438,16 @@ const exportStudents = async (req, res) => {
     ws['!cols'] = [6, 22, 22, 14, 14, 14, 12, 30, 14, 12, 30, 16, 14].map((w) => ({ wch: w }));
     xlsx.utils.book_append_sheet(wb, ws, 'Students');
     const buf = xlsx.write(wb, { type: 'buffer', bookType: 'xlsx' });
-    res.setHeader('Content-Disposition', `attachment; filename=students_export_${Date.now()}.xlsx`);
+
+    // Filename: date + student name (single export) ya "all"
+    const now = new Date();
+    const dateStr = `${now.getDate().toString().padStart(2,'0')}-${(now.getMonth()+1).toString().padStart(2,'0')}-${now.getFullYear()}`;
+    const namePart = (ids && ids.length === 1)
+      ? `_${students[0].name.replace(/[^a-zA-Z0-9]/g, '_')}`
+      : '';
+    const filename = `students_export_${dateStr}${namePart}.xlsx`;
+
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.send(buf);
   } catch (err) {

@@ -4,7 +4,7 @@ import api from '../../api/axios';
 import { TRACKS, STATUSES, STATUS_COLORS } from '../../utils/constants';
 import useAuthStore from '../../store/authStore';
 import toast from 'react-hot-toast';
-import { FiPlus, FiUpload, FiSearch, FiEdit2, FiDownload, FiFilter, FiSlash, FiClipboard } from 'react-icons/fi';
+import { FiPlus, FiUpload, FiSearch, FiEdit2, FiDownload, FiFilter, FiSlash, FiClipboard, FiExternalLink } from 'react-icons/fi';
 import DatePicker from '../../components/DatePicker';
 import { isOnline, cacheStudents, getCachedStudents } from '../../utils/offlineQueue';
 
@@ -280,7 +280,26 @@ export default function Students() {
       const url = window.URL.createObjectURL(new Blob([res.data]));
       const a = document.createElement('a');
       a.href = url;
-      a.download = `students_export_${Date.now()}.xlsx`;
+
+      const now = new Date();
+      const dateStr = `${now.getDate().toString().padStart(2,'0')}-${(now.getMonth()+1).toString().padStart(2,'0')}-${now.getFullYear()}`;
+
+      let filename;
+      if (ids.length === 1) {
+        // Single student — student ka naam
+        const student = students.find(s => s._id === ids[0]);
+        const namePart = student ? student.name.replace(/[^a-zA-Z0-9]/g, '_') : 'student';
+        filename = `${namePart}_${dateStr}.xlsx`;
+      } else if (ids.length > 1) {
+        // Selected multiple — selected + date
+        filename = `students_selected_${dateStr}.xlsx`;
+      } else {
+        // Export all — track filter laga ho to track name, warna "all"
+        const trackPart = filters.track ? filters.track.replace(/[^a-zA-Z0-9]/g, '_') : 'all';
+        filename = `students_${trackPart}_${dateStr}.xlsx`;
+      }
+
+      a.download = filename;
       a.click();
       window.URL.revokeObjectURL(url);
       toast.success(`${ids.length > 0 ? ids.length : 'All'} students exported`);
@@ -339,18 +358,34 @@ export default function Students() {
           )}
           {!isDisabledTab && (
             <>
-              <label className="flex items-center justify-center gap-0.5 md:gap-1.5 bg-primary text-white py-1.5 md:px-3 md:py-2 rounded md:rounded-lg cursor-pointer text-xs md:text-sm">
-                <FiUpload size={11} className="md:hidden" /><FiUpload size={14} className="hidden md:block" /> <span>Bulk Upload</span>
-                <input type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleBulkUpload} />
-              </label>
-              <button onClick={handleDownloadTemplate}
-                className="flex items-center justify-center gap-0.5 md:gap-1.5 bg-gray-100 text-gray-700 py-1.5 md:px-3 md:py-2 rounded md:rounded-lg text-xs md:text-sm border border-gray-300">
-                <FiDownload size={11} className="md:hidden" /><FiDownload size={14} className="hidden md:block" /> <span>Sample</span>
-              </button>
-              <button onClick={() => navigate('/students/add')}
+              {/* Add Student button — ab external form se aata hai */}
+              {/* <button onClick={() => navigate('/students/add')}
                 className="flex items-center justify-center gap-0.5 md:gap-1.5 bg-primary text-white py-1.5 md:px-3 md:py-2 rounded md:rounded-lg text-xs md:text-sm">
                 <FiPlus size={11} className="md:hidden" /><FiPlus size={14} className="hidden md:block" /> <span className="md:hidden">Add</span><span className="hidden md:inline">Add Student</span>
-              </button>
+              </button> */}
+
+              {/* Bulk Upload — ab external form se aata hai */}
+              {/* <label className="flex items-center justify-center gap-0.5 md:gap-1.5 bg-primary text-white py-1.5 md:px-3 md:py-2 rounded md:rounded-lg cursor-pointer text-xs md:text-sm">
+                <FiUpload size={11} className="md:hidden" /><FiUpload size={14} className="hidden md:block" /> <span>Bulk Upload</span>
+                <input type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleBulkUpload} />
+              </label> */}
+
+              {/* Sample template download — bulk upload ke saath comment */}
+              {/* <button onClick={handleDownloadTemplate}
+                className="flex items-center justify-center gap-0.5 md:gap-1.5 bg-gray-100 text-gray-700 py-1.5 md:px-3 md:py-2 rounded md:rounded-lg text-xs md:text-sm border border-gray-300">
+                <FiDownload size={11} className="md:hidden" /><FiDownload size={14} className="hidden md:block" /> <span>Sample</span>
+              </button> */}
+
+              <a href="https://central.ssism.org/self_registration" target="_blank" rel="noopener noreferrer"
+                className="flex items-center justify-center gap-0.5 md:gap-1.5 bg-primary text-white py-1.5 md:px-3 md:py-2 rounded md:rounded-lg text-xs md:text-sm">
+                <FiExternalLink size={11} className="md:hidden" /><FiExternalLink size={14} className="hidden md:block" />
+                <span className="md:hidden">SSISM</span><span className="hidden md:inline">SSISM Form</span>
+              </a>
+              <a href="https://ssec.ssism.org/apply" target="_blank" rel="noopener noreferrer"
+                className="flex items-center justify-center gap-0.5 md:gap-1.5 bg-primary text-white py-1.5 md:px-3 md:py-2 rounded md:rounded-lg text-xs md:text-sm">
+                <FiExternalLink size={11} className="md:hidden" /><FiExternalLink size={14} className="hidden md:block" />
+                <span className="md:hidden">SSEC</span><span className="hidden md:inline">SSEC Form</span>
+              </a>
             </>
           )}
         </div>
