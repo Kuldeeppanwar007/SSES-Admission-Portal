@@ -6,6 +6,7 @@ import { setupOfflineSync } from './utils/offlineQueue';
 import Layout from './components/layout/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
 import PermissionGate from './components/PermissionGate';
+import LocationBlocker from './components/LocationBlocker';
 import Login from './pages/auth/Login';
 import Dashboard from './pages/dashboard/Dashboard';
 import TrackDashboard from './pages/dashboard/TrackDashboard';
@@ -27,6 +28,7 @@ export default function App() {
     <PermissionGate>
     <BrowserRouter>
       <Toaster position="top-right" />
+      <LocationBlocker />
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
