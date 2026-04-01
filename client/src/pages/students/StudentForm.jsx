@@ -321,11 +321,11 @@ export default function StudentForm() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-              {!studentInfo?.finalInterviewPassed && form.status !== 'Admitted' && (
+              {/* {!studentInfo?.finalInterviewPassed && form.status !== 'Admitted' && (
                 <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-1.5 mb-2">
-                  ⚠️ Admitted option tab available hoga jab final interview pass ho jaye
+                   Admitted option tab available hoga jab final interview pass ho jaye
                 </p>
-              )}
+              )} */}
               <select value={form.status} onChange={(e) => {
                   const newStatus = e.target.value;
                   const allowed = ALLOWED_FUNNEL[newStatus] || [];
