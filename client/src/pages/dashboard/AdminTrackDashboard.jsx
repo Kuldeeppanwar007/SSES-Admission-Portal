@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../../api/axios';
 import toast from 'react-hot-toast';
-import { TRACKS } from '../../utils/constants';
+import { TRACKS, MAIN_TRACKS, TRACK_TOWNS } from '../../utils/constants';
 import { FiUsers, FiFileText, FiAward, FiXCircle, FiTarget, FiSlash, FiChevronDown, FiTrendingUp } from 'react-icons/fi';
 
 const SUBJECT_COLORS = {
@@ -62,6 +62,15 @@ export default function AdminTrackDashboard() {
       <div className="flex items-start justify-between flex-wrap gap-3">
         <div>
           <h2 className="text-xl md:text-2xl font-bold text-gray-900">{track} — Track Dashboard</h2>
+          {(TRACK_TOWNS[track] || []).length > 0 && (
+            <div className="flex flex-wrap gap-1 mt-1.5">
+              {(TRACK_TOWNS[track] || []).map((town) => (
+                <span key={town} className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-orange-50 text-primary border border-orange-100">
+                  {town}
+                </span>
+              ))}
+            </div>
+          )}
           <p className="text-sm text-gray-500 mt-0.5">Individual track overview</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
@@ -72,7 +81,7 @@ export default function AdminTrackDashboard() {
             <select value={track}
               onChange={(e) => navigate(`/admin-track/${e.target.value}`)}
               className="appearance-none border border-gray-200 rounded-xl px-3 py-2 pr-8 text-sm font-semibold text-gray-700 bg-white focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 cursor-pointer">
-              {TRACKS.map((t) => <option key={t} value={t}>{t}</option>)}
+              {MAIN_TRACKS.map((t) => <option key={t} value={t}>{t}</option>)}
             </select>
             <FiChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
           </div>

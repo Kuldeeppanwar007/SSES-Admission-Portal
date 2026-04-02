@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import api from '../../api/axios';
-import { TRACKS, ROLES } from '../../utils/constants';
+import { TRACKS, ROLES, MAIN_TRACKS } from '../../utils/constants';
 import toast from 'react-hot-toast';
 import { FiPlus, FiTrash2, FiEdit2, FiEye, FiEyeOff } from 'react-icons/fi';
 
@@ -99,7 +99,7 @@ export default function Users() {
                 <select value={form.track} onChange={(e) => setForm({ ...form, track: e.target.value })}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none">
                   <option value="">Select Track</option>
-                  {TRACKS.map((t) => <option key={t}>{t}</option>)}
+                  {MAIN_TRACKS.map((t) => <option key={t}>{t}</option>)}
                 </select>
               </div>
             )}

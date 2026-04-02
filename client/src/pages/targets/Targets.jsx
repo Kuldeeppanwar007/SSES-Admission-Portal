@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import api from '../../api/axios';
 import toast from 'react-hot-toast';
-import { TRACKS } from '../../utils/constants';
+import { TRACKS, MAIN_TRACKS, TRACK_TOWNS } from '../../utils/constants';
 import { FiEdit2, FiCheck, FiX, FiTarget } from 'react-icons/fi';
 
 const SUBJECTS = ['B.Tech', 'BCA', 'BBA', 'Bcom', 'Bio', 'Micro'];
@@ -32,7 +32,7 @@ export default function Targets() {
     e.preventDefault();
     setSaving(true);
     try {
-      const tracksToSet = form.track === 'all' ? TRACKS : [form.track];
+      const tracksToSet = form.track === 'all' ? MAIN_TRACKS : [form.track];
       await Promise.all(tracksToSet.map((track) =>
         api.post('/targets', { track, subject: form.subject, target: Number(form.target) })
       ));
@@ -58,8 +58,6 @@ export default function Targets() {
     return acc;
   }, {});
 
-  const displayTracks = selectedTrack ? [selectedTrack] : TRACKS;
-
   return (
     <div className="space-y-8">
       <div>
@@ -81,7 +79,7 @@ export default function Targets() {
             <select value={form.track} onChange={(e) => setForm({ ...form, track: e.target.value })}
               className="border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none bg-white focus:border-primary focus:ring-2 focus:ring-primary/10 transition">
               <option value="all">All Tracks</option>
-              {TRACKS.map((t) => <option key={t}>{t}</option>)}
+              {MAIN_TRACKS.map((t) => <option key={t}>{t}</option>)}
             </select>
           </div>
           <div className="flex flex-col gap-1">
@@ -116,7 +114,7 @@ export default function Targets() {
             className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${!selectedTrack ? 'bg-primary text-white shadow-sm' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>
             All
           </button>
-          {TRACKS.map((t) => (
+          {MAIN_TRACKS.map((t) => (
             <button key={t} onClick={() => setSelectedTrack(t === selectedTrack ? '' : t)}
               className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${selectedTrack === t ? 'bg-primary text-white shadow-sm' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>
               {t}
@@ -127,20 +125,29 @@ export default function Targets() {
 
       {/* Track Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-        {displayTracks.map((track) => {
+        {(selectedTrack ? [selectedTrack] : MAIN_TRACKS).map((track) => {
           const items = grouped[track] || [];
           const totalTarget = items.reduce((s, i) => s + i.target, 0);
+          const towns = TRACK_TOWNS[track] || [];
           return (
             <div key={track} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden hover:shadow-md transition-shadow">
               {/* Card Header */}
-              <div className="px-5 py-4 bg-gradient-to-r from-gray-50 to-white border-b border-gray-100 flex items-center justify-between">
-                <div>
+              <div className="px-5 py-4 bg-gradient-to-r from-gray-50 to-white border-b border-gray-100">
+                <div className="flex items-center justify-between mb-2">
                   <p className="font-bold text-gray-800 text-sm">{track}</p>
-                  <p className="text-xs text-gray-400 mt-0.5">Total target: <span className="font-semibold text-gray-600">{totalTarget}</span></p>
+                  <div className="w-9 h-9 rounded-xl bg-orange-50 border border-orange-100 flex items-center justify-center">
+                    <FiTarget size={15} className="text-primary" />
+                  </div>
                 </div>
-                <div className="w-9 h-9 rounded-xl bg-orange-50 border border-orange-100 flex items-center justify-center">
-                  <FiTarget size={15} className="text-primary" />
+                {/* Towns */}
+                <div className="flex flex-wrap gap-1 mb-1">
+                  {towns.map((town) => (
+                    <span key={town} className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-orange-50 text-primary border border-orange-100">
+                      {town}
+                    </span>
+                  ))}
                 </div>
+                <p className="text-xs text-gray-400">Total target: <span className="font-semibold text-gray-600">{totalTarget}</span></p>
               </div>
 
               {/* Subject rows */}

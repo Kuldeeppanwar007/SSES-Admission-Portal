@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import api from '../../api/axios';
-import { TRACKS, STATUSES, STATUS_COLORS } from '../../utils/constants';
+import { TRACKS, STATUSES, STATUS_COLORS, TRACK_TOWNS } from '../../utils/constants';
 import useAuthStore from '../../store/authStore';
 import toast from 'react-hot-toast';
 import { FiPlus, FiUpload, FiSearch, FiEdit2, FiDownload, FiFilter, FiSlash, FiClipboard, FiExternalLink } from 'react-icons/fi';
@@ -485,14 +485,14 @@ export default function Students() {
                     <input type="checkbox" checked={allSelected} onChange={toggleAll}
                       className="rounded border-gray-300 text-primary focus:ring-primary cursor-pointer" />
                   </th>
-                  {['S.N.', 'Name', 'Father Name', 'Track', 'Mobile', 'Form', 'Status', 'Attempt', 'Interview', 'Actions'].map((h) => (
+                  {['S.N.', 'Name', 'Father Name', 'Track', 'Town', 'Mobile', 'Form', 'Status', 'Attempt', 'Interview', 'Actions'].map((h) => (
                     <th key={h} className={`px-4 py-3 text-xs font-semibold uppercase text-gray-500 ${h === 'Attempt' ? 'text-center' : 'text-left'}`}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {students.length === 0 ? (
-                  <tr><td colSpan={10} className="text-center py-10 text-gray-400">No students found</td></tr>
+                  <tr><td colSpan={11} className="text-center py-10 text-gray-400">No students found</td></tr>
                 ) : students.map((s, i) => (
                   <tr key={s._id} onClick={() => navigate(`/students/${s._id}`)} className={`hover:bg-gray-50 transition-colors cursor-pointer ${selected.includes(s._id) ? 'bg-orange-50/50' : ''}`}>
                     <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
@@ -508,6 +508,7 @@ export default function Students() {
                     </td>
                     <td className="px-4 py-3 text-gray-600">{s.fatherName}</td>
                     <td className="px-4 py-3 text-gray-600">{s.track}</td>
+                    <td className="px-4 py-3 text-gray-500 text-xs">{s.trackName || s.village || '—'}</td>
                     <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                       {s.mobileNo ? (
                         <a href={`tel:${s.mobileNo}`} className="text-gray-600 hover:text-primary hover:underline">
@@ -589,7 +590,7 @@ export default function Students() {
             <div className="flex items-center gap-2 flex-wrap pl-6 mb-3">
               {s.track && (
                 <span className="flex items-center gap-1 text-sm text-gray-500">
-                  <span className="text-base">📍</span> {s.track}
+                  <span className="text-base">📍</span> {s.track}{(s.trackName || s.village) ? ` · ${s.trackName || s.village}` : ''}
                 </span>
               )}
               {s.mobileNo && (

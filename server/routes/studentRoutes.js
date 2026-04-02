@@ -68,6 +68,64 @@ router.post('/weekly-bonus-manual', protect, authorizeRoles('admin'), async (req
     res.status(500).json({ message: err.message });
   }
 });
+
+// Admin — TrackPoints recalculate from scratch
+router.post('/recalculate-points', protect, authorizeRoles('admin'), async (req, res) => {
+  try {
+    const Student = require('../models/Student');
+    const TrackPoints = require('../models/TrackPoints');
+
+    const TRACK_GROUP = {
+      'Harda': 1, 'Satwas & Kannod': 1, 'Rehti': 1,
+      'Khategaon': 2,
+    };
+    const SUBJECT_POINTS_BY_GROUP = {
+      'B.Tech': [180, 198, 225], 'BCA': [120, 132, 150],
+      'BBA': [130, 143, 163], 'Bcom': [130, 143, 163],
+      'Bio': [120, 132, 150], 'Micro': [120, 132, 150],
+    };
+    const getSubjectPoints = (track, subject) => {
+      const g = (TRACK_GROUP[track] || 1) - 1;
+      return (SUBJECT_POINTS_BY_GROUP[subject] || [0, 0, 0])[g];
+    };
+
+    // Reset all track points to 0
+    await TrackPoints.updateMany({}, { points: 0 });
+
+    // Admission points recalculate
+    const admitted = await Student.find({ status: 'Admitted', isDisabled: { $ne: true } });
+    const pointsMap = {};
+    admitted.forEach(({ track, subject }) => {
+      if (!track || !subject) return;
+      pointsMap[track] = (pointsMap[track] || 0) + getSubjectPoints(track, subject);
+    });
+
+    // Funnel points recalculate
+    const FUNNEL_POINTS = { 'Call Completed': 5, 'Lead Interested': 10, 'Admission Closed': 100 };
+    const funnelStudents = await Student.find({ awardedFunnelStages: { $exists: true, $ne: [] }, isDisabled: { $ne: true } });
+    funnelStudents.forEach(({ track, awardedFunnelStages }) => {
+      if (!track) return;
+      const pts = (awardedFunnelStages || []).reduce((s, f) => s + (FUNNEL_POINTS[f] || 0), 0);
+      pointsMap[track] = (pointsMap[track] || 0) + pts;
+    });
+
+    // Calling points recalculate
+    const callingStudents = await Student.find({ callingPointsAwarded: true, isDisabled: { $ne: true } });
+    callingStudents.forEach(({ track }) => {
+      if (!track) return;
+      pointsMap[track] = (pointsMap[track] || 0) + 5;
+    });
+
+    // Save
+    await Promise.all(Object.entries(pointsMap).map(([track, points]) =>
+      TrackPoints.findOneAndUpdate({ track }, { points }, { upsert: true })
+    ));
+
+    res.json({ message: 'Points recalculated successfully', pointsMap });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
 router.get('/download-template', protect, downloadTemplate);
 router.get('/', protect, getStudents);
 router.get('/:id', protect, getStudent);

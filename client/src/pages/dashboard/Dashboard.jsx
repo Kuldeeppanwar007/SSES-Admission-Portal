@@ -4,6 +4,7 @@ import api from '../../api/axios';
 import toast from 'react-hot-toast';
 import useAuthStore from '../../store/authStore';
 import { FiUsers, FiFileText, FiAward, FiXCircle, FiTarget, FiSlash, FiChevronDown, FiGift, FiClock } from 'react-icons/fi';
+import { TRACK_TOWNS } from '../../utils/constants';
 
 // SSISM branch capacity limits
 const SSISM_BRANCHES = [
@@ -322,6 +323,17 @@ export default function Dashboard() {
     } finally { setDistributing(false); }
   };
 
+  const handleRecalculate = async () => {
+    if (!window.confirm('Sab track points scratch se recalculate honge. Continue?')) return;
+    try {
+      const { data } = await api.post('/students/recalculate-points', {});
+      toast.success(data.message);
+      fetchStats();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed');
+    }
+  };
+
   if (!stats) return (
     <div className="flex justify-center items-center h-64">
       <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary" />
@@ -330,9 +342,17 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-8">
-      <div>
-        <h2 className="text-2xl font-bold text-gray-900">Dashboard</h2>
-        <p className="text-sm text-gray-500 mt-0.5">Overview of all admissions</p>
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900">Dashboard</h2>
+          <p className="text-sm text-gray-500 mt-0.5">Overview of all admissions</p>
+        </div>
+        {user?.role === 'admin' && (
+          <button onClick={handleRecalculate}
+            className="flex items-center gap-1.5 text-xs border border-gray-200 text-gray-500 px-3 py-1.5 rounded-lg hover:border-primary hover:text-primary transition-colors">
+            🔄 Recalculate Points
+          </button>
+        )}
       </div>
 
       {/* Stat Cards */}
@@ -466,22 +486,30 @@ export default function Dashboard() {
                   className={`bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden hover:shadow-md transition-shadow ${
                     isClickable ? 'cursor-pointer hover:border-orange-200' : ''
                   }`}>
-                  {/* Card Header — same as Targets page */}
-                  <div className="px-5 py-4 bg-gradient-to-r from-gray-50 to-white border-b border-gray-100 flex items-center justify-between">
-                    <div>
+                  {/* Card Header */}
+                  <div className="px-5 py-4 bg-gradient-to-r from-gray-50 to-white border-b border-gray-100">
+                    <div className="flex items-center justify-between mb-1.5">
                       <p className="font-bold text-gray-800 text-sm">{track}</p>
-                      <p className="text-xs text-gray-400 mt-0.5">
-                        {totalAdmitted} / {totalTarget} admitted
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs bg-orange-50 text-primary font-bold px-2 py-0.5 rounded-full border border-orange-100">
-                        🏆 {points || 0}
-                      </span>
-                      <div className="w-9 h-9 rounded-xl bg-orange-50 border border-orange-100 flex items-center justify-center">
-                        <FiTarget size={15} className="text-primary" />
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs bg-orange-50 text-primary font-bold px-2 py-0.5 rounded-full border border-orange-100">
+                          🏆 {points || 0}
+                        </span>
+                        <div className="w-9 h-9 rounded-xl bg-orange-50 border border-orange-100 flex items-center justify-center">
+                          <FiTarget size={15} className="text-primary" />
+                        </div>
                       </div>
                     </div>
+                    {/* Towns */}
+                    {(TRACK_TOWNS[track] || []).length > 0 && (
+                      <div className="flex flex-wrap gap-1 mb-1">
+                        {(TRACK_TOWNS[track] || []).map((town) => (
+                          <span key={town} className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-orange-50 text-primary border border-orange-100">
+                            {town}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    <p className="text-xs text-gray-400">{totalAdmitted} / {totalTarget} admitted</p>
                   </div>
 
                   {/* Overall progress bar */}

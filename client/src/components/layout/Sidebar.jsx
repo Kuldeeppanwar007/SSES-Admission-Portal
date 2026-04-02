@@ -1,8 +1,8 @@
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
-import { FiHome, FiUsers, FiUserCheck, FiLogOut, FiChevronLeft, FiChevronRight, FiFlag, FiPieChart, FiChevronDown, FiMap, FiCheckSquare, FiEdit } from 'react-icons/fi';
+import { FiHome, FiUsers, FiUserCheck, FiLogOut, FiChevronLeft, FiChevronRight, FiFlag, FiPieChart, FiChevronDown, FiMap, FiCheckSquare, FiEdit, FiSettings } from 'react-icons/fi';
 import { useState } from 'react';
 import useAuthStore from '../../store/authStore';
-import { TRACKS } from '../../utils/constants';
+import { TRACKS, MAIN_TRACKS } from '../../utils/constants';
 
 const navItems = [
   { to: '/dashboard', Icon: FiHome, label: 'Dashboard' },
@@ -11,6 +11,7 @@ const navItems = [
   { to: '/edit-requests', Icon: FiEdit, label: 'Edit Requests', adminOnly: true },
   { to: '/edit-requests', Icon: FiEdit, label: 'Edit Requests', trackOnly: true },
   { to: '/targets', Icon: FiFlag, label: 'Targets', adminOnly: true },
+  { to: '/track-manager', Icon: FiSettings, label: 'Track Manager', adminOnly: true },
   { to: '/users', Icon: FiUserCheck, label: 'Users', adminOnly: true },
   { to: '/attendance', Icon: FiCheckSquare, label: 'Attendance', adminOnly: true },
 ];
@@ -63,7 +64,7 @@ export default function Sidebar({ open, onClose, collapsed, onToggle }) {
             </button>
             {trackMenuOpen && (
               <div className="ml-4 mt-1 space-y-0.5 border-l-2 border-orange-100 pl-3">
-                {TRACKS.map((t) => (
+                {MAIN_TRACKS.map((t) => (
                   <NavLink key={t} to={`/admin-track/${t}`} onClick={onClose}
                     className={({ isActive }) =>
                       `block px-3 py-2 rounded-lg text-sm transition-colors ${
@@ -77,7 +78,7 @@ export default function Sidebar({ open, onClose, collapsed, onToggle }) {
           </div>
         )}
         {user?.role === 'admin' && collapsed && (
-          <button onClick={() => navigate(`/admin-track/${TRACKS[0]}`)} title="Track Dashboards"
+          <button onClick={() => navigate(`/admin-track/${MAIN_TRACKS[0]}`)} title="Track Dashboards"
             className={`w-full flex justify-center px-3 py-3 rounded-lg transition-colors ${
               location.pathname.startsWith('/admin-track') ? 'bg-primary text-white' : 'text-gray-600 hover:bg-orange-50 hover:text-primary'
             }`}>

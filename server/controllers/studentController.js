@@ -641,6 +641,33 @@ const getStats = async (req, res) => {
   }
 };
 
+// Town → Track mapping
+const TOWN_TO_TRACK = {
+  'harda':       { track: 'Harda',           trackName: 'Harda' },
+  'timarni':     { track: 'Harda',           trackName: 'Timarni' },
+  'seoni malwa': { track: 'Harda',           trackName: 'Seoni Malwa' },
+  'seoni malav': { track: 'Harda',           trackName: 'Seoni Malwa' },
+  'khategaon':   { track: 'Khategaon',       trackName: 'Khategaon' },
+  'nemawar':     { track: 'Khategaon',       trackName: 'Nemawar' },
+  'gopalpur':    { track: 'Rehti',           trackName: 'Gopalpur' },
+  'bherunda':    { track: 'Rehti',           trackName: 'Bherunda' },
+  'rehti':       { track: 'Rehti',           trackName: 'Rehti' },
+  'kannod':      { track: 'Satwas & Kannod', trackName: 'Kannod' },
+  'satwas':      { track: 'Satwas & Kannod', trackName: 'Satwas' },
+};
+
+const resolveTrack = (trackName, village) => {
+  const candidates = [trackName, village].filter(Boolean);
+  for (const val of candidates) {
+    const key = String(val).toLowerCase().trim();
+    if (TOWN_TO_TRACK[key]) return TOWN_TO_TRACK[key];
+    // partial match
+    const found = Object.keys(TOWN_TO_TRACK).find(k => key.includes(k) || k.includes(key));
+    if (found) return TOWN_TO_TRACK[found];
+  }
+  return null;
+};
+
 // Self-registration from external forms (webhook — secured by secret)
 const selfRegister = async (req, res) => {
   // Verify webhook secret
@@ -651,17 +678,25 @@ const selfRegister = async (req, res) => {
   try {
     const { formSource, firstName, lastName, fathersName, mobile, email, whatsappNumber, address, ...rest } = req.body;
 
-    if (!firstName || !mobile || !email)
-      return res.status(400).json({ message: 'firstName, mobile, email are required' });
+    if (!firstName || !mobile)
+      return res.status(400).json({ message: 'firstName and mobile are required' });
 
     const validSources = ['btech', 'ssism'];
     const resolvedSource = validSources.includes(formSource) ? formSource : null;
 
-    // Duplicate check by mobile or email
-    const existing = await Student.findOne({ $or: [{ mobileNo: String(mobile) }, { email }] });
+    // Duplicate check — mobile se (email optional hai SSISM mein)
+    const orConditions = [{ mobileNo: String(mobile) }];
+    if (email) orConditions.push({ email });
+    const existing = await Student.findOne({ $or: orConditions });
     if (existing) return res.status(409).json({ message: 'Already registered', id: existing._id });
 
     const count = await Student.countDocuments();
+
+    // Track + Town mapping
+    const mapped = resolveTrack(rest.trackName, rest.village);
+    const resolvedTrack     = mapped?.track     || '';
+    const resolvedTrackName = mapped?.trackName || rest.trackName || '';
+
     const student = await Student.create({
       sn: count + 1,
       name: `${firstName} ${lastName || ''}`.trim(),
@@ -672,7 +707,24 @@ const selfRegister = async (req, res) => {
       email,
       formSource: resolvedSource,
       status: 'Applied',
+      track: resolvedTrack,
+      trackName: resolvedTrackName,
       ...rest,
+      // Numeric fields — string se number mein convert karo
+      ...(rest.persentage10  !== undefined && { persentage10:  Number(rest.persentage10)  || null }),
+      ...(rest.persentage11  !== undefined && { persentage11:  String(rest.persentage11) }),
+      ...(rest.persentage12  !== undefined && { persentage12:  Number(rest.persentage12)  || null }),
+      ...(rest.jeeScore      !== undefined && { jeeScore:      Number(rest.jeeScore)      || null }),
+      ...(rest.rollNumber10  !== undefined && { rollNumber10:  Number(rest.rollNumber10)  || null }),
+      ...(rest.rollNumber12  !== undefined && { rollNumber12:  Number(rest.rollNumber12)  || null }),
+      ...(rest.fatherIncome  !== undefined && { fatherIncome:  Number(rest.fatherIncome)  || null }),
+      ...(rest.joinBatch     !== undefined && { joinBatch:     Number(rest.joinBatch)     || null }),
+      ...(rest.pincode       !== undefined && { pincode:       Number(rest.pincode)       || null }),
+      // isTop20 — 0/1 ya true/false dono handle karo
+      ...(rest.isTop20 !== undefined && { isTop20: Boolean(Number(rest.isTop20)) }),
+      // Track mapping — ...rest ke baad override karo taaki sahi values rahe
+      track: resolvedTrack,
+      trackName: resolvedTrackName,
     });
     res.status(201).json({ message: 'Registration successful', id: student._id });
   } catch (err) {

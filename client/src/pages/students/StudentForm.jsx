@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import api from '../../api/axios';
-import { TRACKS, STATUSES } from '../../utils/constants';
+import { TRACKS, STATUSES, TRACK_TOWNS } from '../../utils/constants';
 import useAuthStore from '../../store/authStore';
 import toast from 'react-hot-toast';
 import { FiExternalLink, FiCamera, FiImage, FiFileText, FiUser, FiCreditCard, FiX } from 'react-icons/fi';
@@ -73,6 +73,7 @@ const initialForm = {
   remarks: '',
   funnelStage: '',
   subject: '',
+  village: '',
 };
 
 const DOC_FIELDS = [
@@ -163,6 +164,7 @@ export default function StudentForm() {
   const isEdit = Boolean(id);
   const [form, setForm] = useState(initialForm);
   const [studentInfo, setStudentInfo] = useState(null); // read-only display info
+  const [trackTowns, setTrackTowns] = useState([]);
   const [docs, setDocs] = useState({});
   const [existingDocs, setExistingDocs] = useState({});
   const [loading, setLoading] = useState(false);
@@ -171,21 +173,31 @@ export default function StudentForm() {
   useEffect(() => {
     if (isEdit) {
       api.get(`/students/${id}`).then(({ data }) => {
-        // Sirf editable fields form mein
-        setForm({
-          status: data.status,
-          remarks: '',
-          funnelStage: data.funnelStage || '',
-          subject: data.subject || '',
-        });
         // Read-only info display ke liye
         setStudentInfo({
           name: data.name,
           fatherName: data.fatherName,
           track: data.track,
+          trackName: data.trackName,
           mobileNo: data.mobileNo,
           formSource: data.formSource,
           finalInterviewPassed: data.finalInterview?.result === 'Pass',
+        });
+        // Track ke hisaab se towns set karo
+        const towns = Object.entries(TRACK_TOWNS).find(([, v]) => v.some(t =>
+          t.toLowerCase() === (data.village || '').toLowerCase()
+        ))?.[1] ||
+          Object.entries(TRACK_TOWNS).find(([k]) =>
+            k.toLowerCase().includes((data.track || '').toLowerCase()) ||
+            (data.track || '').toLowerCase().includes(k.toLowerCase())
+          )?.[1] || [];
+        setTrackTowns(towns);
+        setForm({
+          status: data.status,
+          remarks: '',
+          funnelStage: data.funnelStage || '',
+          subject: data.subject || '',
+          village: data.village || '',
         });
         const existing = {};
         DOC_FIELDS.forEach(({ key }) => { if (data[key]) existing[key] = data[key]; });
@@ -204,6 +216,7 @@ export default function StudentForm() {
       formData.append('remarks', form.remarks);
       formData.append('funnelStage', form.funnelStage);
       formData.append('subject', form.subject);
+      if (form.village !== undefined) formData.append('village', form.village);
       DOC_FIELDS.forEach(({ key }) => { if (docs[key]) formData.append(key, docs[key]); });
       await api.put(`/students/${id}`, formData);
       toast.success('Student updated successfully');
@@ -280,9 +293,25 @@ export default function StudentForm() {
             <p className="text-sm font-semibold text-gray-800">{studentInfo.track}</p>
           </div>
           <div>
+            <p className="text-xs text-gray-400 uppercase tracking-wide">Town</p>
+            <p className="text-sm font-semibold text-gray-800">{studentInfo.trackName || '—'}</p>
+          </div>
+          <div>
             <p className="text-xs text-gray-400 uppercase tracking-wide">Mobile</p>
             <p className="text-sm font-semibold text-gray-800">{studentInfo.mobileNo}</p>
           </div>
+        </div>
+      )}
+
+      {/* Town selector — track ke hisaab se */}
+      {trackTowns.length > 0 && (
+        <div className="bg-blue-50 border border-blue-100 rounded-xl px-5 py-3 mb-5">
+          <label className="block text-xs text-gray-400 uppercase tracking-wide mb-1">Town / Village</label>
+          <select value={form.village || ''} onChange={(e) => setForm({ ...form, village: e.target.value })}
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary">
+            <option value="">Select Town</option>
+            {trackTowns.map((t) => <option key={t} value={t}>{t}</option>)}
+          </select>
         </div>
       )}
 
