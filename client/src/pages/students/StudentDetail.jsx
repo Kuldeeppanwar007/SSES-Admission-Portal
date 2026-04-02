@@ -4,7 +4,7 @@ import api from '../../api/axios';
 import { STATUSES, STATUS_COLORS } from '../../utils/constants';
 import useAuthStore from '../../store/authStore';
 import toast from 'react-hot-toast';
-import { FiEdit2, FiArrowLeft, FiImage, FiFileText, FiExternalLink, FiClock, FiX, FiDownload } from 'react-icons/fi';
+import { FiEdit2, FiArrowLeft, FiImage, FiFileText, FiExternalLink, FiClock, FiX, FiDownload, FiSend } from 'react-icons/fi';
 
 export default function StudentDetail() {
   const { id } = useParams();
@@ -17,6 +17,8 @@ export default function StudentDetail() {
   const [interviews, setInterviews] = useState([]);
   const [finalForm, setFinalForm] = useState(null);
   const [finalLoading, setFinalLoading] = useState(false);
+  const [editReqForm, setEditReqForm] = useState(null); // null = closed
+  const [editReqLoading, setEditReqLoading] = useState(false);
 
   const handleExport = async () => {
     setExporting(true);
@@ -59,6 +61,17 @@ const handleViewHistory = async () => {
       setHistory(data);
       setShowHistory(true);
     } catch { toast.error('Failed to load history'); }
+  };
+
+  const handleEditRequest = async (e) => {
+    e.preventDefault();
+    setEditReqLoading(true);
+    try {
+      await api.post(`/edit-requests/${id}`, editReqForm);
+      toast.success('Request bhej di gayi!');
+      setEditReqForm(null);
+    } catch { toast.error('Request failed'); }
+    finally { setEditReqLoading(false); }
   };
 
   if (!student) return <div className="flex justify-center items-center h-64"><div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary"></div></div>;
@@ -172,14 +185,12 @@ const handleViewHistory = async () => {
 
   return (
     <div className="px-2">
-      <div className="flex flex-col gap-2 mb-6">
-        <div className="flex items-center gap-2">
-          <button onClick={() => navigate('/students')} className="flex items-center gap-1 text-gray-500 hover:text-gray-700 text-sm shrink-0">
-            <FiArrowLeft size={16} /> Back
-          </button>
-          <h2 className="text-xl font-bold text-gray-800">Student Details</h2>
-        </div>
-        <div className="flex items-center gap-2 flex-wrap">
+      <div className="flex flex-wrap items-center gap-2 mb-6">
+        <button onClick={() => navigate('/students')} className="flex items-center gap-1 text-gray-500 hover:text-gray-700 text-sm shrink-0">
+          <FiArrowLeft size={16} /> Back
+        </button>
+        <h2 className="text-xl font-bold text-gray-800">Student Details</h2>
+        <div className="ml-auto flex items-center gap-2 flex-wrap">
           <button onClick={() => navigate(`/students/${id}/edit`)}
             className="flex items-center gap-1.5 bg-primary text-white px-3 py-1.5 rounded-lg text-sm hover:bg-primary-dark">
             <FiEdit2 size={13} /> Edit
@@ -192,6 +203,12 @@ const handleViewHistory = async () => {
             className="flex items-center gap-1.5 border border-gray-300 text-gray-600 px-3 py-1.5 rounded-lg text-sm hover:bg-gray-50">
             <FiClock size={13} /> History
           </button>
+          {user?.role === 'track_incharge' && (
+            <button onClick={() => setEditReqForm({ field: '', newValue: '', reason: '' })}
+              className="flex items-center gap-1.5 border border-orange-200 text-primary px-3 py-1.5 rounded-lg text-sm hover:bg-orange-50">
+              <FiSend size={13} /> Request Edit
+            </button>
+          )}
         </div>
       </div>
 
@@ -366,6 +383,57 @@ const handleViewHistory = async () => {
               <button type="submit" disabled={finalLoading}
                 className="w-full bg-primary text-white py-2.5 rounded-lg font-semibold hover:bg-primary-dark disabled:opacity-60 transition-colors">
                 {finalLoading ? 'Saving...' : 'Submit'}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Request Edit Modal */}
+      {editReqForm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setEditReqForm(null)}>
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+              <h3 className="font-bold text-gray-800">Request Edit</h3>
+              <button onClick={() => setEditReqForm(null)} className="text-gray-400 hover:text-gray-600 text-xl font-bold leading-none">&times;</button>
+            </div>
+            <form onSubmit={handleEditRequest} className="px-5 py-4 space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Field</label>
+                <select required value={editReqForm.field}
+                  onChange={e => setEditReqForm({ ...editReqForm, field: e.target.value, newValue: '' })}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary">
+                  <option value="">Field select karo</option>
+                  {[
+                    ['name', 'Name'], ['fatherName', 'Father Name'], ['mobileNo', 'Mobile No'],
+                    ['whatsappNo', 'WhatsApp No'], ['track', 'Track'], ['subject', 'Subject'],
+                    ['fullAddress', 'Full Address'], ['otherTrack', 'Other Track'],
+                  ].map(([val, label]) => <option key={val} value={val}>{label}</option>)}
+                </select>
+              </div>
+              {editReqForm.field && (
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Current Value</label>
+                  <input disabled value={student[editReqForm.field] || '—'}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-gray-50 text-gray-500" />
+                </div>
+              )}
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">New Value</label>
+                <input required value={editReqForm.newValue}
+                  onChange={e => setEditReqForm({ ...editReqForm, newValue: e.target.value })}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Reason</label>
+                <textarea rows={2} value={editReqForm.reason}
+                  onChange={e => setEditReqForm({ ...editReqForm, reason: e.target.value })}
+                  placeholder="Kyun change karna hai?"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
+              </div>
+              <button type="submit" disabled={editReqLoading}
+                className="w-full bg-primary text-white py-2.5 rounded-lg font-semibold hover:bg-primary-dark disabled:opacity-60 transition-colors">
+                {editReqLoading ? 'Bhej raha hai...' : 'Request Bhejo'}
               </button>
             </form>
           </div>

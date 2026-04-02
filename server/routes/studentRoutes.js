@@ -14,6 +14,35 @@ const memStorage = multer({ storage: multer.memoryStorage() });
 // Public self-registration endpoint (no auth required)
 router.post('/self-register', validate(schemas.selfRegister), selfRegister);
 
+// External website se student field update (webhook secret secured)
+router.patch('/external-update/:id', async (req, res) => {
+  const secret = req.headers['x-webhook-secret'];
+  if (!secret || secret !== process.env.WEBHOOK_SECRET)
+    return res.status(401).json({ message: 'Unauthorized' });
+  try {
+    const allowedFields = [
+      'name', 'fatherName', 'mobileNo', 'whatsappNo', 'track',
+      'subject', 'fullAddress', 'otherTrack', 'status', 'remarks',
+      'email', 'dob', 'gender', 'category', 'aadharNo', 'district',
+      'village', 'pincode', 'tehsil', 'schoolName', 'persentage10',
+      'persentage12', 'jeeScore', 'branch', 'year', 'feesScheme',
+    ];
+    const updates = {};
+    Object.keys(req.body).forEach(k => {
+      if (allowedFields.includes(k)) updates[k] = req.body[k];
+    });
+    if (Object.keys(updates).length === 0)
+      return res.status(400).json({ message: 'No valid fields to update' });
+    const updated = await require('../models/Student').findByIdAndUpdate(
+      req.params.id, updates, { new: true }
+    );
+    if (!updated) return res.status(404).json({ message: 'Student not found' });
+    res.json({ message: 'Updated successfully', student: updated });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 router.get('/stats', protect, getStats);
 router.get('/track-stats', protect, async (req, res, next) => {
   if (req.user.role === 'admin') {

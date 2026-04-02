@@ -17,6 +17,7 @@ import StudentDetail from './pages/students/StudentDetail';
 import Users from './pages/users/Users';
 import Targets from './pages/targets/Targets';
 import Attendance from './pages/attendance/Attendance';
+import EditRequests from './pages/students/EditRequests';
 
 export default function App() {
   useEffect(() => {
@@ -63,6 +64,7 @@ export default function App() {
               <Attendance />
             </ProtectedRoute>
           } />
+          <Route path="/edit-requests" element={<EditRequests />} />
         </Route>
       </Routes>
     </BrowserRouter>

@@ -1,5 +1,5 @@
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
-import { FiHome, FiUsers, FiUserCheck, FiLogOut, FiChevronLeft, FiChevronRight, FiFlag, FiPieChart, FiChevronDown, FiMap, FiCheckSquare } from 'react-icons/fi';
+import { FiHome, FiUsers, FiUserCheck, FiLogOut, FiChevronLeft, FiChevronRight, FiFlag, FiPieChart, FiChevronDown, FiMap, FiCheckSquare, FiEdit } from 'react-icons/fi';
 import { useState } from 'react';
 import useAuthStore from '../../store/authStore';
 import { TRACKS } from '../../utils/constants';
@@ -8,6 +8,8 @@ const navItems = [
   { to: '/dashboard', Icon: FiHome, label: 'Dashboard' },
   { to: '/track-dashboard', Icon: FiPieChart, label: 'My Track', trackOnly: true },
   { to: '/students', Icon: FiUsers, label: 'Students' },
+  { to: '/edit-requests', Icon: FiEdit, label: 'Edit Requests', adminOnly: true },
+  { to: '/edit-requests', Icon: FiEdit, label: 'Edit Requests', trackOnly: true },
   { to: '/targets', Icon: FiFlag, label: 'Targets', adminOnly: true },
   { to: '/users', Icon: FiUserCheck, label: 'Users', adminOnly: true },
   { to: '/attendance', Icon: FiCheckSquare, label: 'Attendance', adminOnly: true },
@@ -84,8 +86,8 @@ export default function Sidebar({ open, onClose, collapsed, onToggle }) {
         )}
 
         {/* Remaining links */}
-        {links.filter(l => l.to !== '/dashboard').map(({ to, Icon, label }) => (
-          <NavLink key={to} to={to} onClick={onClose}
+        {links.filter(l => l.to !== '/dashboard').map(({ to, Icon, label }, idx) => (
+          <NavLink key={`${to}-${idx}`} to={to} onClick={onClose}
             className={({ isActive }) =>
               `flex items-center gap-3 px-3 py-3 rounded-lg transition-colors font-medium ${collapsed ? 'justify-center' : ''} ${isActive ? 'bg-primary text-white' : 'text-gray-600 hover:bg-orange-50 hover:text-primary'}`}
             title={collapsed ? label : ''}>
