@@ -344,61 +344,69 @@ export default function Students() {
         <h2 className="text-xl md:text-2xl font-bold text-gray-800">
           Students <span className="text-gray-400 text-base">({total})</span>
         </h2>
-        <div className="flex flex-wrap gap-1.5 w-full md:w-auto md:flex md:gap-2">
+        {/* Desktop buttons */}
+        <div className="hidden md:flex gap-2">
           {selected.length > 0 ? (
             <button onClick={() => handleExport(selected)} disabled={exporting}
-              className="flex items-center justify-center gap-1 bg-primary text-white px-3 py-1.5 rounded-lg text-xs md:text-sm disabled:opacity-60">
-              <FiDownload size={12} /> <span>Export ({selected.length})</span>
+              className="flex items-center gap-1 bg-primary text-white px-3 py-1.5 rounded-lg text-sm disabled:opacity-60">
+              <FiDownload size={13} /> Export ({selected.length})
             </button>
           ) : (
             <button onClick={() => handleExport([])} disabled={exporting}
-              className="flex items-center justify-center gap-1 bg-primary text-white px-3 py-1.5 rounded-lg text-xs md:text-sm disabled:opacity-60">
-              <FiDownload size={12} /> <span>{exporting ? 'Exporting...' : 'Export All'}</span>
+              className="flex items-center gap-1 bg-primary text-white px-3 py-1.5 rounded-lg text-sm disabled:opacity-60">
+              <FiDownload size={13} /> {exporting ? 'Exporting...' : 'Export All'}
             </button>
           )}
           {!isDisabledTab && (
             <>
-              {/* Add Student button — ab external form se aata hai */}
-              {/* <button onClick={() => navigate('/students/add')}
-                className="flex items-center justify-center gap-0.5 md:gap-1.5 bg-primary text-white py-1.5 md:px-3 md:py-2 rounded md:rounded-lg text-xs md:text-sm">
-                <FiPlus size={11} className="md:hidden" /><FiPlus size={14} className="hidden md:block" /> <span className="md:hidden">Add</span><span className="hidden md:inline">Add Student</span>
-              </button> */}
-
-              {/* Bulk Upload — ab external form se aata hai */}
-              {/* <label className="flex items-center justify-center gap-0.5 md:gap-1.5 bg-primary text-white py-1.5 md:px-3 md:py-2 rounded md:rounded-lg cursor-pointer text-xs md:text-sm">
-                <FiUpload size={11} className="md:hidden" /><FiUpload size={14} className="hidden md:block" /> <span>Bulk Upload</span>
-                <input type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleBulkUpload} />
-              </label> */}
-
-              {/* Sample template download — bulk upload ke saath comment */}
-              {/* <button onClick={handleDownloadTemplate}
-                className="flex items-center justify-center gap-0.5 md:gap-1.5 bg-gray-100 text-gray-700 py-1.5 md:px-3 md:py-2 rounded md:rounded-lg text-xs md:text-sm border border-gray-300">
-                <FiDownload size={11} className="md:hidden" /><FiDownload size={14} className="hidden md:block" /> <span>Sample</span>
-              </button> */}
-
               <a href="https://central.ssism.org/self_registration" target="_blank" rel="noopener noreferrer"
-                className="flex items-center justify-center gap-1 bg-primary text-white px-3 py-1.5 rounded-lg text-xs md:text-sm">
-                <FiExternalLink size={12} />
-                <span>SSISM Form</span>
+                className="flex items-center gap-1 bg-primary text-white px-3 py-1.5 rounded-lg text-sm">
+                <FiExternalLink size={13} /> SSISM Form
               </a>
               <a href="https://ssec.ssism.org/apply" target="_blank" rel="noopener noreferrer"
-                className="flex items-center justify-center gap-1 bg-primary text-white px-3 py-1.5 rounded-lg text-xs md:text-sm">
-                <FiExternalLink size={12} />
-                <span>SSEC Form</span>
+                className="flex items-center gap-1 bg-primary text-white px-3 py-1.5 rounded-lg text-sm">
+                <FiExternalLink size={13} /> SSEC Form
               </a>
             </>
           )}
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="flex gap-1 mb-4 bg-gray-100 p-1 rounded-xl w-fit">
+      {/* Mobile — Export + Forms buttons (full width grid) */}
+      <div className="md:hidden grid grid-cols-3 gap-2 mb-3">
+        {selected.length > 0 ? (
+          <button onClick={() => handleExport(selected)} disabled={exporting}
+            className="flex items-center justify-center gap-1 bg-primary text-white py-2 rounded-lg text-sm font-medium disabled:opacity-60">
+            <FiDownload size={13} /> Export ({selected.length})
+          </button>
+        ) : (
+          <button onClick={() => handleExport([])} disabled={exporting}
+            className="flex items-center justify-center gap-1 bg-primary text-white py-2 rounded-lg text-sm font-medium disabled:opacity-60">
+            <FiDownload size={13} /> {exporting ? 'Exporting...' : 'Export All'}
+          </button>
+        )}
+        {!isDisabledTab && (
+          <>
+            <a href="https://central.ssism.org/self_registration" target="_blank" rel="noopener noreferrer"
+              className="flex items-center justify-center gap-1 bg-primary text-white py-2 rounded-lg text-sm font-medium">
+              <FiExternalLink size={13} /> SSISM Form
+            </a>
+            <a href="https://ssec.ssism.org/apply" target="_blank" rel="noopener noreferrer"
+              className="flex items-center justify-center gap-1 bg-primary text-white py-2 rounded-lg text-sm font-medium">
+              <FiExternalLink size={13} /> SSEC Form
+            </a>
+          </>
+        )}
+      </div>
+
+      {/* Tabs — mobile full width, desktop w-fit */}
+      <div className="flex gap-1 mb-4 bg-gray-100 p-1 rounded-xl w-full md:w-fit">
         <button onClick={() => switchTab('active')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${!isDisabledTab ? 'bg-white shadow text-gray-800' : 'text-gray-500 hover:text-gray-700'}`}>
+          className={`flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${!isDisabledTab ? 'bg-white shadow text-gray-800' : 'text-gray-500 hover:text-gray-700'}`}>
           <FiSearch size={14} /> Active Profiles
         </button>
         <button onClick={() => switchTab('disabled')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${isDisabledTab ? 'bg-white shadow text-gray-800' : 'text-gray-500 hover:text-gray-700'}`}>
+          className={`flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${isDisabledTab ? 'bg-white shadow text-gray-800' : 'text-gray-500 hover:text-gray-700'}`}>
           <FiSlash size={14} /> Disabled Profiles
         </button>
       </div>
@@ -500,7 +508,13 @@ export default function Students() {
                     </td>
                     <td className="px-4 py-3 text-gray-600">{s.fatherName}</td>
                     <td className="px-4 py-3 text-gray-600">{s.track}</td>
-                    <td className="px-4 py-3 text-gray-600">{s.mobileNo}</td>
+                    <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                      {s.mobileNo ? (
+                        <a href={`tel:${s.mobileNo}`} className="text-gray-600 hover:text-primary hover:underline">
+                          {s.mobileNo}
+                        </a>
+                      ) : null}
+                    </td>
                     <td className="px-4 py-3">
                       {s.formSource && (
                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${
@@ -555,49 +569,61 @@ export default function Students() {
         ) : students.length === 0 ? (
           <div className="text-center py-10 text-gray-400 bg-white rounded-xl shadow">No students found</div>
         ) : students.map((s, i) => (
-          <div key={s._id} onClick={() => navigate(`/students/${s._id}`)} className={`bg-white rounded-xl shadow p-4 cursor-pointer ${selected.includes(s._id) ? 'ring-2 ring-primary' : ''}`}>
-            <div className="flex items-start justify-between mb-2">
-              <div className="flex items-start gap-2">
-                <input type="checkbox" checked={selected.includes(s._id)} onChange={(e) => { e.stopPropagation(); toggleSelect(s._id); }}
-                  onClick={(e) => e.stopPropagation()}
-                  className="mt-1 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer" />
-                <div>
-                  <p className="font-semibold text-gray-800 truncate max-w-[180px]">{(page - 1) * 10 + i + 1}. {s.name} {s.finalInterview?.result && <span className="text-emerald-500">★</span>}</p>
-                  <p className="text-sm text-gray-500 truncate max-w-[180px]">{s.fatherName}</p>
-                </div>
-              </div>
-              <span className={`px-2 py-1 rounded-full text-xs font-medium shrink-0 ${STATUS_COLORS[s.status]}`}>{s.status}</span>
+          <div key={s._id} onClick={() => navigate(`/students/${s._id}`)} className={`bg-white rounded-xl shadow-sm border border-gray-100 p-4 cursor-pointer ${selected.includes(s._id) ? 'ring-2 ring-primary' : ''}`}>
+
+            {/* Row 1: Checkbox + Name + Status */}
+            <div className="flex items-center gap-2 mb-1">
+              <input type="checkbox" checked={selected.includes(s._id)} onChange={(e) => { e.stopPropagation(); toggleSelect(s._id); }}
+                onClick={(e) => e.stopPropagation()}
+                className="rounded border-gray-300 text-primary focus:ring-primary cursor-pointer shrink-0" />
+              <p className="font-semibold text-gray-800 flex-1 min-w-0 truncate">
+                {(page - 1) * 10 + i + 1}. {s.name}{s.finalInterview?.result && <span className="text-emerald-500 ml-1">★</span>}
+              </p>
+              <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold shrink-0 ${STATUS_COLORS[s.status]}`}>{s.status}</span>
             </div>
-            <div className="flex flex-wrap gap-1 text-xs text-gray-500 mb-3">
-              {s.track && <span className="flex items-center gap-0.5">📍 {s.track}</span>}
-              {s.mobileNo && <span className="flex items-center gap-0.5">📞 {s.mobileNo}</span>}
-              {s.formSource && (
-                <span className={`px-2 py-0.5 rounded-full font-medium ${
-                  s.formSource === 'btech' ? 'bg-blue-100 text-blue-700' :
-                  s.formSource === 'ssism' ? 'bg-purple-100 text-purple-700' :
-                  'bg-gray-100 text-gray-600'
-                }`}>
-                  {s.formSource === 'btech' ? 'B.Tech' : s.formSource === 'ssism' ? 'SSISM' : 'Manual'}
+
+            {/* Row 2: Father name */}
+            {s.fatherName && <p className="text-sm text-gray-400 mb-3 pl-6">{s.fatherName}</p>}
+
+            {/* Row 3: Track + Mobile + Badges — all in one line */}
+            <div className="flex items-center gap-2 flex-wrap pl-6 mb-3">
+              {s.track && (
+                <span className="flex items-center gap-1 text-sm text-gray-500">
+                  <span className="text-base">📍</span> {s.track}
                 </span>
               )}
+              {s.mobileNo && (
+                <a href={`tel:${s.mobileNo}`} onClick={(e) => e.stopPropagation()}
+                  className="flex items-center gap-1 text-sm text-gray-500">
+                  <span className="text-base">📞</span> {s.mobileNo}
+                </a>
+              )}
+              {s.formSource && (
+                <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
+                  s.formSource === 'btech' ? 'bg-blue-100 text-blue-700' :
+                  s.formSource === 'ssism' ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-600'
+                }`}>{s.formSource === 'btech' ? 'B.Tech' : s.formSource === 'ssism' ? 'SSISM' : 'Manual'}</span>
+              )}
               {s.finalInterview?.result === 'Pass' ? (
-                <span className="px-2 py-0.5 rounded-full font-bold bg-emerald-100 text-emerald-700">✓ Final Cleared</span>
+                <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700">✓ Final Cleared</span>
               ) : s.finalInterview?.result === 'Fail' ? (
-                <span className="px-2 py-0.5 rounded-full font-bold bg-rose-100 text-rose-600">✗ Final Failed</span>
+                <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-rose-100 text-rose-600">✗ Final Failed</span>
               ) : s.finalInterview?.result === 'Pending' ? (
-                <span className="px-2 py-0.5 rounded-full font-bold bg-amber-100 text-amber-700">⏳ Final Pending</span>
+                <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-700">⏳ Pending</span>
               ) : s.interviewCount > 0 ? (
-                <span className="px-2 py-0.5 rounded-full font-bold bg-orange-50 text-primary border border-orange-200">Round {s.interviewCount}</span>
+                <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-orange-50 text-primary border border-orange-200">Round {s.interviewCount}</span>
               ) : null}
             </div>
-            <div className="flex gap-2 border-t border-gray-100 pt-2">
+
+            {/* Row 4: Buttons */}
+            <div className="flex gap-2 pt-3 border-t border-gray-100">
               <button onClick={(e) => { e.stopPropagation(); navigate(`/students/${s._id}/edit`); }}
-                className="flex-1 flex items-center justify-center gap-1 text-xs text-white font-medium py-1.5 bg-primary hover:bg-primary-dark rounded-lg transition-colors">
-                <FiEdit2 size={13} /> Edit
+                className="flex-1 flex items-center justify-center gap-1.5 text-sm text-white font-semibold py-2 bg-primary hover:bg-primary-dark rounded-lg transition-colors">
+                <FiEdit2 size={14} /> Edit
               </button>
               <button onClick={(e) => { e.stopPropagation(); setInterviewStudent(s); }}
-                className="flex-1 flex items-center justify-center gap-1 text-xs text-white font-medium py-1.5 bg-primary hover:bg-primary-dark rounded-lg transition-colors">
-                <FiClipboard size={13} /> Interview
+                className="flex-1 flex items-center justify-center gap-1.5 text-sm text-white font-semibold py-2 bg-primary hover:bg-primary-dark rounded-lg transition-colors">
+                <FiClipboard size={14} /> Interview
               </button>
             </div>
           </div>
