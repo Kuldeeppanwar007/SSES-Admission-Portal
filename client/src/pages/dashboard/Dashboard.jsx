@@ -211,15 +211,8 @@ const RANK_STYLES = [
 function LeaderboardSection({ stats, user }) {
   const [open, setOpen] = useState(false);
 
-  // Composite score = rawPoints + calling efficiency bonus
-  // callingEfficiency (0-100) * 5 = max 500 bonus pts
-  // Isse 100% calling wala track meaningful boost pata hai
-  const withComposite = stats.trackWise.map((t) => ({
-    ...t,
-    compositeScore: (t.points || 0) + Math.round((t.callingEfficiency || 0) * 5),
-  }));
-  const sorted = [...withComposite].sort((a, b) => b.compositeScore - a.compositeScore);
-  const maxScore = sorted.reduce((m, t) => Math.max(m, t.compositeScore), 1);
+  const sorted = [...stats.trackWise].sort((a, b) => (b.points || 0) - (a.points || 0));
+  const maxScore = sorted.reduce((m, t) => Math.max(m, t.points || 0), 1);
   const myRank = user?.role === 'track_incharge'
     ? sorted.findIndex((t) => t.track === user.track) + 1
     : null;
@@ -241,49 +234,55 @@ function LeaderboardSection({ stats, user }) {
 
       {open && (
         <div className="border-t border-gray-50">
-          <div className="px-5 py-2 bg-gray-50/60 border-b border-gray-100">
-            <p className="text-xs text-gray-400">Rank = Points + Calling Efficiency Bonus (max +500) — 100% calling wala track upar aayega</p>
-          </div>
-          {sorted.map(({ track, points, compositeScore, calledCount, totalCount, callingEfficiency }, i) => {
+          {sorted.map(({ track, points, calledCount, totalCount }, i) => {
             const isMe = user?.role === 'track_incharge' && user?.track === track;
             const rank = RANK_STYLES[i] || { bg: 'bg-gray-100', text: 'text-gray-500', emoji: null };
-            const barW = Math.round((compositeScore / maxScore) * 100);
-            const effColor = callingEfficiency >= 75 ? 'text-emerald-600 bg-emerald-50 border-emerald-200'
-                           : callingEfficiency >= 40 ? 'text-amber-600 bg-amber-50 border-amber-200'
-                           : 'text-rose-500 bg-rose-50 border-rose-200';
-            const effBonus = Math.round((callingEfficiency || 0) * 5);
+            const barW = Math.round(((points || 0) / maxScore) * 100);
+            // breakdown from stats
+            const tw = stats.trackWise.find(t => t.track === track) || {};
+            const admissionPts = (tw.subjects || []).reduce((s, x) => s + (x.admitted || 0) * getSubjectPoints(track, x.subject), 0);
+            const callingPts = (tw.calledCount || 0) * 5;
+            const funnelPts = (points || 0) - admissionPts - callingPts;
             return (
               <div key={track}
-                className={`flex items-center gap-4 px-5 py-3 border-b border-gray-50 last:border-0 transition-colors ${
+                className={`px-5 py-3 border-b border-gray-50 last:border-0 transition-colors ${
                   isMe ? 'bg-orange-50/60' : 'hover:bg-gray-50/60'
                 }`}>
-                <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 text-xs font-bold ${rank.bg} ${rank.text}`}>
-                  {rank.emoji || i + 1}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className={`text-sm font-semibold truncate ${isMe ? 'text-primary' : 'text-gray-800'}`}>{track}</span>
-                    {isMe && <span className="text-xs bg-orange-100 text-primary font-bold px-1.5 py-0.5 rounded-full">You</span>}
-                    {totalCount > 0 && (
-                      <span className={`text-xs font-bold px-1.5 py-0.5 rounded-full border ${effColor}`}
-                        title={`${calledCount} of ${totalCount} called — +${effBonus} bonus pts`}>
-                        📞 {callingEfficiency}%
-                      </span>
-                    )}
+                <div className="flex items-center gap-4">
+                  <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 text-xs font-bold ${rank.bg} ${rank.text}`}>
+                    {rank.emoji || i + 1}
                   </div>
-                  <div className="w-full bg-gray-100 rounded-full h-1.5 mt-1.5">
-                    <div className={`h-1.5 rounded-full transition-all duration-700 ${isMe ? 'bg-primary' : 'bg-gray-400'}`}
-                      style={{ width: `${barW}%` }} />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className={`text-sm font-semibold ${isMe ? 'text-primary' : 'text-gray-800'}`}>{track}</span>
+                      {isMe && <span className="text-xs bg-orange-100 text-primary font-bold px-1.5 py-0.5 rounded-full">You</span>}
+                      {totalCount > 0 && <span className="text-xs text-gray-400">📞 {calledCount}/{totalCount}</span>}
+                    </div>
+                    <div className="w-full bg-gray-100 rounded-full h-1.5 mt-1.5">
+                      <div className={`h-1.5 rounded-full transition-all duration-700 ${isMe ? 'bg-primary' : 'bg-gray-400'}`}
+                        style={{ width: `${barW}%` }} />
+                    </div>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className={`text-sm font-bold tabular-nums ${isMe ? 'text-primary' : 'text-gray-700'}`}>
+                      {points || 0} <span className="text-xs font-medium text-gray-400">pts</span>
+                    </p>
                   </div>
                 </div>
-                <div className="text-right shrink-0">
-                  <p className={`text-sm font-bold tabular-nums ${isMe ? 'text-primary' : 'text-gray-700'}`}>
-                    {compositeScore} <span className="text-xs font-medium text-gray-400">pts</span>
-                  </p>
-                  <p className="text-xs text-gray-400 tabular-nums">
-                    {points} + <span className="text-emerald-600 font-semibold">+{effBonus}</span>
-                  </p>
-                </div>
+                {/* Breakdown row — admin only */}
+                {user?.role === 'admin' && (
+                  <div className="flex gap-3 mt-2 ml-11 flex-wrap">
+                    <span className="text-[11px] text-gray-500">
+                      🏅 Admission: <span className="font-semibold text-gray-700">{admissionPts}</span>
+                    </span>
+                    <span className="text-[11px] text-gray-500">
+                      📞 Calling: <span className="font-semibold text-gray-700">{callingPts}</span>
+                    </span>
+                    <span className="text-[11px] text-gray-500">
+                      📈 Funnel: <span className="font-semibold text-gray-700">{Math.max(0, funnelPts)}</span>
+                    </span>
+                  </div>
+                )}
               </div>
             );
           })}
