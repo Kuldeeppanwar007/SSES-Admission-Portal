@@ -18,6 +18,8 @@ app.use(cors({
     const allowed = [
       process.env.CLIENT_URL,
       'http://localhost:5173',
+      'https://mkt.central.ssism.org',
+      'http://mkt.central.ssism.org',
       'http://localhost:3000',
       'http://localhost:3010',
       'capacitor://localhost',
@@ -46,7 +48,7 @@ app.use(rateLimit({
 // Login — max 10 attempts per 15 min per IP
 app.use('/api/auth/login', rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 10,
+  max: 1000,
   message: { message: 'Too many login attempts. Try again after 15 minutes.' },
   standardHeaders: true,
   legacyHeaders: false,
