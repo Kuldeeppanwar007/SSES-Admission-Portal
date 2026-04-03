@@ -4,21 +4,21 @@ import api from '../../api/axios';
 import { STATUSES, STATUS_COLORS } from '../../utils/constants';
 import useAuthStore from '../../store/authStore';
 import toast from 'react-hot-toast';
-import { FiEdit2, FiArrowLeft, FiImage, FiFileText, FiExternalLink, FiClock, FiX, FiDownload } from 'react-icons/fi';
+import { FiEdit2, FiArrowLeft, FiImage, FiFileText, FiExternalLink, FiClock, FiX, FiDownload, FiSend } from 'react-icons/fi';
 
 export default function StudentDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuthStore();
   const [student, setStudent] = useState(null);
-  const [statusForm, setStatusForm] = useState({ status: '', remarks: '' });
-  const [updating, setUpdating] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [history, setHistory] = useState([]);
   const [exporting, setExporting] = useState(false);
   const [interviews, setInterviews] = useState([]);
-  const [finalForm, setFinalForm] = useState(null); // null = closed, {} = open
+  const [finalForm, setFinalForm] = useState(null);
   const [finalLoading, setFinalLoading] = useState(false);
+  const [editReqForm, setEditReqForm] = useState(null); // null = closed
+  const [editReqLoading, setEditReqLoading] = useState(false);
 
   const handleExport = async () => {
     setExporting(true);
@@ -35,7 +35,7 @@ export default function StudentDetail() {
 
   useEffect(() => {
     api.get(`/students/${id}`)
-      .then(({ data }) => { setStudent(data); setStatusForm({ status: data.status, remarks: '' }); })
+      .then(({ data }) => { setStudent(data); })
       .catch(() => toast.error('Failed to load student'));
     api.get(`/interviews/${id}`)
       .then(({ data }) => setInterviews(data))
@@ -55,17 +55,7 @@ export default function StudentDetail() {
     finally { setFinalLoading(false); }
   };
 
-  const handleStatusUpdate = async () => {
-    setUpdating(true);
-    try {
-      const { data } = await api.patch(`/students/${id}/status`, statusForm);
-      setStudent(data);
-      toast.success('Status updated');
-    } catch { toast.error('Update failed'); }
-    finally { setUpdating(false); }
-  };
-
-  const handleViewHistory = async () => {
+const handleViewHistory = async () => {
     try {
       const { data } = await api.get(`/students/${id}/status-history`);
       setHistory(data);
@@ -73,19 +63,130 @@ export default function StudentDetail() {
     } catch { toast.error('Failed to load history'); }
   };
 
+  const handleEditRequest = async (e) => {
+    e.preventDefault();
+    setEditReqLoading(true);
+    try {
+      await api.post(`/edit-requests/${id}`, editReqForm);
+      toast.success('Request bhej di gayi!');
+      setEditReqForm(null);
+    } catch { toast.error('Request failed'); }
+    finally { setEditReqLoading(false); }
+  };
+
   if (!student) return <div className="flex justify-center items-center h-64"><div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary"></div></div>;
 
-  const info = [
-    ['S.N.', student.sn], ['Name', student.name], ['Father Name', student.fatherName],
-    ['Track', student.track], ['Mobile No', student.mobileNo], ['WhatsApp No', student.whatsappNo],
-    ['Subject', student.subject], ['Other Track', student.otherTrack], ['Full Address', student.fullAddress],
-    ['Added By', student.addedBy?.name], ['Added On', new Date(student.createdAt).toLocaleDateString('en-IN')],
+  const s = student;
+  const fmt = (v) => (v !== null && v !== undefined && v !== '') ? String(v) : null;
+
+  const SECTIONS = [
+    {
+      title: 'Basic Information',
+      fields: [
+        ['S.N.',         fmt(s.sn)],
+        ['Name',         fmt(s.name)],
+        ['Father Name',  fmt(s.fatherName)],
+        ['Track',        fmt(s.track)],
+        ['Other Track',  fmt(s.otherTrack)],
+        ['Mobile No',    fmt(s.mobileNo)],
+        ['WhatsApp No',  fmt(s.whatsappNo || s.whatsappNumber)],
+        ['Full Address', fmt(s.fullAddress)],
+        ['Subject',      fmt(s.subject)],
+        ['Form Source',  fmt(s.formSource)],
+        ['Status',       fmt(s.status)],
+        ['Funnel Stage', fmt(s.funnelStage)],
+        ['Remarks',      fmt(s.remarks)],
+        ['Added By',     fmt(s.addedBy?.name)],
+        ['Added On',     s.createdAt ? new Date(s.createdAt).toLocaleDateString('en-IN') : null],
+      ],
+    },
+    {
+      title: 'Personal Details',
+      show: !!(s.email || s.dob || s.gender || s.category || s.aadharNo || s.district || s.village || s.pincode || s.tehsil),
+      fields: [
+        ['Email',             fmt(s.email)],
+        ['Date of Birth',     fmt(s.dob)],
+        ['Gender',            fmt(s.gender)],
+        ['Category',          fmt(s.category)],
+        ['Aadhar No',         fmt(s.aadharNo)],
+        ['District',          fmt(s.district)],
+        ['Village / City',    fmt(s.village)],
+        ['Pincode',           fmt(s.pincode)],
+        ['Tehsil',            fmt(s.tehsil)],
+      ],
+    },
+    {
+      title: 'Father / Family Details',
+      show: !!(s.fatherOccupation || s.fatherIncome || s.fatherContactNumber),
+      fields: [
+        ['Father Occupation',   fmt(s.fatherOccupation)],
+        ['Father Income',       fmt(s.fatherIncome)],
+        ['Father Contact',      fmt(s.fatherContactNumber)],
+      ],
+    },
+    {
+      title: 'Academic Details',
+      show: !!(s.schoolName || s.school12Sub || s.persentage10 || s.persentage11 || s.persentage12 || s.rollNumber10 || s.rollNumber12 || s.passout12 || s.jeeScore),
+      fields: [
+        ['School Name',       fmt(s.schoolName)],
+        ['12th Subject',      fmt(s.school12Sub)],
+        ['10th Percentage',   fmt(s.persentage10)],
+        ['11th Percentage',   fmt(s.persentage11)],
+        ['12th Percentage',   fmt(s.persentage12)],
+        ['10th Roll No',      fmt(s.rollNumber10)],
+        ['12th Roll No',      fmt(s.rollNumber12)],
+        ['12th Passout Year', fmt(s.passout12)],
+        ['JEE Score',         fmt(s.jeeScore)],
+      ],
+    },
+    {
+      title: 'B.Tech Preferences',
+      show: !!(s.priority1 || s.priority2 || s.priority3),
+      fields: [
+        ['Priority 1', fmt(s.priority1)],
+        ['Priority 2', fmt(s.priority2)],
+        ['Priority 3', fmt(s.priority3)],
+      ],
+    },
+    {
+      title: 'SSISM Details',
+      show: !!(s.branch || s.year || s.joinBatch || s.feesScheme || s.linkSource || s.trackName),
+      fields: [
+        ['Branch',      fmt(s.branch)],
+        ['Year',        fmt(s.year)],
+        ['Join Batch',  fmt(s.joinBatch)],
+        ['Fees Scheme', fmt(s.feesScheme)],
+        ['Link Source', fmt(s.linkSource)],
+        ['Track Name',  fmt(s.trackName)],
+        ['Is Top 20',   s.isTop20 ? 'Yes' : null],
+      ],
+    },
+    {
+      title: 'Payment / Registration',
+      show: !!(s.applicationType || s.paymentStatus || s.transactionId || s.regFees || s.regFeesStatus || s.regFeeReceiptNo),
+      fields: [
+        ['Application Type',  fmt(s.applicationType)],
+        ['Payment Status',    fmt(s.paymentStatus)],
+        ['Transaction ID',    fmt(s.transactionId)],
+        ['Reg. Fees',         fmt(s.regFees)],
+        ['Reg. Fees Status',  fmt(s.regFeesStatus)],
+        ['Reg. Fee Date',     s.regFeeDate ? new Date(s.regFeeDate).toLocaleDateString('en-IN') : null],
+        ['Receipt No',        fmt(s.regFeeReceiptNo)],
+      ],
+    },
   ];
+
+  const InfoField = ({ label, value }) => (
+    <div className="bg-gray-50 rounded-lg p-3">
+      <p className="text-xs text-gray-400 uppercase tracking-wide">{label}</p>
+      <p className="text-sm font-medium text-gray-800 mt-0.5 break-words">{value}</p>
+    </div>
+  );
 
   return (
     <div className="px-2">
       <div className="flex flex-wrap items-center gap-2 mb-6">
-        <button onClick={() => navigate('/students')} className="flex items-center gap-1 text-gray-500 hover:text-gray-700 text-sm">
+        <button onClick={() => navigate('/students')} className="flex items-center gap-1 text-gray-500 hover:text-gray-700 text-sm shrink-0">
           <FiArrowLeft size={16} /> Back
         </button>
         <h2 className="text-xl font-bold text-gray-800">Student Details</h2>
@@ -102,6 +203,12 @@ export default function StudentDetail() {
             className="flex items-center gap-1.5 border border-gray-300 text-gray-600 px-3 py-1.5 rounded-lg text-sm hover:bg-gray-50">
             <FiClock size={13} /> History
           </button>
+          {user?.role === 'track_incharge' && (
+            <button onClick={() => setEditReqForm({ field: '', newValue: '', reason: '' })}
+              className="flex items-center gap-1.5 border border-orange-200 text-primary px-3 py-1.5 rounded-lg text-sm hover:bg-orange-50">
+              <FiSend size={13} /> Request Edit
+            </button>
+          )}
         </div>
       </div>
 
@@ -121,14 +228,21 @@ export default function StudentDetail() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {info.map(([label, value]) => value ? (
-            <div key={label} className="bg-gray-50 rounded-lg p-3">
-              <p className="text-xs text-gray-500">{label}</p>
-              <p className="text-sm font-medium mt-0.5">{value}</p>
+        {SECTIONS.map(({ title, fields, show }) => {
+          if (show === false) return null;
+          const visible = fields.filter(([, v]) => v !== null);
+          if (visible.length === 0) return null;
+          return (
+            <div key={title} className="mt-5 pt-5 border-t border-gray-100 first:mt-0 first:pt-0 first:border-0">
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">{title}</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {visible.map(([label, value]) => (
+                  <InfoField key={label} label={label} value={value} />
+                ))}
+              </div>
             </div>
-          ) : null)}
-        </div>
+          );
+        })}
 
         {(student.photo || student.marksheet10th || student.marksheet12th || student.incomeCertificate || student.jaatiPraman || student.abcId || student.aadharCard) && (
           <div className="mt-5 pt-5 border-t border-gray-100">
@@ -160,24 +274,6 @@ export default function StudentDetail() {
         )}
       </div>
 
-      {/* Update Status — sabke liye */}
-        <div className="bg-white rounded-xl shadow p-6">
-          <h3 className="font-semibold mb-4">Update Status</h3>
-          <div className="flex flex-wrap gap-3">
-            <select value={statusForm.status} onChange={(e) => setStatusForm({ ...statusForm, status: e.target.value })}
-              className="border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none">
-              {STATUSES.map((s) => <option key={s}>{s}</option>)}
-            </select>
-            <input placeholder="Remarks (optional)" value={statusForm.remarks}
-              onChange={(e) => setStatusForm({ ...statusForm, remarks: e.target.value })}
-              className="flex-1 min-w-0 border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none" />
-            <button onClick={handleStatusUpdate} disabled={updating}
-              className="bg-primary text-white px-5 py-2 rounded-lg text-sm hover:bg-primary-dark disabled:opacity-60 w-full sm:w-auto">
-              {updating ? 'Updating...' : 'Update'}
-            </button>
-          </div>
-
-        </div>
       {/* Interview History */}
       {(interviews.length > 0 || student.finalInterview?.result) && (
         <div className="bg-white rounded-xl shadow p-6 mt-4">
@@ -287,6 +383,57 @@ export default function StudentDetail() {
               <button type="submit" disabled={finalLoading}
                 className="w-full bg-primary text-white py-2.5 rounded-lg font-semibold hover:bg-primary-dark disabled:opacity-60 transition-colors">
                 {finalLoading ? 'Saving...' : 'Submit'}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Request Edit Modal */}
+      {editReqForm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setEditReqForm(null)}>
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+              <h3 className="font-bold text-gray-800">Request Edit</h3>
+              <button onClick={() => setEditReqForm(null)} className="text-gray-400 hover:text-gray-600 text-xl font-bold leading-none">&times;</button>
+            </div>
+            <form onSubmit={handleEditRequest} className="px-5 py-4 space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Field</label>
+                <select required value={editReqForm.field}
+                  onChange={e => setEditReqForm({ ...editReqForm, field: e.target.value, newValue: '' })}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary">
+                  <option value="">Field select karo</option>
+                  {[
+                    ['name', 'Name'], ['fatherName', 'Father Name'], ['mobileNo', 'Mobile No'],
+                    ['whatsappNo', 'WhatsApp No'], ['track', 'Track'], ['subject', 'Subject'],
+                    ['fullAddress', 'Full Address'], ['otherTrack', 'Other Track'],
+                  ].map(([val, label]) => <option key={val} value={val}>{label}</option>)}
+                </select>
+              </div>
+              {editReqForm.field && (
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Current Value</label>
+                  <input disabled value={student[editReqForm.field] || '—'}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-gray-50 text-gray-500" />
+                </div>
+              )}
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">New Value</label>
+                <input required value={editReqForm.newValue}
+                  onChange={e => setEditReqForm({ ...editReqForm, newValue: e.target.value })}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Reason</label>
+                <textarea rows={2} value={editReqForm.reason}
+                  onChange={e => setEditReqForm({ ...editReqForm, reason: e.target.value })}
+                  placeholder="Kyun change karna hai?"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
+              </div>
+              <button type="submit" disabled={editReqLoading}
+                className="w-full bg-primary text-white py-2.5 rounded-lg font-semibold hover:bg-primary-dark disabled:opacity-60 transition-colors">
+                {editReqLoading ? 'Bhej raha hai...' : 'Request Bhejo'}
               </button>
             </form>
           </div>

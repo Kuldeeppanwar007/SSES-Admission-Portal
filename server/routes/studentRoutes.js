@@ -3,6 +3,7 @@ const router = express.Router();
 const multer = require('multer');
 const { upload } = require('../config/cloudinary');
 const { protect, authorizeRoles } = require('../middleware/authMiddleware');
+const { validate, schemas } = require('../middleware/validate');
 const {
   getStudents, getStudent, addStudent, updateStudent,
   deleteStudent, updateStatus, getStatusHistory, bulkUpload, downloadTemplate, exportStudents, getStats, getTrackStats, selfRegister,
@@ -11,7 +12,36 @@ const {
 const memStorage = multer({ storage: multer.memoryStorage() });
 
 // Public self-registration endpoint (no auth required)
-router.post('/self-register', selfRegister);
+router.post('/self-register', validate(schemas.selfRegister), selfRegister);
+
+// External website se student field update (webhook secret secured)
+router.patch('/external-update/:id', async (req, res) => {
+  const secret = req.headers['x-webhook-secret'];
+  if (!secret || secret !== process.env.WEBHOOK_SECRET)
+    return res.status(401).json({ message: 'Unauthorized' });
+  try {
+    const allowedFields = [
+      'name', 'fatherName', 'mobileNo', 'whatsappNo', 'track',
+      'subject', 'fullAddress', 'otherTrack', 'status', 'remarks',
+      'email', 'dob', 'gender', 'category', 'aadharNo', 'district',
+      'village', 'pincode', 'tehsil', 'schoolName', 'persentage10',
+      'persentage12', 'jeeScore', 'branch', 'year', 'feesScheme',
+    ];
+    const updates = {};
+    Object.keys(req.body).forEach(k => {
+      if (allowedFields.includes(k)) updates[k] = req.body[k];
+    });
+    if (Object.keys(updates).length === 0)
+      return res.status(400).json({ message: 'No valid fields to update' });
+    const updated = await require('../models/Student').findByIdAndUpdate(
+      req.params.id, updates, { new: true }
+    );
+    if (!updated) return res.status(404).json({ message: 'Student not found' });
+    res.json({ message: 'Updated successfully', student: updated });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
 
 router.get('/stats', protect, getStats);
 router.get('/track-stats', protect, async (req, res, next) => {
@@ -34,6 +64,64 @@ router.post('/weekly-bonus-manual', protect, authorizeRoles('admin'), async (req
     const result = await runWeeklyBonus();
     if (result?.skipped) return res.status(400).json({ message: 'Bonus already distributed this week' });
     res.json({ message: 'Weekly bonus distributed successfully' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Admin — TrackPoints recalculate from scratch
+router.post('/recalculate-points', protect, authorizeRoles('admin'), async (req, res) => {
+  try {
+    const Student = require('../models/Student');
+    const TrackPoints = require('../models/TrackPoints');
+
+    const TRACK_GROUP = {
+      'Harda': 1, 'Satwas & Kannod': 1, 'Rehti': 1,
+      'Khategaon': 2,
+    };
+    const SUBJECT_POINTS_BY_GROUP = {
+      'B.Tech': [180, 198, 225], 'BCA': [120, 132, 150],
+      'BBA': [130, 143, 163], 'Bcom': [130, 143, 163],
+      'Bio': [120, 132, 150], 'Micro': [120, 132, 150],
+    };
+    const getSubjectPoints = (track, subject) => {
+      const g = (TRACK_GROUP[track] || 1) - 1;
+      return (SUBJECT_POINTS_BY_GROUP[subject] || [0, 0, 0])[g];
+    };
+
+    // Reset all track points to 0
+    await TrackPoints.updateMany({}, { points: 0 });
+
+    // Admission points recalculate
+    const admitted = await Student.find({ status: 'Admitted', isDisabled: { $ne: true } });
+    const pointsMap = {};
+    admitted.forEach(({ track, subject }) => {
+      if (!track || !subject) return;
+      pointsMap[track] = (pointsMap[track] || 0) + getSubjectPoints(track, subject);
+    });
+
+    // Funnel points recalculate
+    const FUNNEL_POINTS = { 'Call Completed': 5, 'Lead Interested': 10, 'Admission Closed': 100 };
+    const funnelStudents = await Student.find({ awardedFunnelStages: { $exists: true, $ne: [] }, isDisabled: { $ne: true } });
+    funnelStudents.forEach(({ track, awardedFunnelStages }) => {
+      if (!track) return;
+      const pts = (awardedFunnelStages || []).reduce((s, f) => s + (FUNNEL_POINTS[f] || 0), 0);
+      pointsMap[track] = (pointsMap[track] || 0) + pts;
+    });
+
+    // Calling points recalculate
+    const callingStudents = await Student.find({ callingPointsAwarded: true, isDisabled: { $ne: true } });
+    callingStudents.forEach(({ track }) => {
+      if (!track) return;
+      pointsMap[track] = (pointsMap[track] || 0) + 5;
+    });
+
+    // Save
+    await Promise.all(Object.entries(pointsMap).map(([track, points]) =>
+      TrackPoints.findOneAndUpdate({ track }, { points }, { upsert: true })
+    ));
+
+    res.json({ message: 'Points recalculated successfully', pointsMap });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -64,6 +152,6 @@ router.put('/:id', protect, upload.fields([
 ]), updateStudent);
 router.delete('/:id', protect, authorizeRoles('admin', 'manager'), deleteStudent);
 router.get('/:id/status-history', protect, getStatusHistory);
-router.patch('/:id/status', protect, authorizeRoles('admin', 'manager', 'track_incharge'), updateStatus);
+router.patch('/:id/status', protect, authorizeRoles('admin', 'manager', 'track_incharge'), validate(schemas.updateStatus), updateStatus);
 
 module.exports = router;

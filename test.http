@@ -1,0 +1,77 @@
+### Login - galat email format (400 aana chahiye)
+POST http://localhost:5000/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "notanemail@gmail.com",
+  "password": "Anees@123"
+}
+
+###
+
+### Login - sahi data (200 aana chahiye)
+POST http://localhost:5000/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@sses.com",
+  "password": "Admin@123"
+}
+
+###
+
+### Self Register - galat mobile (400 aana chahiye)
+POST http://localhost:5000/api/students/self-register
+Content-Type: application/json
+x-webhook-secret: sses_wh_9f3c2e1b4d7a8f2c6e0d5b1a3f7e9c2d
+
+{
+  "firstName": "Rahul",
+  "mobile": "6265594562",
+  "email": "rahul@test.com"
+}
+
+###
+
+### Self Register - galat aadhar (400 aana chahiye)
+POST http://localhost:5000/api/students/self-register
+Content-Type: application/json
+x-webhook-secret: sses_wh_9f3c2e1b4d7a8f2c6e0d5b1a3f7e9c2d
+
+{
+  "firstName": "Rahul",
+  "mobile": "9876543210",
+  "email": "rahul@test.com",
+  "aadharNo": "123456"
+}
+
+###
+
+### Self Register - extra unknown fields (strip ho jaane chahiye)
+POST http://localhost:5000/api/students/self-register
+Content-Type: application/json
+x-webhook-secret: sses_wh_9f3c2e1b4d7a8f2c6e0d5b1a3f7e9c2d
+
+{
+  "firstName": "Rahul",
+  "mobile": "9876543210",
+  "email": "rahul@test.com",
+  "hackerField": "DROP TABLE students",
+  "__proto__": "malicious"
+}
+
+###
+
+### Self Register - sahi data (201 aana chahiye)
+POST http://localhost:5000/api/students/self-register
+Content-Type: application/json
+x-webhook-secret: sses_wh_9f3c2e1b4d7a8f2c6e0d5b1a3f7e9c2d
+
+{
+  "firstName": "Rahul",
+  "lastName": "Sharma",
+  "mobile": "9876543210",
+  "email": "rahul.sharma@test.com",
+  "formSource": "btech",
+  "jeeScore": 75
+}

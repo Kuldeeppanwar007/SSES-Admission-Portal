@@ -13,6 +13,9 @@ import android.os.Handler;
 import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
 import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationCallback;
+import com.google.android.gms.location.LocationRequest;
+import com.google.android.gms.location.LocationResult;
 import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.location.Priority;
 import com.google.android.gms.tasks.CancellationTokenSource;
@@ -31,16 +34,18 @@ public class LocationService extends Service {
     private static final int    NOTIF_ID         = 101;
     private static final int    ALERT_NOTIF_ID   = 102;
     private static final int    MOCK_NOTIF_ID    = 103;
-    private static final long   INTERVAL_MS      = 1 * 60 * 1000L; //  Every 15 minutes live location fetching
-    private static final long   TIMEOUT_MS       = 30_000L;
+    private static final long   INTERVAL_MS      = 60 * 1000L; // Every 1 minute
+    private static final long   TIMEOUT_MS       = 20_000L; // 20s timeout
     private static final String PREFS            = "sses_prefs";
 
     private Handler                     bgHandler;
     private HandlerThread               handlerThread;
     private Runnable                    locationRunnable;
     private FusedLocationProviderClient fusedClient;
+    private LocationCallback            locationCallback;
     private CancellationTokenSource     activeCts;
     private boolean                     isRunning = false;
+    private long                        lastSentTime = 0;
 
     @Override
     public void onCreate() {
@@ -50,6 +55,29 @@ public class LocationService extends Service {
         handlerThread.start();
         bgHandler = new Handler(handlerThread.getLooper());
         createNotificationChannels();
+        setupContinuousLocation();
+    }
+
+    // Continuous high-accuracy location updates — GPS warm rehega
+    private void setupContinuousLocation() {
+        LocationRequest req = new LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 30_000L)
+            .setMinUpdateIntervalMillis(15_000L)   // min 15s between updates
+            .setMaxUpdateDelayMillis(60_000L)
+            .setWaitForAccurateLocation(true)
+            .build();
+
+        locationCallback = new LocationCallback() {
+            @Override
+            public void onLocationResult(LocationResult result) {
+                // GPS warm — sirf store karo, send nahi karo (scheduleNext send karega)
+                // Yeh sirf GPS cache warm rakhta hai
+            }
+        };
+
+        try {
+            fusedClient.requestLocationUpdates(req, locationCallback,
+                android.os.Looper.getMainLooper());
+        } catch (SecurityException e) { e.printStackTrace(); }
     }
 
     @Override
@@ -73,6 +101,7 @@ public class LocationService extends Service {
 
     private void scheduleNext(long delayMs) {
         locationRunnable = () -> {
+            long startTime = System.currentTimeMillis();
             SharedPreferences prefs = getSharedPreferences(PREFS, MODE_PRIVATE);
             String token  = prefs.getString("token",  null);
             String apiUrl = prefs.getString("apiUrl", null);
@@ -81,10 +110,12 @@ public class LocationService extends Service {
             java.util.Calendar cal = java.util.Calendar.getInstance(ist);
             int hour = cal.get(java.util.Calendar.HOUR_OF_DAY);
 
-            if (hour >= 7 && hour < 18) {
-                fetchAndSendLocation(token, apiUrl);
+            if (hour >= 7 && hour < 21) {
+                fetchAndSendLocation(token, apiUrl, startTime);
+            } else {
+                // Off-hours: next schedule exactly at INTERVAL_MS
+                scheduleNext(INTERVAL_MS);
             }
-            scheduleNext(INTERVAL_MS);
         };
         bgHandler.postDelayed(locationRunnable, delayMs);
     }
@@ -149,18 +180,24 @@ public class LocationService extends Service {
 
     // ─── Location Fetch ───────────────────────────────────────────────────────
 
-    private void fetchAndSendLocation(String token, String apiUrl) {
-        if (token == null || apiUrl == null) return;
+    private void fetchAndSendLocation(String token, String apiUrl, long startTime) {
+        if (token == null || apiUrl == null) {
+            scheduleNext(INTERVAL_MS);
+            return;
+        }
 
         if (activeCts != null) activeCts.cancel();
         activeCts = new CancellationTokenSource();
         CancellationTokenSource cts = activeCts;
 
+        // Timeout — agar GPS fix nahi mila to unavailable ping bhejo
         bgHandler.postDelayed(() -> {
             if (!cts.getToken().isCancellationRequested()) {
                 cts.cancel();
                 showLocationOffNotification();
                 sendUnavailablePing(token, apiUrl);
+                long elapsed = System.currentTimeMillis() - startTime;
+                scheduleNext(Math.max(0, INTERVAL_MS - elapsed));
             }
         }, TIMEOUT_MS);
 
@@ -170,29 +207,34 @@ public class LocationService extends Service {
                     if (cts.getToken().isCancellationRequested()) return;
                     cts.cancel();
 
+                    long elapsed = System.currentTimeMillis() - startTime;
+                    long nextDelay = Math.max(0, INTERVAL_MS - elapsed);
+
                     if (location == null) {
                         showLocationOffNotification();
                         sendUnavailablePing(token, apiUrl);
-                        return;
-                    }
-                    if (location.isFromMockProvider()) {
+                    } else if (location.isFromMockProvider()) {
                         showMockLocationNotification();
                         sendMockPing(token, apiUrl);
-                        return;
+                    } else {
+                        dismissLocationOffNotification();
+                        dismissMockLocationNotification();
+                        sendLocation(location, token, apiUrl);
                     }
-                    dismissLocationOffNotification();
-                    dismissMockLocationNotification();
-                    sendLocation(location, token, apiUrl);
+                    scheduleNext(nextDelay);
                 })
                 .addOnFailureListener(e -> {
                     e.printStackTrace();
                     showLocationOffNotification();
                     sendUnavailablePing(token, apiUrl);
+                    long elapsed = System.currentTimeMillis() - startTime;
+                    scheduleNext(Math.max(0, INTERVAL_MS - elapsed));
                 });
         } catch (SecurityException e) {
             e.printStackTrace();
             showLocationOffNotification();
             sendUnavailablePing(token, apiUrl);
+            scheduleNext(INTERVAL_MS);
         }
     }
 
@@ -350,7 +392,17 @@ public class LocationService extends Service {
         if (bgHandler != null && locationRunnable != null)
             bgHandler.removeCallbacks(locationRunnable);
         if (activeCts != null) activeCts.cancel();
+        if (locationCallback != null) fusedClient.removeLocationUpdates(locationCallback);
         if (handlerThread != null) handlerThread.quitSafely();
+    }
+
+    @Override
+    public void onTaskRemoved(Intent rootIntent) {
+        // App swipe se band ho — service restart karo
+        Intent restart = new Intent(getApplicationContext(), LocationService.class);
+        restart.setPackage(getPackageName());
+        startForegroundService(restart);
+        super.onTaskRemoved(rootIntent);
     }
 
     @Nullable

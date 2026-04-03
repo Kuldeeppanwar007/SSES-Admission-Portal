@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../../api/axios';
 import toast from 'react-hot-toast';
-import { TRACKS } from '../../utils/constants';
-import { FiUsers, FiFileText, FiCheckCircle, FiAward, FiXCircle, FiTarget, FiSlash, FiChevronDown, FiTrendingUp } from 'react-icons/fi';
+import { TRACKS, MAIN_TRACKS, TRACK_TOWNS } from '../../utils/constants';
+import { FiUsers, FiFileText, FiAward, FiXCircle, FiTarget, FiSlash, FiChevronDown, FiTrendingUp } from 'react-icons/fi';
 
 const SUBJECT_COLORS = {
   'B.Tech': 'bg-blue-100 text-blue-700',
@@ -32,12 +32,11 @@ const FUNNEL_COLORS = {
 };
 
 const STAT_META = [
-  { key: 'total',    label: 'Total',    icon: FiUsers,       iconBg: 'bg-blue-100',    iconColor: 'text-blue-500',   text: 'text-blue-600' },
-  { key: 'applied',  label: 'Applied',  icon: FiFileText,    iconBg: 'bg-amber-100',   iconColor: 'text-amber-500',  text: 'text-amber-600' },
-  { key: 'verified', label: 'Verified', icon: FiCheckCircle, iconBg: 'bg-violet-100',  iconColor: 'text-violet-500', text: 'text-violet-600' },
-  { key: 'admitted', label: 'Admitted', icon: FiAward,       iconBg: 'bg-emerald-100', iconColor: 'text-emerald-500',text: 'text-emerald-600' },
-  { key: 'rejected', label: 'Rejected', icon: FiXCircle,     iconBg: 'bg-rose-100',    iconColor: 'text-rose-500',   text: 'text-rose-600' },
-  { key: 'disabled', label: 'Disabled', icon: FiSlash,       iconBg: 'bg-gray-100',    iconColor: 'text-gray-400',   text: 'text-gray-500' },
+  { key: 'total',    label: 'Total',    icon: FiUsers,    iconBg: 'bg-blue-100',    iconColor: 'text-blue-500',   text: 'text-blue-600' },
+  { key: 'applied',  label: 'Applied',  icon: FiFileText, iconBg: 'bg-amber-100',   iconColor: 'text-amber-500',  text: 'text-amber-600' },
+  { key: 'admitted', label: 'Admitted', icon: FiAward,    iconBg: 'bg-emerald-100', iconColor: 'text-emerald-500',text: 'text-emerald-600' },
+  { key: 'rejected', label: 'Rejected', icon: FiXCircle,  iconBg: 'bg-rose-100',    iconColor: 'text-rose-500',   text: 'text-rose-600' },
+  { key: 'disabled', label: 'Disabled', icon: FiSlash,    iconBg: 'bg-gray-100',    iconColor: 'text-gray-400',   text: 'text-gray-500' },
 ];
 
 export default function AdminTrackDashboard() {
@@ -62,19 +61,27 @@ export default function AdminTrackDashboard() {
       {/* Header */}
       <div className="flex items-start justify-between flex-wrap gap-3">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">{track} — Track Dashboard</h2>
+          <h2 className="text-xl md:text-2xl font-bold text-gray-900">{track} — Track Dashboard</h2>
+          {(TRACK_TOWNS[track] || []).length > 0 && (
+            <div className="flex flex-wrap gap-1 mt-1.5">
+              {(TRACK_TOWNS[track] || []).map((town) => (
+                <span key={town} className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-orange-50 text-primary border border-orange-100">
+                  {town}
+                </span>
+              ))}
+            </div>
+          )}
           <p className="text-sm text-gray-500 mt-0.5">Individual track overview</p>
         </div>
-        <div className="flex items-center gap-3">
-          <span className="text-sm bg-orange-50 text-primary font-bold px-3 py-1.5 rounded-full border border-orange-100">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-sm bg-orange-50 text-primary font-bold px-3 py-1.5 rounded-full border border-orange-100 shrink-0">
             🏆 {stats?.points || 0} pts
           </span>
-          {/* Track switcher */}
           <div className="relative">
             <select value={track}
               onChange={(e) => navigate(`/admin-track/${e.target.value}`)}
               className="appearance-none border border-gray-200 rounded-xl px-3 py-2 pr-8 text-sm font-semibold text-gray-700 bg-white focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 cursor-pointer">
-              {TRACKS.map((t) => <option key={t} value={t}>{t}</option>)}
+              {MAIN_TRACKS.map((t) => <option key={t} value={t}>{t}</option>)}
             </select>
             <FiChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
           </div>
@@ -88,7 +95,7 @@ export default function AdminTrackDashboard() {
       ) : (
         <>
           {/* Stat Cards */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
             {STAT_META.map(({ key, label, icon: Icon, iconBg, iconColor, text }) => (
               <div key={key} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex flex-col gap-3 hover:shadow-md transition-shadow">
                 <div className={`w-10 h-10 rounded-xl ${iconBg} flex items-center justify-center`}>

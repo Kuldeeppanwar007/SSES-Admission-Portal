@@ -4,6 +4,94 @@ import api from '../../api/axios';
 import toast from 'react-hot-toast';
 import useAuthStore from '../../store/authStore';
 import { FiUsers, FiFileText, FiAward, FiXCircle, FiTarget, FiSlash, FiChevronDown, FiGift, FiClock } from 'react-icons/fi';
+import { TRACK_TOWNS } from '../../utils/constants';
+
+// SSISM branch capacity limits
+const SSISM_BRANCHES = [
+  { label: 'BCA',           subject: 'BCA',   limit: 120, color: 'text-violet-600', bg: 'bg-violet-50', border: 'border-violet-200', bar: 'bg-violet-500' },
+  { label: 'BBA',           subject: 'BBA',   limit: 120, color: 'text-amber-600',  bg: 'bg-amber-50',  border: 'border-amber-200',  bar: 'bg-amber-500'  },
+  { label: 'BSC (BT)',      subject: 'Bio',   limit: 60,  color: 'text-rose-600',   bg: 'bg-rose-50',   border: 'border-rose-200',   bar: 'bg-rose-500'   },
+  { label: 'BSC (MICRO)',   subject: 'Micro', limit: 60,  color: 'text-cyan-600',   bg: 'bg-cyan-50',   border: 'border-cyan-200',   bar: 'bg-cyan-500'   },
+  { label: 'B.COM (CA)',    subject: 'Bcom',  limit: 60,  color: 'text-emerald-600',bg: 'bg-emerald-50',border: 'border-emerald-200',bar: 'bg-emerald-500'},
+  { label: 'ITEG DIPLOMA',  subject: 'B.Tech',limit: null,color: 'text-blue-600',   bg: 'bg-blue-50',   border: 'border-blue-200',   bar: 'bg-blue-500'   },
+];
+
+function CapacityCard({ label, admitted, limit, color, bg, border, bar }) {
+  const remaining = limit !== null ? Math.max(0, limit - admitted) : null;
+  const pct       = limit ? Math.min(Math.round((admitted / limit) * 100), 100) : null;
+  const isFull    = limit !== null && remaining === 0;
+  return (
+    <div className={`bg-white rounded-2xl border ${border} shadow-sm p-4 flex flex-col gap-2`}>
+      <p className={`text-xs font-bold uppercase tracking-wide ${color}`}>{label}</p>
+      <div className="flex items-end justify-between">
+        <div>
+          <p className="text-2xl font-bold text-gray-800">{admitted}</p>
+          <p className="text-xs text-gray-400">{limit !== null ? `of ${limit}` : 'No limit set'}</p>
+        </div>
+        {remaining !== null && (
+          <p className={`text-sm font-bold ${isFull ? 'text-rose-500' : 'text-emerald-600'}`}>
+            {isFull ? 'Full' : `${remaining} left`}
+          </p>
+        )}
+      </div>
+      {pct !== null && (
+        <div>
+          <div className="w-full bg-gray-100 rounded-full h-1.5">
+            <div className={`h-1.5 rounded-full transition-all duration-700 ${isFull ? 'bg-rose-500' : bar}`}
+              style={{ width: `${pct}%` }} />
+          </div>
+          <p className="text-xs text-gray-400 mt-1 text-right">{pct}%</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SSISMCapacityCards({ trackWise }) {
+  const admittedBySubject = {};
+  (trackWise || []).forEach(({ subjects }) => {
+    (subjects || []).forEach(({ subject, admitted }) => {
+      admittedBySubject[subject] = (admittedBySubject[subject] || 0) + (admitted || 0);
+    });
+  });
+
+  return (
+    <div>
+      <div className="flex items-center gap-2 mb-3">
+        <span className="text-sm font-bold text-gray-700 uppercase tracking-wide">SSISM Branch Capacity</span>
+        <div className="flex-1 h-px bg-gray-200" />
+      </div>
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+        {SSISM_BRANCHES.map((b) => (
+          <CapacityCard key={b.label} {...b} admitted={admittedBySubject[b.subject] || 0} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+const BTECH_BRANCHES = [
+  { label: 'CS',    key: 'CS',    limit: 60, color: 'text-blue-600',   bg: 'bg-blue-50',   border: 'border-blue-200',   bar: 'bg-blue-500'   },
+  { label: 'IT',    key: 'IT',    limit: 60, color: 'text-indigo-600', bg: 'bg-indigo-50', border: 'border-indigo-200', bar: 'bg-indigo-500' },
+  { label: 'AI/ML', key: 'AI/ML', limit: 60, color: 'text-purple-600', bg: 'bg-purple-50', border: 'border-purple-200', bar: 'bg-purple-500' },
+  { label: 'ECE',   key: 'ECE',   limit: 60, color: 'text-teal-600',   bg: 'bg-teal-50',   border: 'border-teal-200',   bar: 'bg-teal-500'   },
+];
+
+function BTechCapacityCards({ btechByBranch }) {
+  return (
+    <div>
+      <div className="flex items-center gap-2 mb-3">
+        <span className="text-sm font-bold text-gray-700 uppercase tracking-wide">B.Tech Branch Capacity</span>
+        <div className="flex-1 h-px bg-gray-200" />
+      </div>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {BTECH_BRANCHES.map((b) => (
+          <CapacityCard key={b.label} {...b} admitted={btechByBranch?.[b.key] || 0} />
+        ))}
+      </div>
+    </div>
+  );
+}
 
 const SUBJECT_COLORS = {
   'B.Tech': 'bg-blue-100 text-blue-700',
@@ -46,15 +134,10 @@ const getSubjectPoints = (track, subject) => {
 function PointsTable({ trackWise }) {
   const [open, setOpen] = useState(true);
 
-  // build map: track -> subject -> points earned
-  const dataMap = {};
-  trackWise.forEach(({ track, subjects }) => {
-    dataMap[track] = {};
-    subjects.forEach(({ subject, admitted }) => {
-      dataMap[track][subject] = (admitted || 0) * getSubjectPoints(track, subject);
-    });
-  });
-
+  // Server se jo actual points aaye hain (TrackPoints collection) unhe use karo
+  // Per-subject breakdown ke liye: admitted * (total points / total admitted) nahi,
+  // balki sirf total points dikhao — subject-wise breakdown accurate nahi hogi
+  // isliye subject column mein admitted count dikhao, Total mein actual DB points
   const tracks = [...trackWise].sort((a, b) => (b.points || 0) - (a.points || 0));
 
   return (
@@ -83,25 +166,26 @@ function PointsTable({ trackWise }) {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {tracks.map(({ track, points }, i) => {
-                const rankStyle = i === 0 ? 'bg-amber-50' : i === 1 ? 'bg-gray-50' : i === 2 ? 'bg-orange-50/40' : '';
+              {tracks.map(({ track, subjects, points, admissionPoints }) => {
+                const subjectMap = {};
+                (subjects || []).forEach(({ subject, admitted }) => { subjectMap[subject] = admitted || 0; });
                 return (
                   <tr key={track} className="hover:bg-orange-50/30 transition-colors">
                     <td className="px-5 py-3 font-bold text-gray-800 whitespace-nowrap">
                       {track.toUpperCase()}
                     </td>
                     {SUBJECTS.map((s) => {
-                      const pts = dataMap[track]?.[s] || 0;
+                      const admitted = subjectMap[s] || 0;
                       return (
                         <td key={s} className="px-5 py-3 tabular-nums">
-                          <span className={pts > 0 ? 'font-bold text-gray-800' : 'text-gray-300'}>
-                            {pts > 0 ? pts : '—'}
+                          <span className={admitted > 0 ? 'font-bold text-gray-800' : 'text-gray-300'}>
+                            {admitted > 0 ? admitted : '—'}
                           </span>
                         </td>
                       );
                     })}
                     <td className="px-5 py-3 font-bold text-primary tabular-nums">
-                      {SUBJECTS.reduce((sum, s) => sum + (dataMap[track]?.[s] || 0), 0)}
+                      {admissionPoints || 0}
                     </td>
                   </tr>
                 );
@@ -122,15 +206,15 @@ const RANK_STYLES = [
 
 function LeaderboardSection({ stats, user }) {
   const [open, setOpen] = useState(false);
+
   const sorted = [...stats.trackWise].sort((a, b) => (b.points || 0) - (a.points || 0));
-  const maxPts = sorted.reduce((m, t) => Math.max(m, t.points || 0), 1);
+  const maxScore = sorted.reduce((m, t) => Math.max(m, t.points || 0), 1);
   const myRank = user?.role === 'track_incharge'
     ? sorted.findIndex((t) => t.track === user.track) + 1
     : null;
 
   return (
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-      {/* Header — always visible */}
       <button onClick={() => setOpen((o) => !o)}
         className="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-50/60 transition-colors">
         <div className="flex items-center gap-3">
@@ -144,34 +228,57 @@ function LeaderboardSection({ stats, user }) {
         <FiChevronDown size={16} className={`text-gray-400 transition-transform duration-300 ${open ? 'rotate-180' : ''}`} />
       </button>
 
-      {/* Collapsible list */}
       {open && (
         <div className="border-t border-gray-50">
-          {sorted.map(({ track, points }, i) => {
+          {sorted.map(({ track, points, calledCount, totalCount }, i) => {
             const isMe = user?.role === 'track_incharge' && user?.track === track;
             const rank = RANK_STYLES[i] || { bg: 'bg-gray-100', text: 'text-gray-500', emoji: null };
-            const barW = Math.round(((points || 0) / maxPts) * 100);
+            const barW = Math.round(((points || 0) / maxScore) * 100);
+            // breakdown from stats
+            const tw = stats.trackWise.find(t => t.track === track) || {};
+            const admissionPts = tw.admissionPoints || 0;
+            const callingPts   = tw.callingPoints   || 0;
+            const funnelPts    = tw.funnelPoints    || 0;
             return (
               <div key={track}
-                className={`flex items-center gap-4 px-5 py-3 border-b border-gray-50 last:border-0 transition-colors ${
+                className={`px-5 py-3 border-b border-gray-50 last:border-0 transition-colors ${
                   isMe ? 'bg-orange-50/60' : 'hover:bg-gray-50/60'
                 }`}>
-                <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 text-xs font-bold ${rank.bg} ${rank.text}`}>
-                  {rank.emoji || i + 1}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className={`text-sm font-semibold truncate ${isMe ? 'text-primary' : 'text-gray-800'}`}>{track}</span>
-                    {isMe && <span className="text-xs bg-orange-100 text-primary font-bold px-1.5 py-0.5 rounded-full">You</span>}
+                <div className="flex items-center gap-4">
+                  <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 text-xs font-bold ${rank.bg} ${rank.text}`}>
+                    {rank.emoji || i + 1}
                   </div>
-                  <div className="w-full bg-gray-100 rounded-full h-1.5 mt-1.5">
-                    <div className={`h-1.5 rounded-full transition-all duration-700 ${isMe ? 'bg-primary' : 'bg-gray-400'}`}
-                      style={{ width: `${barW}%` }} />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className={`text-sm font-semibold ${isMe ? 'text-primary' : 'text-gray-800'}`}>{track}</span>
+                      {isMe && <span className="text-xs bg-orange-100 text-primary font-bold px-1.5 py-0.5 rounded-full">You</span>}
+                      {totalCount > 0 && <span className="text-xs text-gray-400">📞 {calledCount}/{totalCount}</span>}
+                    </div>
+                    <div className="w-full bg-gray-100 rounded-full h-1.5 mt-1.5">
+                      <div className={`h-1.5 rounded-full transition-all duration-700 ${isMe ? 'bg-primary' : 'bg-gray-400'}`}
+                        style={{ width: `${barW}%` }} />
+                    </div>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className={`text-sm font-bold tabular-nums ${isMe ? 'text-primary' : 'text-gray-700'}`}>
+                      {points || 0} <span className="text-xs font-medium text-gray-400">pts</span>
+                    </p>
                   </div>
                 </div>
-                <span className={`text-sm font-bold tabular-nums shrink-0 ${isMe ? 'text-primary' : 'text-gray-700'}`}>
-                  {points || 0} <span className="text-xs font-medium text-gray-400">pts</span>
-                </span>
+                {/* Breakdown row — admin only */}
+                {user?.role === 'admin' && (
+                  <div className="flex gap-3 mt-2 ml-11 flex-wrap">
+                    <span className="text-[11px] text-gray-500">
+                      🏅 Admission: <span className="font-semibold text-gray-700">{admissionPts}</span>
+                    </span>
+                    <span className="text-[11px] text-gray-500">
+                      📞 Calling: <span className="font-semibold text-gray-700">{callingPts}</span>
+                    </span>
+                    <span className="text-[11px] text-gray-500">
+                      📈 Funnel: <span className="font-semibold text-gray-700">{Math.max(0, funnelPts)}</span>
+                    </span>
+                  </div>
+                )}
               </div>
             );
           })}
@@ -211,6 +318,17 @@ export default function Dashboard() {
     } finally { setDistributing(false); }
   };
 
+  const handleRecalculate = async () => {
+    if (!window.confirm('Sab track points scratch se recalculate honge. Continue?')) return;
+    try {
+      const { data } = await api.post('/students/recalculate-points', {});
+      toast.success(data.message);
+      fetchStats();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed');
+    }
+  };
+
   if (!stats) return (
     <div className="flex justify-center items-center h-64">
       <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary" />
@@ -219,9 +337,17 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-8">
-      <div>
-        <h2 className="text-2xl font-bold text-gray-900">Dashboard</h2>
-        <p className="text-sm text-gray-500 mt-0.5">Overview of all admissions</p>
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900">Dashboard</h2>
+          <p className="text-sm text-gray-500 mt-0.5">Overview of all admissions</p>
+        </div>
+        {user?.role === 'admin' && (
+          <button onClick={handleRecalculate}
+            className="flex items-center gap-1.5 text-xs border border-gray-200 text-gray-500 px-3 py-1.5 rounded-lg hover:border-primary hover:text-primary transition-colors">
+            🔄 Recalculate Points
+          </button>
+        )}
       </div>
 
       {/* Stat Cards */}
@@ -250,6 +376,12 @@ export default function Dashboard() {
           );
         })}
       </div>
+
+      {/* SSISM Branch Capacity */}
+      <SSISMCapacityCards trackWise={stats.trackWise || []} />
+
+      {/* B.Tech Branch Capacity */}
+      <BTechCapacityCards btechByBranch={stats.btechByBranch || {}} />
 
       {/* Points Table */}
       {(stats.trackWise || []).length > 0 && (
@@ -284,13 +416,14 @@ export default function Dashboard() {
                 </div>
               </div>
               <button onClick={handleManualBonus} disabled={distributing || alreadyDone}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-colors shadow-sm ${
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-colors shadow-sm shrink-0 ${
                   alreadyDone
                     ? 'bg-gray-100 text-gray-400 cursor-not-allowed shadow-none'
                     : 'bg-primary text-white hover:bg-primary-dark shadow-orange-200 disabled:opacity-60'
                 }`}>
                 <FiGift size={14} />
-                {alreadyDone ? 'Already Distributed This Week' : distributing ? 'Distributing...' : 'Distribute Now'}
+                <span className="hidden sm:inline">{alreadyDone ? 'Already Distributed This Week' : distributing ? 'Distributing...' : 'Distribute Now'}</span>
+                <span className="sm:hidden">{alreadyDone ? 'Done' : distributing ? '...' : 'Distribute'}</span>
               </button>
             </div>
 
@@ -348,22 +481,30 @@ export default function Dashboard() {
                   className={`bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden hover:shadow-md transition-shadow ${
                     isClickable ? 'cursor-pointer hover:border-orange-200' : ''
                   }`}>
-                  {/* Card Header — same as Targets page */}
-                  <div className="px-5 py-4 bg-gradient-to-r from-gray-50 to-white border-b border-gray-100 flex items-center justify-between">
-                    <div>
+                  {/* Card Header */}
+                  <div className="px-5 py-4 bg-gradient-to-r from-gray-50 to-white border-b border-gray-100">
+                    <div className="flex items-center justify-between mb-1.5">
                       <p className="font-bold text-gray-800 text-sm">{track}</p>
-                      <p className="text-xs text-gray-400 mt-0.5">
-                        {totalAdmitted} / {totalTarget} admitted
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs bg-orange-50 text-primary font-bold px-2 py-0.5 rounded-full border border-orange-100">
-                        🏆 {points || 0}
-                      </span>
-                      <div className="w-9 h-9 rounded-xl bg-orange-50 border border-orange-100 flex items-center justify-center">
-                        <FiTarget size={15} className="text-primary" />
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs bg-orange-50 text-primary font-bold px-2 py-0.5 rounded-full border border-orange-100">
+                          🏆 {points || 0}
+                        </span>
+                        <div className="w-9 h-9 rounded-xl bg-orange-50 border border-orange-100 flex items-center justify-center">
+                          <FiTarget size={15} className="text-primary" />
+                        </div>
                       </div>
                     </div>
+                    {/* Towns */}
+                    {(TRACK_TOWNS[track] || []).length > 0 && (
+                      <div className="flex flex-wrap gap-1 mb-1">
+                        {(TRACK_TOWNS[track] || []).map((town) => (
+                          <span key={town} className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-orange-50 text-primary border border-orange-100">
+                            {town}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    <p className="text-xs text-gray-400">{totalAdmitted} / {totalTarget} admitted</p>
                   </div>
 
                   {/* Overall progress bar */}

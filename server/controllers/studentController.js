@@ -86,37 +86,61 @@ const addStudent = async (req, res) => {
   res.status(201).json(student);
 };
 
-const TRACK_GROUP = {
-  'Satwas': 1, 'Harda': 1, 'Gopalpur': 1,
-  'Khategaon': 2, 'Kannod': 2, 'Bherunda': 2,
-  'Timarni': 3, 'Nemawar': 3, 'Narmadapuram': 3, 'Seoni Malva': 3,
+const TOWN_TO_MAIN_TRACK = {
+  'harda':        'Harda',
+  'timarni':      'Harda',
+  'seoni malwa':  'Harda',
+  'seoni malav':  'Harda',
+  'khategaon':    'Khategaon',
+  'nemawar':      'Khategaon',
+  'rehti':        'Rehti',
+  'gopalpur':     'Rehti',
+  'bherunda':     'Rehti',
+  'satwas':       'Satwas & Kannod',
+  'kannod':       'Satwas & Kannod',
 };
 
-// Points per admission: [group1, group2, group3]
-const SUBJECT_POINTS_BY_GROUP = {
-  'B.Tech': [180, 198, 225],
-  'BCA':    [120, 132, 150],
-  'BBA':    [130, 143, 163],
-  'Bcom':   [130, 143, 163],
-  'Bio':    [120, 132, 150],
-  'Micro':  [120, 132, 150],
+// Town string se main track resolve karo
+const resolveMainTrack = (track) => {
+  if (!track) return track;
+  const key = track.toLowerCase().trim();
+  return TOWN_TO_MAIN_TRACK[key] || track;
 };
 
-const getSubjectPoints = (track, subject) => {
-  const group = (TRACK_GROUP[track] || 1) - 1; // 0-indexed
-  return (SUBJECT_POINTS_BY_GROUP[subject] || [0, 0, 0])[group];
+// Target model se points fetch karo (main track + subject)
+const getSubjectPoints = async (track, subject) => {
+  const Target = require('../models/Target');
+  const mainTrack = resolveMainTrack(track);
+  const t = await Target.findOne({ track: mainTrack, subject });
+  return t?.points || 0;
 };
 
 const FUNNEL_POINTS = {
-  'Call Completed': 5,
+  'Call Completed':  5,
   'Lead Interested': 10,
-  'Admission Closed': 100,
+  // 'Admission Closed' ke points ab Target model se aayenge (per subject)
+};
+
+// Funnel points get karo — Admission Closed ke liye Target se, baaki hardcoded
+const getFunnelPoints = async (funnelStage, track, subject) => {
+  if (funnelStage === 'Admission Closed') {
+    // Target model mein 'Admission Closed' subject ke liye points check karo
+    // Agar nahi mila to 100 default
+    const Target = require('../models/Target');
+    const mainTrack = resolveMainTrack(track);
+    const t = await Target.findOne({ track: mainTrack, subject: 'Admission Closed' });
+    return t?.points ?? 100;
+  }
+  return FUNNEL_POINTS[funnelStage] || 0;
 };
 
 const ALLOWED_FUNNEL = {
   'Calling':  ['Call Completed', 'Lead Interested'],
   'Admitted': ['Admission Closed'],
 };
+
+// Calling points — flat 5 pts per student (ek baar), leaderboard efficiency se rank hoga
+const CALLING_POINTS_PER_STUDENT = 5;
 
 // Update student
 const updateStudent = async (req, res) => {
@@ -128,7 +152,18 @@ const updateStudent = async (req, res) => {
   const prevStatus = student.status;
   const prevFunnel = student.funnelStage || '';
   const prevTrack  = student.track || '';
-  const updates = { ...req.body };
+
+  // Whitelist — sirf allowed fields accept karo, raw req.body directly use mat karo
+  const ALLOWED_FIELDS = ['status', 'remarks', 'funnelStage', 'subject',
+    'name', 'fatherName', 'track', 'mobileNo', 'whatsappNo', 'fullAddress', 'otherTrack',
+    'formSource', 'email', 'schoolName', 'district', 'village', 'whatsappNumber',
+    'priority1', 'priority2', 'priority3', 'jeeScore', 'persentage12', 'persentage10',
+    'persentage11', 'branch', 'year', 'joinBatch', 'feesScheme', 'category', 'gender',
+    'school12Sub', 'dob', 'aadharNo', 'fatherOccupation', 'fatherIncome',
+    'fatherContactNumber', 'pincode', 'tehsil', 'trackName',
+  ];
+  const updates = {};
+  ALLOWED_FIELDS.forEach((f) => { if (req.body[f] !== undefined) updates[f] = req.body[f]; });
 
   // Validate funnel stage against status
   const effectiveStatus = updates.status || prevStatus;
@@ -143,7 +178,7 @@ const updateStudent = async (req, res) => {
     const prevAllowed = ALLOWED_FUNNEL[prevStatus] || [];
     const newAllowed = ALLOWED_FUNNEL[updates.status] || [];
     if (prevAllowed.includes(prevFunnel) && !newAllowed.includes(prevFunnel)) {
-      pointsDelta -= FUNNEL_POINTS[prevFunnel] || 0;
+      pointsDelta -= await getFunnelPoints(prevFunnel, prevTrack, student.subject);
       await Student.findByIdAndUpdate(req.params.id, { $pull: { awardedFunnelStages: prevFunnel } });
       updates.funnelStage = '';
     }
@@ -153,77 +188,74 @@ const updateStudent = async (req, res) => {
   DOCS.forEach((d) => { if (req.files?.[d]) updates[d] = req.files[d][0].path; });
   const updated = await Student.findByIdAndUpdate(req.params.id, updates, { new: true });
 
-  const newTrack = updated.track || '';
-  const trackChanged = updates.track && updates.track !== prevTrack;
+  const newTrack = resolveMainTrack(updated.track || '');
+  const prevMainTrack = resolveMainTrack(prevTrack);
+  const trackChanged = updates.track && resolveMainTrack(updates.track) !== prevMainTrack;
   const TrackPoints = require('../models/TrackPoints');
 
   // Track change hone par — purane track se sab points hataao, naye track mein daalo
-  if (trackChanged && prevTrack && newTrack) {
-    let migratePoints = 0;
-
+  if (trackChanged && prevMainTrack && newTrack) {
     // Admission points
     if (prevStatus === 'Admitted' || effectiveStatus === 'Admitted') {
       const subject = updated.subject || student.subject;
       if (subject) {
-        migratePoints += getSubjectPoints(newTrack, subject) - getSubjectPoints(prevTrack, subject);
-        // Purane track se admission points ghataao
-        await TrackPoints.findOneAndUpdate(
-          { track: prevTrack },
-          { $inc: { points: -getSubjectPoints(prevTrack, subject) } },
-          { upsert: true }
-        );
-        // Naye track mein admission points daalo
-        await TrackPoints.findOneAndUpdate(
-          { track: newTrack },
-          { $inc: { points: getSubjectPoints(newTrack, subject) } },
-          { upsert: true }
-        );
+        const prevPts = await getSubjectPoints(prevMainTrack, subject);
+        const newPts  = await getSubjectPoints(newTrack, subject);
+        await TrackPoints.findOneAndUpdate({ track: prevMainTrack }, { $inc: { points: -prevPts } }, { upsert: true });
+        await TrackPoints.findOneAndUpdate({ track: newTrack },      { $inc: { points:  newPts  } }, { upsert: true });
       }
     }
 
-    // Funnel points migrate karo (jo awarded ho chuke hain)
+    // Funnel points migrate
     const awardedFunnels = updated.awardedFunnelStages || [];
     if (awardedFunnels.length > 0) {
       const funnelTotal = awardedFunnels.reduce((sum, f) => sum + (FUNNEL_POINTS[f] || 0), 0);
       if (funnelTotal > 0) {
-        await TrackPoints.findOneAndUpdate({ track: prevTrack }, { $inc: { points: -funnelTotal } }, { upsert: true });
-        await TrackPoints.findOneAndUpdate({ track: newTrack },  { $inc: { points:  funnelTotal } }, { upsert: true });
+        await TrackPoints.findOneAndUpdate({ track: prevMainTrack }, { $inc: { points: -funnelTotal } }, { upsert: true });
+        await TrackPoints.findOneAndUpdate({ track: newTrack },      { $inc: { points:  funnelTotal } }, { upsert: true });
       }
     }
 
-    // Calling points migrate karo
+    // Calling points migrate
     if (updated.callingPointsAwarded) {
-      await TrackPoints.findOneAndUpdate({ track: prevTrack }, { $inc: { points: -5 } }, { upsert: true });
-      await TrackPoints.findOneAndUpdate({ track: newTrack },  { $inc: { points:  5 } }, { upsert: true });
+      await TrackPoints.findOneAndUpdate({ track: prevMainTrack }, { $inc: { points: -CALLING_POINTS_PER_STUDENT } }, { upsert: true });
+      await TrackPoints.findOneAndUpdate({ track: newTrack },      { $inc: { points:  CALLING_POINTS_PER_STUDENT } }, { upsert: true });
     }
 
-    // pointsDelta reset — track migration already handle ho gayi upar
     pointsDelta = 0;
   } else {
     // Normal (track nahi badla) — existing logic
-    // Subject admission points
-    if (prevStatus !== 'Admitted' && updates.status === 'Admitted' && updates.subject)
-      pointsDelta += getSubjectPoints(newTrack, updates.subject);
-    if (prevStatus === 'Admitted' && updates.status !== 'Admitted' && student.subject)
-      pointsDelta -= getSubjectPoints(prevTrack, student.subject);
-
-    // Funnel stage points — sirf ek baar per stage per student
-    const newFunnel = updates.funnelStage || '';
+    const newFunnel = updates.funnelStage !== undefined ? updates.funnelStage : prevFunnel;
     const awardedFunnelStages = student.awardedFunnelStages || [];
-    if (newFunnel && newFunnel !== prevFunnel && !awardedFunnelStages.includes(newFunnel)) {
-      pointsDelta += FUNNEL_POINTS[newFunnel] || 0;
-      await Student.findByIdAndUpdate(req.params.id, { $addToSet: { awardedFunnelStages: newFunnel } });
+
+    // Subject admission points — status Admitted ho ya subject change ho Admitted state mein
+    const becomingAdmitted = prevStatus !== 'Admitted' && effectiveStatus === 'Admitted';
+    const leavingAdmitted  = prevStatus === 'Admitted' && effectiveStatus !== 'Admitted';
+    const subjectForPoints = updates.subject || student.subject;
+
+    if (becomingAdmitted && subjectForPoints)
+      pointsDelta += await getSubjectPoints(newTrack, subjectForPoints);
+    if (leavingAdmitted && student.subject)
+      pointsDelta -= await getSubjectPoints(newTrack, student.subject);
+
+  // Funnel stage points — sirf ek baar per stage per student
+    // NOTE: becomingAdmitted ke saath bhi funnel check karo — dono ek saath aa sakte hain
+    const effectiveFunnel = updates.funnelStage !== undefined ? updates.funnelStage : prevFunnel;
+    if (effectiveFunnel && effectiveFunnel !== prevFunnel && !awardedFunnelStages.includes(effectiveFunnel)) {
+      pointsDelta += await getFunnelPoints(effectiveFunnel, newTrack || prevMainTrack, subjectForPoints);
+      await Student.findByIdAndUpdate(req.params.id, { $addToSet: { awardedFunnelStages: effectiveFunnel } });
     }
 
-    // Calling status remark points — sirf ek baar milenge per student
+    // Calling status remark points — sirf ek baar per student, flat 5 pts
     if (updates.status === 'Calling' && updates.remarks && updates.remarks.trim() && !student.callingPointsAwarded) {
-      pointsDelta += 5;
+      pointsDelta += CALLING_POINTS_PER_STUDENT;
       await Student.findByIdAndUpdate(req.params.id, { callingPointsAwarded: true });
     }
 
-    if (pointsDelta !== 0 && newTrack) {
+    const trackForPoints = newTrack || prevMainTrack;
+    if (pointsDelta !== 0 && trackForPoints) {
       await TrackPoints.findOneAndUpdate(
-        { track: newTrack },
+        { track: trackForPoints },
         { $inc: { points: pointsDelta } },
         { upsert: true, new: true }
       );
@@ -273,12 +305,13 @@ const updateStatus = async (req, res) => {
   // Points logic
   let pointsDelta = 0;
   if (prevStatus !== 'Admitted' && status === 'Admitted' && student.subject)
-    pointsDelta += getSubjectPoints(student.track, student.subject);
+    pointsDelta += await getSubjectPoints(student.track, student.subject);
   if (prevStatus === 'Admitted' && status !== 'Admitted' && student.subject)
-    pointsDelta -= getSubjectPoints(student.track, student.subject);
+    pointsDelta -= await getSubjectPoints(student.track, student.subject);
   if (pointsDelta !== 0 && student.track) {
+    const mainTrack = resolveMainTrack(student.track);
     await TrackPoints.findOneAndUpdate(
-      { track: student.track },
+      { track: mainTrack },
       { $inc: { points: pointsDelta } },
       { upsert: true }
     );
@@ -314,7 +347,6 @@ const fieldMap = {
 };
 
 const mapRowToStudent = (row, addedBy) => {
-  // Normalize key: lowercase, remove dots/spaces
   const normalize = (s) => s.toLowerCase().replace(/[.\s]/g, '');
   const normalizedMap = {};
   Object.keys(fieldMap).forEach((k) => { normalizedMap[normalize(k)] = fieldMap[k]; });
@@ -324,6 +356,10 @@ const mapRowToStudent = (row, addedBy) => {
     const mapped = normalizedMap[normalize(key)];
     if (mapped) student[mapped] = String(row[key]).trim();
   });
+
+  // Excel me jo bhi track likha ho (satwas, kannod, harda etc.) — resolve karke valid track set karo
+  if (student.track) student.track = resolveMainTrack(student.track);
+
   return student;
 };
 
@@ -438,7 +474,16 @@ const exportStudents = async (req, res) => {
     ws['!cols'] = [6, 22, 22, 14, 14, 14, 12, 30, 14, 12, 30, 16, 14].map((w) => ({ wch: w }));
     xlsx.utils.book_append_sheet(wb, ws, 'Students');
     const buf = xlsx.write(wb, { type: 'buffer', bookType: 'xlsx' });
-    res.setHeader('Content-Disposition', `attachment; filename=students_export_${Date.now()}.xlsx`);
+
+    // Filename: date + student name (single export) ya "all"
+    const now = new Date();
+    const dateStr = `${now.getDate().toString().padStart(2,'0')}-${(now.getMonth()+1).toString().padStart(2,'0')}-${now.getFullYear()}`;
+    const namePart = (ids && ids.length === 1)
+      ? `_${students[0].name.replace(/[^a-zA-Z0-9]/g, '_')}`
+      : '';
+    const filename = `students_export_${dateStr}${namePart}.xlsx`;
+
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.send(buf);
   } catch (err) {
@@ -521,8 +566,10 @@ const getTrackStats = async (req, res) => {
       totalPoints: count * (FUNNEL_POINTS_MAP[_id] || 0),
     }));
 
-    // Calling points breakdown
+    // Calling points breakdown + efficiency
     const callingCount = await Student.countDocuments({ track, callingPointsAwarded: true });
+    const totalActive  = await Student.countDocuments({ track, isDisabled: { $ne: true } });
+    const callingEfficiency = totalActive > 0 ? Math.round((callingCount / totalActive) * 100) : 0;
 
     res.json({
       track, total, applied, admitted, rejected, disabled, subjects,
@@ -530,6 +577,7 @@ const getTrackStats = async (req, res) => {
       statusBreakdown: statusBreakdown.map(({ _id, count }) => ({ status: _id, count })),
       funnelBreakdown: funnelData,
       callingPointsCount: callingCount,
+      callingEfficiency,
     });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -555,9 +603,12 @@ const getStats = async (req, res) => {
     const targets = await Target.find({});
 
     const trackMap = {};
-    targets.forEach(({ track, subject, target }) => {
+    const pointsPerSubject = {}; // track -> subject -> points per admission
+    targets.forEach(({ track, subject, target, points: pts }) => {
       if (!trackMap[track]) trackMap[track] = { subjects: {} };
       trackMap[track].subjects[subject] = { target, admitted: 0 };
+      if (!pointsPerSubject[track]) pointsPerSubject[track] = {};
+      pointsPerSubject[track][subject] = pts || 0;
     });
 
     trackSubjectAdmitted.forEach(({ _id, admitted }) => {
@@ -578,16 +629,90 @@ const getStats = async (req, res) => {
       if (!trackMap[track]) trackMap[track] = { subjects: {} };
     });
 
-    const trackWise = Object.entries(trackMap).map(([track, { subjects }]) => ({
-      track,
-      subjects: Object.entries(subjects).map(([subject, data]) => ({ subject, ...data })),
-      points: pointsMap[track] || 0,
-    }));
+    // Har track ki calling efficiency calculate karo
+    const callingData = await Student.aggregate([
+      { $match: { isDisabled: { $ne: true } } },
+      { $group: {
+        _id: '$track',
+        total: { $sum: 1 },
+        called: { $sum: { $cond: ['$callingPointsAwarded', 1, 0] } },
+      }},
+    ]);
+    const callingMap = {};
+    callingData.forEach(({ _id, total, called }) => {
+      callingMap[_id] = { calledCount: called, totalCount: total, efficiency: total > 0 ? Math.round((called / total) * 100) : 0 };
+    });
 
-    res.json({ total, applied, admitted, rejected, disabled, unassigned, trackWise });
+    // Funnel points per track — awardedFunnelStages se calculate karo
+    const funnelData = await Student.aggregate([
+      { $match: { awardedFunnelStages: { $exists: true, $ne: [] } } },
+      { $unwind: '$awardedFunnelStages' },
+      { $group: { _id: { track: '$track', stage: '$awardedFunnelStages' }, count: { $sum: 1 } } },
+    ]);
+    const FUNNEL_PTS = { 'Call Completed': 5, 'Lead Interested': 10, 'Admission Closed': 100 };
+    const funnelPointsMap = {}; // track -> total funnel points
+    funnelData.forEach(({ _id: { track, stage }, count }) => {
+      funnelPointsMap[track] = (funnelPointsMap[track] || 0) + count * (FUNNEL_PTS[stage] || 0);
+    });
+
+    const trackWise = Object.entries(trackMap).map(([track, { subjects }]) => {
+      const admissionPoints = Object.entries(subjects).reduce((sum, [subject, { admitted }]) => {
+        return sum + (admitted || 0) * (pointsPerSubject[track]?.[subject] || 0);
+      }, 0);
+      const callingPoints = (callingMap[track]?.calledCount || 0) * 5;
+      const funnelPoints  = funnelPointsMap[track] || 0;
+      return ({
+        track,
+        subjects: Object.entries(subjects).map(([subject, data]) => ({ subject, ...data })),
+        points: pointsMap[track] || 0,
+        admissionPoints,
+        callingPoints,
+        funnelPoints,
+        calledCount:       callingMap[track]?.calledCount  || 0,
+        totalCount:        callingMap[track]?.totalCount   || 0,
+        callingEfficiency: callingMap[track]?.efficiency   || 0,
+      });
+    });
+
+    // B.Tech branch-wise admitted count (priority1 field)
+    const btechBranches = await Student.aggregate([
+      { $match: { status: 'Admitted', formSource: 'btech', priority1: { $nin: [null, ''] } } },
+      { $group: { _id: '$priority1', admitted: { $sum: 1 } } },
+    ]);
+    const btechByBranch = {};
+    btechBranches.forEach(({ _id, admitted }) => { btechByBranch[_id] = admitted; });
+
+    res.json({ total, applied, admitted, rejected, disabled, unassigned, trackWise, btechByBranch });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
+};
+
+// Town → Track mapping
+const TOWN_TO_TRACK = {
+  'harda':       { track: 'Harda',           trackName: 'Harda' },
+  'timarni':     { track: 'Harda',           trackName: 'Timarni' },
+  'seoni malwa': { track: 'Harda',           trackName: 'Seoni Malwa' },
+  'seoni malav': { track: 'Harda',           trackName: 'Seoni Malwa' },
+  'khategaon':   { track: 'Khategaon',       trackName: 'Khategaon' },
+  'nemawar':     { track: 'Khategaon',       trackName: 'Nemawar' },
+  'gopalpur':    { track: 'Rehti',           trackName: 'Gopalpur' },
+  'bherunda':    { track: 'Rehti',           trackName: 'Bherunda' },
+  'rehti':       { track: 'Rehti',           trackName: 'Rehti' },
+  'kannod':      { track: 'Satwas & Kannod', trackName: 'Kannod' },
+  'satwas':      { track: 'Satwas & Kannod', trackName: 'Satwas' },
+};
+
+const resolveTrack = (trackName, village) => {
+  const candidates = [trackName, village].filter(Boolean);
+  for (const val of candidates) {
+    const key = String(val).toLowerCase().trim();
+    if (TOWN_TO_TRACK[key]) return TOWN_TO_TRACK[key];
+    // partial match
+    const found = Object.keys(TOWN_TO_TRACK).find(k => key.includes(k) || k.includes(key));
+    if (found) return TOWN_TO_TRACK[found];
+  }
+  return null;
 };
 
 // Self-registration from external forms (webhook — secured by secret)
@@ -600,17 +725,25 @@ const selfRegister = async (req, res) => {
   try {
     const { formSource, firstName, lastName, fathersName, mobile, email, whatsappNumber, address, ...rest } = req.body;
 
-    if (!firstName || !mobile || !email)
-      return res.status(400).json({ message: 'firstName, mobile, email are required' });
+    if (!firstName || !mobile)
+      return res.status(400).json({ message: 'firstName and mobile are required' });
 
     const validSources = ['btech', 'ssism'];
     const resolvedSource = validSources.includes(formSource) ? formSource : null;
 
-    // Duplicate check by mobile or email
-    const existing = await Student.findOne({ $or: [{ mobileNo: String(mobile) }, { email }] });
+    // Duplicate check — mobile se (email optional hai SSISM mein)
+    const orConditions = [{ mobileNo: String(mobile) }];
+    if (email) orConditions.push({ email });
+    const existing = await Student.findOne({ $or: orConditions });
     if (existing) return res.status(409).json({ message: 'Already registered', id: existing._id });
 
     const count = await Student.countDocuments();
+
+    // Track + Town mapping
+    const mapped = resolveTrack(rest.trackName, rest.village);
+    const resolvedTrack     = mapped?.track     || '';
+    const resolvedTrackName = mapped?.trackName || rest.trackName || '';
+
     const student = await Student.create({
       sn: count + 1,
       name: `${firstName} ${lastName || ''}`.trim(),
@@ -621,7 +754,24 @@ const selfRegister = async (req, res) => {
       email,
       formSource: resolvedSource,
       status: 'Applied',
+      track: resolvedTrack,
+      trackName: resolvedTrackName,
       ...rest,
+      // Numeric fields — string se number mein convert karo
+      ...(rest.persentage10  !== undefined && { persentage10:  Number(rest.persentage10)  || null }),
+      ...(rest.persentage11  !== undefined && { persentage11:  String(rest.persentage11) }),
+      ...(rest.persentage12  !== undefined && { persentage12:  Number(rest.persentage12)  || null }),
+      ...(rest.jeeScore      !== undefined && { jeeScore:      Number(rest.jeeScore)      || null }),
+      ...(rest.rollNumber10  !== undefined && { rollNumber10:  Number(rest.rollNumber10)  || null }),
+      ...(rest.rollNumber12  !== undefined && { rollNumber12:  Number(rest.rollNumber12)  || null }),
+      ...(rest.fatherIncome  !== undefined && { fatherIncome:  Number(rest.fatherIncome)  || null }),
+      ...(rest.joinBatch     !== undefined && { joinBatch:     Number(rest.joinBatch)     || null }),
+      ...(rest.pincode       !== undefined && { pincode:       Number(rest.pincode)       || null }),
+      // isTop20 — 0/1 ya true/false dono handle karo
+      ...(rest.isTop20 !== undefined && { isTop20: Boolean(Number(rest.isTop20)) }),
+      // Track mapping — ...rest ke baad override karo taaki sahi values rahe
+      track: resolvedTrack,
+      trackName: resolvedTrackName,
     });
     res.status(201).json({ message: 'Registration successful', id: student._id });
   } catch (err) {

@@ -68,11 +68,11 @@ export default function TrackingMap({ points }) {
 
     const latlngs = points.map(p => [p.lat, p.lng]);
 
-    // Draw full path (dashed gray)
-    L.polyline(latlngs, { color: '#d1d5db', weight: 3, dashArray: '6 4' }).addTo(map);
+    // Draw full path (dashed gray) with smooth curves
+    L.polyline(latlngs, { color: '#d1d5db', weight: 3, dashArray: '6 4', smoothFactor: 2 }).addTo(map);
 
     // Animated traveled path (solid indigo) — starts empty
-    const traveledLine = L.polyline([], { color: '#6366f1', weight: 4 }).addTo(map);
+    const traveledLine = L.polyline([], { color: '#6366f1', weight: 4, smoothFactor: 2 }).addTo(map);
 
     // Static markers
     points.forEach((pt, i) => {

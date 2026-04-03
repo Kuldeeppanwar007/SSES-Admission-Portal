@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import api from '../../api/axios';
-import { TRACKS, STATUSES, STATUS_COLORS } from '../../utils/constants';
+import { TRACKS, STATUSES, STATUS_COLORS, TRACK_TOWNS } from '../../utils/constants';
 import useAuthStore from '../../store/authStore';
 import toast from 'react-hot-toast';
-import { FiPlus, FiUpload, FiSearch, FiEdit2, FiDownload, FiFilter, FiSlash, FiClipboard } from 'react-icons/fi';
+import { FiPlus, FiUpload, FiSearch, FiEdit2, FiDownload, FiFilter, FiSlash, FiClipboard, FiExternalLink } from 'react-icons/fi';
 import DatePicker from '../../components/DatePicker';
 import { isOnline, cacheStudents, getCachedStudents } from '../../utils/offlineQueue';
 
@@ -280,7 +280,26 @@ export default function Students() {
       const url = window.URL.createObjectURL(new Blob([res.data]));
       const a = document.createElement('a');
       a.href = url;
-      a.download = `students_export_${Date.now()}.xlsx`;
+
+      const now = new Date();
+      const dateStr = `${now.getDate().toString().padStart(2,'0')}-${(now.getMonth()+1).toString().padStart(2,'0')}-${now.getFullYear()}`;
+
+      let filename;
+      if (ids.length === 1) {
+        // Single student — student ka naam
+        const student = students.find(s => s._id === ids[0]);
+        const namePart = student ? student.name.replace(/[^a-zA-Z0-9]/g, '_') : 'student';
+        filename = `${namePart}_${dateStr}.xlsx`;
+      } else if (ids.length > 1) {
+        // Selected multiple — selected + date
+        filename = `students_selected_${dateStr}.xlsx`;
+      } else {
+        // Export all — track filter laga ho to track name, warna "all"
+        const trackPart = filters.track ? filters.track.replace(/[^a-zA-Z0-9]/g, '_') : 'all';
+        filename = `students_${trackPart}_${dateStr}.xlsx`;
+      }
+
+      a.download = filename;
       a.click();
       window.URL.revokeObjectURL(url);
       toast.success(`${ids.length > 0 ? ids.length : 'All'} students exported`);
@@ -325,45 +344,85 @@ export default function Students() {
         <h2 className="text-xl md:text-2xl font-bold text-gray-800">
           Students <span className="text-gray-400 text-base">({total})</span>
         </h2>
-        <div className="grid grid-cols-4 gap-1.5 w-full md:w-auto md:flex md:gap-2">
+        {/* Desktop buttons */}
+        <div className="hidden md:flex gap-2">
           {selected.length > 0 ? (
             <button onClick={() => handleExport(selected)} disabled={exporting}
-              className="flex items-center justify-center gap-0.5 md:gap-1.5 bg-primary text-white py-1.5 md:px-3 md:py-2 rounded md:rounded-lg text-xs md:text-sm disabled:opacity-60">
-              <FiDownload size={11} className="md:hidden" /><FiDownload size={14} className="hidden md:block" /> <span>Export ({selected.length})</span>
+              className="flex items-center gap-1 bg-primary text-white px-3 py-1.5 rounded-lg text-sm disabled:opacity-60">
+              <FiDownload size={13} /> Export ({selected.length})
             </button>
           ) : (
             <button onClick={() => handleExport([])} disabled={exporting}
-              className="flex items-center justify-center gap-0.5 md:gap-1.5 bg-primary text-white py-1.5 md:px-3 md:py-2 rounded md:rounded-lg text-xs md:text-sm disabled:opacity-60">
-              <FiDownload size={11} className="md:hidden" /><FiDownload size={14} className="hidden md:block" /> <span>{exporting ? 'Exporting...' : 'Export All'}</span>
+              className="flex items-center gap-1 bg-primary text-white px-3 py-1.5 rounded-lg text-sm disabled:opacity-60">
+              <FiDownload size={13} /> {exporting ? 'Exporting...' : 'Export All'}
             </button>
           )}
           {!isDisabledTab && (
             <>
-              <label className="flex items-center justify-center gap-0.5 md:gap-1.5 bg-primary text-white py-1.5 md:px-3 md:py-2 rounded md:rounded-lg cursor-pointer text-xs md:text-sm">
-                <FiUpload size={11} className="md:hidden" /><FiUpload size={14} className="hidden md:block" /> <span>Bulk Upload</span>
-                <input type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleBulkUpload} />
-              </label>
               <button onClick={handleDownloadTemplate}
-                className="flex items-center justify-center gap-0.5 md:gap-1.5 bg-gray-100 text-gray-700 py-1.5 md:px-3 md:py-2 rounded md:rounded-lg text-xs md:text-sm border border-gray-300">
-                <FiDownload size={11} className="md:hidden" /><FiDownload size={14} className="hidden md:block" /> <span>Sample</span>
+                className="flex items-center gap-1 border border-primary text-primary px-3 py-1.5 rounded-lg text-sm hover:bg-orange-50">
+                <FiDownload size={13} /> Template
               </button>
-              <button onClick={() => navigate('/students/add')}
-                className="flex items-center justify-center gap-0.5 md:gap-1.5 bg-primary text-white py-1.5 md:px-3 md:py-2 rounded md:rounded-lg text-xs md:text-sm">
-                <FiPlus size={11} className="md:hidden" /><FiPlus size={14} className="hidden md:block" /> <span className="md:hidden">Add</span><span className="hidden md:inline">Add Student</span>
-              </button>
+              <label className="flex items-center gap-1 bg-primary text-white px-3 py-1.5 rounded-lg text-sm cursor-pointer hover:bg-primary-dark">
+                <FiUpload size={13} /> Bulk Upload
+                <input type="file" accept=".xlsx,.xls" className="hidden" onChange={handleBulkUpload} />
+              </label>
+              <a href="https://central.ssism.org/self_registration" target="_blank" rel="noopener noreferrer"
+                className="flex items-center gap-1 bg-primary text-white px-3 py-1.5 rounded-lg text-sm">
+                <FiExternalLink size={13} /> SSISM Form
+              </a>
+              <a href="https://ssec.ssism.org/apply" target="_blank" rel="noopener noreferrer"
+                className="flex items-center gap-1 bg-primary text-white px-3 py-1.5 rounded-lg text-sm">
+                <FiExternalLink size={13} /> SSEC Form
+              </a>
             </>
           )}
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="flex gap-1 mb-4 bg-gray-100 p-1 rounded-xl w-fit">
+      {/* Mobile — Export + Forms buttons (full width grid) */}
+      <div className="md:hidden grid grid-cols-3 gap-2 mb-3">
+        {selected.length > 0 ? (
+          <button onClick={() => handleExport(selected)} disabled={exporting}
+            className="flex items-center justify-center gap-1 bg-primary text-white py-2 rounded-lg text-sm font-medium disabled:opacity-60">
+            <FiDownload size={13} /> Export ({selected.length})
+          </button>
+        ) : (
+          <button onClick={() => handleExport([])} disabled={exporting}
+            className="flex items-center justify-center gap-1 bg-primary text-white py-2 rounded-lg text-sm font-medium disabled:opacity-60">
+            <FiDownload size={13} /> {exporting ? 'Exporting...' : 'Export All'}
+          </button>
+        )}
+        {!isDisabledTab && (
+          <>
+            <button onClick={handleDownloadTemplate}
+              className="flex items-center justify-center gap-1 border border-primary text-primary py-2 rounded-lg text-sm font-medium hover:bg-orange-50">
+              <FiDownload size={13} /> Template
+            </button>
+            <label className="flex items-center justify-center gap-1 bg-primary text-white py-2 rounded-lg text-sm font-medium cursor-pointer hover:bg-primary-dark">
+              <FiUpload size={13} /> Bulk Upload
+              <input type="file" accept=".xlsx,.xls" className="hidden" onChange={handleBulkUpload} />
+            </label>
+            <a href="https://central.ssism.org/self_registration" target="_blank" rel="noopener noreferrer"
+              className="flex items-center justify-center gap-1 bg-primary text-white py-2 rounded-lg text-sm font-medium">
+              <FiExternalLink size={13} /> SSISM Form
+            </a>
+            <a href="https://ssec.ssism.org/apply" target="_blank" rel="noopener noreferrer"
+              className="flex items-center justify-center gap-1 bg-primary text-white py-2 rounded-lg text-sm font-medium">
+              <FiExternalLink size={13} /> SSEC Form
+            </a>
+          </>
+        )}
+      </div>
+
+      {/* Tabs — mobile full width, desktop w-fit */}
+      <div className="flex gap-1 mb-4 bg-gray-100 p-1 rounded-xl w-full md:w-fit">
         <button onClick={() => switchTab('active')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${!isDisabledTab ? 'bg-white shadow text-gray-800' : 'text-gray-500 hover:text-gray-700'}`}>
+          className={`flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${!isDisabledTab ? 'bg-white shadow text-gray-800' : 'text-gray-500 hover:text-gray-700'}`}>
           <FiSearch size={14} /> Active Profiles
         </button>
         <button onClick={() => switchTab('disabled')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${isDisabledTab ? 'bg-white shadow text-gray-800' : 'text-gray-500 hover:text-gray-700'}`}>
+          className={`flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${isDisabledTab ? 'bg-white shadow text-gray-800' : 'text-gray-500 hover:text-gray-700'}`}>
           <FiSlash size={14} /> Disabled Profiles
         </button>
       </div>
@@ -442,14 +501,14 @@ export default function Students() {
                     <input type="checkbox" checked={allSelected} onChange={toggleAll}
                       className="rounded border-gray-300 text-primary focus:ring-primary cursor-pointer" />
                   </th>
-                  {['S.N.', 'Name', 'Father Name', 'Track', 'Mobile', 'Form', 'Status', 'Attempt', 'Interview', 'Actions'].map((h) => (
+                  {['S.N.', 'Name', 'Father Name', 'Track', 'Town', 'Mobile', 'Form', 'Status', 'Attempt', 'Interview', 'Actions'].map((h) => (
                     <th key={h} className={`px-4 py-3 text-xs font-semibold uppercase text-gray-500 ${h === 'Attempt' ? 'text-center' : 'text-left'}`}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {students.length === 0 ? (
-                  <tr><td colSpan={10} className="text-center py-10 text-gray-400">No students found</td></tr>
+                  <tr><td colSpan={11} className="text-center py-10 text-gray-400">No students found</td></tr>
                 ) : students.map((s, i) => (
                   <tr key={s._id} onClick={() => navigate(`/students/${s._id}`)} className={`hover:bg-gray-50 transition-colors cursor-pointer ${selected.includes(s._id) ? 'bg-orange-50/50' : ''}`}>
                     <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
@@ -465,7 +524,14 @@ export default function Students() {
                     </td>
                     <td className="px-4 py-3 text-gray-600">{s.fatherName}</td>
                     <td className="px-4 py-3 text-gray-600">{s.track}</td>
-                    <td className="px-4 py-3 text-gray-600">{s.mobileNo}</td>
+                    <td className="px-4 py-3 text-gray-500 text-xs">{s.trackName || s.village || '—'}</td>
+                    <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                      {s.mobileNo ? (
+                        <a href={`tel:${s.mobileNo}`} className="text-gray-600 hover:text-primary hover:underline">
+                          {s.mobileNo}
+                        </a>
+                      ) : null}
+                    </td>
                     <td className="px-4 py-3">
                       {s.formSource && (
                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${
@@ -500,10 +566,10 @@ export default function Students() {
                       </button>
                     </td>
                     <td className="px-4 py-3">
-                      <div className="flex gap-2">
-                        <button onClick={(e) => { e.stopPropagation(); navigate(`/students/${s._id}/edit`); }} className="text-yellow-500 hover:text-yellow-700"><FiEdit2 /></button>
-                        <button onClick={(e) => { e.stopPropagation(); handleExport([s._id]); }} className="text-primary hover:text-primary-dark" title="Export"><FiDownload size={14} /></button>
-                      </div>
+                      <button onClick={(e) => { e.stopPropagation(); navigate(`/students/${s._id}/edit`); }}
+                        className="flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 bg-primary hover:bg-primary-dark text-white rounded-lg transition-colors">
+                        <FiEdit2 size={11} /> Edit
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -520,53 +586,61 @@ export default function Students() {
         ) : students.length === 0 ? (
           <div className="text-center py-10 text-gray-400 bg-white rounded-xl shadow">No students found</div>
         ) : students.map((s, i) => (
-          <div key={s._id} onClick={() => navigate(`/students/${s._id}`)} className={`bg-white rounded-xl shadow p-4 cursor-pointer ${selected.includes(s._id) ? 'ring-2 ring-primary' : ''}`}>
-            <div className="flex items-start justify-between mb-2">
-              <div className="flex items-start gap-2">
-                <input type="checkbox" checked={selected.includes(s._id)} onChange={(e) => { e.stopPropagation(); toggleSelect(s._id); }}
-                  onClick={(e) => e.stopPropagation()}
-                  className="mt-1 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer" />
-                <div>
-                  <p className="font-semibold text-gray-800">{(page - 1) * 10 + i + 1}. {s.name} {s.finalInterview?.result && <span className="text-emerald-500">★</span>}</p>
-                  <p className="text-sm text-gray-500">{s.fatherName}</p>
-                </div>
-              </div>
-              <span className={`px-2 py-1 rounded-full text-xs font-medium shrink-0 ${STATUS_COLORS[s.status]}`}>{s.status}</span>
+          <div key={s._id} onClick={() => navigate(`/students/${s._id}`)} className={`bg-white rounded-xl shadow-sm border border-gray-100 p-4 cursor-pointer ${selected.includes(s._id) ? 'ring-2 ring-primary' : ''}`}>
+
+            {/* Row 1: Checkbox + Name + Status */}
+            <div className="flex items-center gap-2 mb-1">
+              <input type="checkbox" checked={selected.includes(s._id)} onChange={(e) => { e.stopPropagation(); toggleSelect(s._id); }}
+                onClick={(e) => e.stopPropagation()}
+                className="rounded border-gray-300 text-primary focus:ring-primary cursor-pointer shrink-0" />
+              <p className="font-semibold text-gray-800 flex-1 min-w-0 truncate">
+                {(page - 1) * 10 + i + 1}. {s.name}{s.finalInterview?.result && <span className="text-emerald-500 ml-1">★</span>}
+              </p>
+              <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold shrink-0 ${STATUS_COLORS[s.status]}`}>{s.status}</span>
             </div>
-            <div className="grid grid-cols-2 gap-1 text-xs text-gray-500 mb-3">
-              {s.track && <span>📍 {s.track}</span>}
-              {s.mobileNo && <span>📞 {s.mobileNo}</span>}
-              {s.formSource && (
-                <span className={`w-fit px-2 py-0.5 rounded-full font-medium ${
-                  s.formSource === 'btech' ? 'bg-blue-100 text-blue-700' :
-                  s.formSource === 'ssism' ? 'bg-purple-100 text-purple-700' :
-                  'bg-gray-100 text-gray-600'
-                }`}>
-                  {s.formSource === 'btech' ? 'B.Tech' : s.formSource === 'ssism' ? 'SSISM' : 'Manual'}
+
+            {/* Row 2: Father name */}
+            {s.fatherName && <p className="text-sm text-gray-400 mb-3 pl-6">{s.fatherName}</p>}
+
+            {/* Row 3: Track + Mobile + Badges — all in one line */}
+            <div className="flex items-center gap-2 flex-wrap pl-6 mb-3">
+              {s.track && (
+                <span className="flex items-center gap-1 text-sm text-gray-500">
+                  <span className="text-base">📍</span> {s.track}{(s.trackName || s.village) ? ` · ${s.trackName || s.village}` : ''}
                 </span>
               )}
+              {s.mobileNo && (
+                <a href={`tel:${s.mobileNo}`} onClick={(e) => e.stopPropagation()}
+                  className="flex items-center gap-1 text-sm text-gray-500">
+                  <span className="text-base">📞</span> {s.mobileNo}
+                </a>
+              )}
+              {s.formSource && (
+                <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
+                  s.formSource === 'btech' ? 'bg-blue-100 text-blue-700' :
+                  s.formSource === 'ssism' ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-600'
+                }`}>{s.formSource === 'btech' ? 'B.Tech' : s.formSource === 'ssism' ? 'SSISM' : 'Manual'}</span>
+              )}
               {s.finalInterview?.result === 'Pass' ? (
-                <span className="w-fit px-2 py-0.5 rounded-full font-bold bg-emerald-100 text-emerald-700">✓ Final Cleared</span>
+                <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700">✓ Final Cleared</span>
               ) : s.finalInterview?.result === 'Fail' ? (
-                <span className="w-fit px-2 py-0.5 rounded-full font-bold bg-rose-100 text-rose-600">✗ Final Failed</span>
+                <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-rose-100 text-rose-600">✗ Final Failed</span>
               ) : s.finalInterview?.result === 'Pending' ? (
-                <span className="w-fit px-2 py-0.5 rounded-full font-bold bg-amber-100 text-amber-700">⏳ Final Pending</span>
+                <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-700">⏳ Pending</span>
               ) : s.interviewCount > 0 ? (
-                <span className="w-fit px-2 py-0.5 rounded-full font-bold bg-orange-50 text-primary border border-orange-200">Round {s.interviewCount}</span>
+                <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-orange-50 text-primary border border-orange-200">Round {s.interviewCount}</span>
               ) : null}
             </div>
-            <div className="flex gap-2 border-t border-gray-100 pt-2">
+
+            {/* Row 4: Buttons */}
+            <div className="flex gap-2 pt-3 border-t border-gray-100">
               <button onClick={(e) => { e.stopPropagation(); navigate(`/students/${s._id}/edit`); }}
-                className="flex-1 flex items-center justify-center gap-1 text-xs text-white font-medium py-1.5 bg-primary rounded-lg">
-                <FiEdit2 size={13} /> Edit
+                className="flex-1 flex items-center justify-center gap-1.5 text-sm text-white font-semibold py-2 bg-primary hover:bg-primary-dark rounded-lg transition-colors">
+                <FiEdit2 size={14} /> Edit
               </button>
               <button onClick={(e) => { e.stopPropagation(); setInterviewStudent(s); }}
-                className="flex-1 flex items-center justify-center gap-1 text-xs text-white font-medium py-1.5 bg-primary hover:bg-primary-dark rounded-lg transition-colors">
-                <FiClipboard size={13} /> Interview
-              </button>
-              <button onClick={(e) => { e.stopPropagation(); handleExport([s._id]); }}
-                className="flex items-center justify-center gap-1 text-xs text-white font-medium py-1.5 px-3 bg-primary rounded-lg">
-                <FiDownload size={13} />
+                className="flex-1 flex items-center justify-center gap-1.5 text-sm text-white font-semibold py-2 bg-primary hover:bg-primary-dark rounded-lg transition-colors">
+                <FiClipboard size={14} /> Interview
               </button>
             </div>
           </div>

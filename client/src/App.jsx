@@ -6,6 +6,7 @@ import { setupOfflineSync } from './utils/offlineQueue';
 import Layout from './components/layout/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
 import PermissionGate from './components/PermissionGate';
+import LocationBlocker from './components/LocationBlocker';
 import Login from './pages/auth/Login';
 import Dashboard from './pages/dashboard/Dashboard';
 import TrackDashboard from './pages/dashboard/TrackDashboard';
@@ -16,6 +17,8 @@ import StudentDetail from './pages/students/StudentDetail';
 import Users from './pages/users/Users';
 import Targets from './pages/targets/Targets';
 import Attendance from './pages/attendance/Attendance';
+import EditRequests from './pages/students/EditRequests';
+import TrackManager from './pages/settings/TrackManager';
 
 export default function App() {
   useEffect(() => {
@@ -27,6 +30,7 @@ export default function App() {
     <PermissionGate>
     <BrowserRouter>
       <Toaster position="top-right" />
+      <LocationBlocker />
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
@@ -59,6 +63,12 @@ export default function App() {
           <Route path="/attendance" element={
             <ProtectedRoute roles={['admin']}>
               <Attendance />
+            </ProtectedRoute>
+          } />
+          <Route path="/edit-requests" element={<EditRequests />} />
+          <Route path="/track-manager" element={
+            <ProtectedRoute roles={['admin']}>
+              <TrackManager />
             </ProtectedRoute>
           } />
         </Route>

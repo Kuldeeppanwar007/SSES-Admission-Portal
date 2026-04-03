@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+
+    <!-- Location Permissions -->
+    <key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+    <string>SSES Portal ko background mein attendance ke liye aapki location chahiye.</string>
+
+    <key>NSLocationAlwaysUsageDescription</key>
+    <string>SSES Portal ko background mein attendance ke liye aapki location chahiye.</string>
+
+    <key>NSLocationWhenInUseUsageDescription</key>
+    <string>SSES Portal ko attendance track karne ke liye location chahiye.</string>
+
+    <!-- Camera Permission -->
+    <key>NSCameraUsageDescription</key>
+    <string>SSES Portal ko photo upload ke liye camera access chahiye.</string>
+
+    <!-- Background Modes -->
+    <key>UIBackgroundModes</key>
+    <array>
+        <string>location</string>
+        <string>fetch</string>
+    </array>
+
+    <!-- App Info -->
+    <key>CFBundleDisplayName</key>
+    <string>SSES Portal</string>
+
+    <key>CFBundleIdentifier</key>
+    <string>com.sses.portal</string>
+
+    <key>CFBundleVersion</key>
+    <string>1</string>
+
+    <key>CFBundleShortVersionString</key>
+    <string>1.0</string>
+
+    <key>UILaunchStoryboardName</key>
+    <string>LaunchScreen</string>
+
+    <key>UIMainStoryboardFile</key>
+    <string>Main</string>
+
+    <key>UIRequiredDeviceCapabilities</key>
+    <array>
+        <string>armv7</string>
+    </array>
+
+    <key>UISupportedInterfaceOrientations</key>
+    <array>
+        <string>UIInterfaceOrientationPortrait</string>
+    </array>
+
+</dict>
+</plist>

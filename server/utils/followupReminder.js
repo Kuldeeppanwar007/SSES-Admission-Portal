@@ -7,8 +7,10 @@ const STALE_DAYS = 2; // 2+ din se same status wale students
 
 const runFollowupReminders = async () => {
   try {
-    const cutoff = new Date();
-    cutoff.setDate(cutoff.getDate() - STALE_DAYS);
+    // IST mein cutoff calculate karo
+    const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
+    const nowIST = new Date(Date.now() + IST_OFFSET_MS);
+    const cutoff = new Date(nowIST.getTime() - STALE_DAYS * 24 * 60 * 60 * 1000);
 
     // Students jinki updatedAt STALE_DAYS se purani hai aur status Admitted/Rejected/Disabled nahi
     const staleStudents = await Student.find({

@@ -2,13 +2,17 @@ const Target = require('../models/Target');
 
 // Set/update target for a track+subject (admin only)
 const setTarget = async (req, res) => {
-  const { track, subject, target } = req.body;
-  if (!track || !subject || target === undefined)
-    return res.status(400).json({ message: 'track, subject, target required' });
+  const { track, subject, target, points } = req.body;
+  if (!track || !subject)
+    return res.status(400).json({ message: 'track and subject required' });
+
+  const update = {};
+  if (target !== undefined) update.target = Number(target);
+  if (points !== undefined) update.points = Number(points);
 
   const doc = await Target.findOneAndUpdate(
     { track, subject },
-    { target: Number(target) },
+    { $set: update },
     { upsert: true, new: true }
   );
   res.json(doc);

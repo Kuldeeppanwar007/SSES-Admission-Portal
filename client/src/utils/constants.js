@@ -1,7 +1,30 @@
 export const TRACKS = [
-  'Satwas', 'Nemawar', 'Harda', 'Khategaon', 'Kannod',
-  'Bherunda', 'Gopalpur', 'Timarni', 'Narmadapuram', 'Seoni Malva',
+  'Satwas & Kannod', 'Harda', 'Khategaon', 'Rehti',
 ];
+
+export const TRACK_TOWNS = {
+  'Harda':           ['Harda', 'Timarni', 'Seoni Malwa'],
+  'Khategaon':       ['Khategaon', 'Nemawar'],
+  'Rehti':           ['Rehti', 'Gopalpur', 'Bherunda'],
+  'Satwas & Kannod': ['Satwas', 'Kannod'],
+};
+
+// Town se Main Track mapping
+export const TOWN_TO_MAIN_TRACK = {
+  'Harda':           'Harda',
+  'Timarni':         'Harda',
+  'Seoni Malwa':     'Harda',
+  'Khategaon':       'Khategaon',
+  'Nemawar':         'Khategaon',
+  'Rehti':           'Rehti',
+  'Gopalpur':        'Rehti',
+  'Bherunda':        'Rehti',
+  'Satwas':          'Satwas & Kannod',
+  'Kannod':          'Satwas & Kannod',
+};
+
+// 4 main tracks
+export const MAIN_TRACKS = ['Harda', 'Khategaon', 'Rehti', 'Satwas & Kannod'];
 
 export const STATUSES = ['Applied', 'Calling', 'Admitted', 'Rejected', 'Disabled'];
 
