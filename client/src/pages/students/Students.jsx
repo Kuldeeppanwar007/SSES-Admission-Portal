@@ -359,6 +359,14 @@ export default function Students() {
           )}
           {!isDisabledTab && (
             <>
+              <button onClick={handleDownloadTemplate}
+                className="flex items-center gap-1 border border-primary text-primary px-3 py-1.5 rounded-lg text-sm hover:bg-orange-50">
+                <FiDownload size={13} /> Template
+              </button>
+              <label className="flex items-center gap-1 bg-primary text-white px-3 py-1.5 rounded-lg text-sm cursor-pointer hover:bg-primary-dark">
+                <FiUpload size={13} /> Bulk Upload
+                <input type="file" accept=".xlsx,.xls" className="hidden" onChange={handleBulkUpload} />
+              </label>
               <a href="https://central.ssism.org/self_registration" target="_blank" rel="noopener noreferrer"
                 className="flex items-center gap-1 bg-primary text-white px-3 py-1.5 rounded-lg text-sm">
                 <FiExternalLink size={13} /> SSISM Form
@@ -387,6 +395,14 @@ export default function Students() {
         )}
         {!isDisabledTab && (
           <>
+            <button onClick={handleDownloadTemplate}
+              className="flex items-center justify-center gap-1 border border-primary text-primary py-2 rounded-lg text-sm font-medium hover:bg-orange-50">
+              <FiDownload size={13} /> Template
+            </button>
+            <label className="flex items-center justify-center gap-1 bg-primary text-white py-2 rounded-lg text-sm font-medium cursor-pointer hover:bg-primary-dark">
+              <FiUpload size={13} /> Bulk Upload
+              <input type="file" accept=".xlsx,.xls" className="hidden" onChange={handleBulkUpload} />
+            </label>
             <a href="https://central.ssism.org/self_registration" target="_blank" rel="noopener noreferrer"
               className="flex items-center justify-center gap-1 bg-primary text-white py-2 rounded-lg text-sm font-medium">
               <FiExternalLink size={13} /> SSISM Form

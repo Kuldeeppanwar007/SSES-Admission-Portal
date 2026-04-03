@@ -1,17 +1,29 @@
 export const TRACKS = [
-  'Satwas', 'Nemawar', 'Harda', 'Khategaon', 'Kannod',
-  'Bherunda', 'Gopalpur', 'Timarni', 'Narmadapuram', 'Seoni Malva',
+  'Satwas & Kannod', 'Harda', 'Khategaon', 'Rehti',
 ];
 
-// 4 main tracks with their towns (image ke hisaab se)
 export const TRACK_TOWNS = {
-  'Harda':           ['HARDA', 'TIMARNI', 'SEONI MALWA'],
-  'Khategaon':       ['KHATEGAON', 'NEMAWAR'],
-  'Rehti':           ['GOPALPUR', 'BHERUNDA', 'REHTI'],
-  'Satwas & Kannod': ['KANNOD', 'SATWAS'],
+  'Harda':           ['Harda', 'Timarni', 'Seoni Malwa'],
+  'Khategaon':       ['Khategaon', 'Nemawar'],
+  'Rehti':           ['Rehti', 'Gopalpur', 'Bherunda'],
+  'Satwas & Kannod': ['Satwas', 'Kannod'],
 };
 
-// 4 main tracks for target/dashboard use
+// Town se Main Track mapping
+export const TOWN_TO_MAIN_TRACK = {
+  'Harda':           'Harda',
+  'Timarni':         'Harda',
+  'Seoni Malwa':     'Harda',
+  'Khategaon':       'Khategaon',
+  'Nemawar':         'Khategaon',
+  'Rehti':           'Rehti',
+  'Gopalpur':        'Rehti',
+  'Bherunda':        'Rehti',
+  'Satwas':          'Satwas & Kannod',
+  'Kannod':          'Satwas & Kannod',
+};
+
+// 4 main tracks
 export const MAIN_TRACKS = ['Harda', 'Khategaon', 'Rehti', 'Satwas & Kannod'];
 
 export const STATUSES = ['Applied', 'Calling', 'Admitted', 'Rejected', 'Disabled'];

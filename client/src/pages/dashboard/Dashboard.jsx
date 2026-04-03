@@ -134,15 +134,10 @@ const getSubjectPoints = (track, subject) => {
 function PointsTable({ trackWise }) {
   const [open, setOpen] = useState(true);
 
-  // build map: track -> subject -> points earned
-  const dataMap = {};
-  trackWise.forEach(({ track, subjects }) => {
-    dataMap[track] = {};
-    subjects.forEach(({ subject, admitted }) => {
-      dataMap[track][subject] = (admitted || 0) * getSubjectPoints(track, subject);
-    });
-  });
-
+  // Server se jo actual points aaye hain (TrackPoints collection) unhe use karo
+  // Per-subject breakdown ke liye: admitted * (total points / total admitted) nahi,
+  // balki sirf total points dikhao — subject-wise breakdown accurate nahi hogi
+  // isliye subject column mein admitted count dikhao, Total mein actual DB points
   const tracks = [...trackWise].sort((a, b) => (b.points || 0) - (a.points || 0));
 
   return (
@@ -171,25 +166,26 @@ function PointsTable({ trackWise }) {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {tracks.map(({ track, points }, i) => {
-                const rankStyle = i === 0 ? 'bg-amber-50' : i === 1 ? 'bg-gray-50' : i === 2 ? 'bg-orange-50/40' : '';
+              {tracks.map(({ track, subjects, points, admissionPoints }) => {
+                const subjectMap = {};
+                (subjects || []).forEach(({ subject, admitted }) => { subjectMap[subject] = admitted || 0; });
                 return (
                   <tr key={track} className="hover:bg-orange-50/30 transition-colors">
                     <td className="px-5 py-3 font-bold text-gray-800 whitespace-nowrap">
                       {track.toUpperCase()}
                     </td>
                     {SUBJECTS.map((s) => {
-                      const pts = dataMap[track]?.[s] || 0;
+                      const admitted = subjectMap[s] || 0;
                       return (
                         <td key={s} className="px-5 py-3 tabular-nums">
-                          <span className={pts > 0 ? 'font-bold text-gray-800' : 'text-gray-300'}>
-                            {pts > 0 ? pts : '—'}
+                          <span className={admitted > 0 ? 'font-bold text-gray-800' : 'text-gray-300'}>
+                            {admitted > 0 ? admitted : '—'}
                           </span>
                         </td>
                       );
                     })}
                     <td className="px-5 py-3 font-bold text-primary tabular-nums">
-                      {SUBJECTS.reduce((sum, s) => sum + (dataMap[track]?.[s] || 0), 0)}
+                      {admissionPoints || 0}
                     </td>
                   </tr>
                 );
@@ -240,9 +236,9 @@ function LeaderboardSection({ stats, user }) {
             const barW = Math.round(((points || 0) / maxScore) * 100);
             // breakdown from stats
             const tw = stats.trackWise.find(t => t.track === track) || {};
-            const admissionPts = (tw.subjects || []).reduce((s, x) => s + (x.admitted || 0) * getSubjectPoints(track, x.subject), 0);
-            const callingPts = (tw.calledCount || 0) * 5;
-            const funnelPts = (points || 0) - admissionPts - callingPts;
+            const admissionPts = tw.admissionPoints || 0;
+            const callingPts   = tw.callingPoints   || 0;
+            const funnelPts    = tw.funnelPoints    || 0;
             return (
               <div key={track}
                 className={`px-5 py-3 border-b border-gray-50 last:border-0 transition-colors ${
