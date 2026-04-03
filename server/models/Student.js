@@ -91,4 +91,21 @@ const studentSchema = new mongoose.Schema({
   },
 }, { timestamps: true });
 
+// Performance indexes
+studentSchema.index({ track: 1, status: 1 });
+studentSchema.index({ status: 1, isDisabled: 1 });
+studentSchema.index({ createdAt: -1 });
+studentSchema.index({ name: 1, fatherName: 1, mobileNo: 1 });
+studentSchema.index({ mobileNo: 1 });
+studentSchema.index({ email: 1 });
+studentSchema.index({ 'finalInterview.result': 1 });
+
+// Text search index for better search performance
+studentSchema.index({
+  name: 'text',
+  fatherName: 'text',
+  mobileNo: 'text',
+  track: 'text'
+});
+
 module.exports = mongoose.model('Student', studentSchema);

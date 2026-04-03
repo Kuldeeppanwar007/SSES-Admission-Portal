@@ -4,8 +4,8 @@ export const TRACKS = [
 
 export const TRACK_TOWNS = {
   'Harda':           ['Harda', 'Timarni', 'Seoni Malwa'],
-  'Khategaon':       ['Khategaon', 'Nemawar'],
-  'Rehti':           ['Rehti', 'Gopalpur', 'Bherunda'],
+  'Khategaon':       ['Khategaon', 'Nemawar', 'Sandalpur'],
+  'Rehti':           ['Rehti', 'Gopalpur', 'Bherunda', 'Narmadapuram'],
   'Satwas & Kannod': ['Satwas', 'Kannod'],
 };
 
@@ -16,9 +16,11 @@ export const TOWN_TO_MAIN_TRACK = {
   'Seoni Malwa':     'Harda',
   'Khategaon':       'Khategaon',
   'Nemawar':         'Khategaon',
+  'Sandalpur':       'Khategaon',
   'Rehti':           'Rehti',
   'Gopalpur':        'Rehti',
   'Bherunda':        'Rehti',
+  'Narmadapuram':    'Rehti',
   'Satwas':          'Satwas & Kannod',
   'Kannod':          'Satwas & Kannod',
 };
