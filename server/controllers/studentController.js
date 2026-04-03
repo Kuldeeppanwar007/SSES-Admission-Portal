@@ -5,7 +5,7 @@ const xlsx = require('xlsx');
 // Get all students (admin/manager = all, track_incharge = own track)
 const getStudents = async (req, res) => {
   try {
-    const { track, status, search, formSource, interviewFilter, page = 1, limit = 20 } = req.query;
+    const { track, town, status, search, formSource, interviewFilter, page = 1, limit = 20 } = req.query;
     const filter = {};
     const _limit = Math.min(Number(limit), 50); // Increased default limit
     const _page = Number(page);
@@ -15,6 +15,14 @@ const getStudents = async (req, res) => {
       filter.track = req.user.track; // Exact match instead of regex
     } else if (track) {
       filter.track = track; // Exact match instead of regex
+    }
+    
+    // Add town filter
+    if (town) {
+      filter.$or = [
+        { trackName: { $regex: `^${town}$`, $options: 'i' } },
+        { village: { $regex: `^${town}$`, $options: 'i' } }
+      ];
     }
 
     // Optimize status filter
@@ -40,12 +48,23 @@ const getStudents = async (req, res) => {
     // Optimize search with text index
     if (search) {
       const safeSearch = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      filter.$or = [
+      const searchConditions = [
         { name: { $regex: safeSearch, $options: 'i' } },
         { fatherName: { $regex: safeSearch, $options: 'i' } },
         { mobileNo: { $regex: safeSearch, $options: 'i' } },
         { track: { $regex: safeSearch, $options: 'i' } },
       ];
+      
+      if (filter.$or) {
+        // If town filter exists, combine with search using $and
+        filter.$and = [
+          { $or: filter.$or }, // town filter
+          { $or: searchConditions } // search filter
+        ];
+        delete filter.$or;
+      } else {
+        filter.$or = searchConditions;
+      }
     }
 
     // Use Promise.all for parallel execution
@@ -641,7 +660,7 @@ const bulkUpload = async (req, res) => {
 const exportStudents = async (req, res) => {
   try {
     const { ids } = req.body; // array of IDs, empty = export all (with current filters)
-    const { track, status, search } = req.query;
+    const { track, town, status, search } = req.query;
 
     let students;
     if (ids && ids.length > 0) {
@@ -650,13 +669,36 @@ const exportStudents = async (req, res) => {
       const filter = {};
       if (req.user.role === 'track_incharge') filter.track = { $regex: `^${req.user.track}$`, $options: 'i' };
       else if (track) filter.track = { $regex: `^${track}$`, $options: 'i' };
+      
+      // Add town filter
+      if (town) {
+        filter.$or = [
+          { trackName: { $regex: `^${town}$`, $options: 'i' } },
+          { village: { $regex: `^${town}$`, $options: 'i' } }
+        ];
+      }
+      
       if (status === 'Disabled') filter.isDisabled = true;
       else { filter.isDisabled = { $ne: true }; if (status) filter.status = status; }
-      if (search) filter.$or = [
-        { name: { $regex: search, $options: 'i' } },
-        { fatherName: { $regex: search, $options: 'i' } },
-        { mobileNo: { $regex: search, $options: 'i' } },
-      ];
+      
+      if (search) {
+        const searchConditions = [
+          { name: { $regex: search, $options: 'i' } },
+          { fatherName: { $regex: search, $options: 'i' } },
+          { mobileNo: { $regex: search, $options: 'i' } },
+        ];
+        
+        if (filter.$or) {
+          // If town filter exists, combine with search using $and
+          filter.$and = [
+            { $or: filter.$or }, // town filter
+            { $or: searchConditions } // search filter
+          ];
+          delete filter.$or;
+        } else {
+          filter.$or = searchConditions;
+        }
+      }
       students = await Student.find(filter).populate('addedBy', 'name').sort({ sn: 1 });
     }
 

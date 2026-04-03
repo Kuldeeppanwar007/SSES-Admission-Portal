@@ -242,6 +242,7 @@ export default function Students() {
           filters: {
             track: urlTrack || parsed.filters?.track || '',
             status: urlStatus || parsed.filters?.status || '',
+            town: parsed.filters?.town || '',
             search: parsed.filters?.search || '',
             formSource: parsed.filters?.formSource || '',
             interviewFilter: parsed.filters?.interviewFilter || '',
@@ -259,6 +260,7 @@ export default function Students() {
       filters: {
         track: urlTrack || '',
         status: urlStatus || '',
+        town: '',
         search: '',
         formSource: '',
         interviewFilter: '',
@@ -318,6 +320,17 @@ export default function Students() {
     };
   }, []);
 
+  // Get available towns based on selected track
+  const getAvailableTowns = () => {
+    if (!filters.track) {
+      // If no track selected, show all towns
+      return Object.values(TRACK_TOWNS).flat();
+    }
+    return TRACK_TOWNS[filters.track] || [];
+  };
+  
+  const availableTowns = getAvailableTowns();
+  
   const fetchStudents = async (loadMore = false) => {
     setLoading(true);
     try {
@@ -339,6 +352,7 @@ export default function Students() {
         limit: 20,
         track: filters.track,
         status: filters.status,
+        town: filters.town,
         formSource: filters.formSource,
         interviewFilter: filters.interviewFilter,
         search: debouncedSearch,
@@ -392,7 +406,7 @@ export default function Students() {
   const switchTab = (t) => { 
     setTab(t); 
     setPage(1); 
-    setFilters({ track: '', status: '', search: '', formSource: '', interviewFilter: '' }); 
+    setFilters({ track: '', status: '', town: '', search: '', formSource: '', interviewFilter: '' }); 
     setSelected([]);
     setHasMore(false);
     // Clear saved state when switching tabs
@@ -607,7 +621,7 @@ export default function Students() {
           <div className="flex flex-wrap gap-2 pt-1">
             {user?.role !== 'track_incharge' && (
               <select value={filters.track} onChange={(e) => { 
-                const newFilters = { ...filters, track: e.target.value };
+                const newFilters = { ...filters, track: e.target.value, town: '' }; // Reset town when track changes
                 setFilters(newFilters); 
                 setPage(1); 
               }}
@@ -616,6 +630,15 @@ export default function Students() {
                 {TRACKS.map((t) => <option key={t}>{t}</option>)}
               </select>
             )}
+            <select value={filters.town} onChange={(e) => { 
+              const newFilters = { ...filters, town: e.target.value };
+              setFilters(newFilters); 
+              setPage(1); 
+            }}
+              className="flex-1 min-w-32 border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none">
+              <option value="">All Towns</option>
+              {availableTowns.map((town) => <option key={town} value={town}>{town}</option>)}
+            </select>
             <select value={filters.status} onChange={(e) => { 
               const newFilters = { ...filters, status: e.target.value };
               setFilters(newFilters); 
