@@ -5,19 +5,29 @@ const xlsx = require('xlsx');
 // Get all students (admin/manager = all, track_incharge = own track)
 const getStudents = async (req, res) => {
   try {
-    const { track, status, search, formSource, interviewFilter, page = 1, limit = 10 } = req.query;
+    const { track, status, search, formSource, interviewFilter, page = 1, limit = 20 } = req.query;
     const filter = {};
-    const _limit = Math.min(Number(limit), 100);
+    const _limit = Math.min(Number(limit), 50); // Increased default limit
     const _page = Number(page);
 
-    if (req.user.role === 'track_incharge') filter.track = { $regex: `^${req.user.track}$`, $options: 'i' };
-    else if (track) filter.track = { $regex: `^${track}$`, $options: 'i' };
+    // Optimize track filter
+    if (req.user.role === 'track_incharge') {
+      filter.track = req.user.track; // Exact match instead of regex
+    } else if (track) {
+      filter.track = track; // Exact match instead of regex
+    }
 
-    if (status === 'Disabled') filter.isDisabled = true;
-    else { filter.isDisabled = { $ne: true }; if (status) filter.status = status; }
+    // Optimize status filter
+    if (status === 'Disabled') {
+      filter.isDisabled = true;
+    } else {
+      filter.isDisabled = { $ne: true };
+      if (status) filter.status = status;
+    }
 
     if (formSource) filter.formSource = formSource;
 
+    // Optimize interview filter
     if (interviewFilter === 'finalCleared') {
       filter['finalInterview.result'] = 'Pass';
     } else if (interviewFilter === 'hasAttempts') {
@@ -27,38 +37,52 @@ const getStudents = async (req, res) => {
       filter['finalInterview.result'] = { $ne: 'Pass' };
     }
 
+    // Optimize search with text index
     if (search) {
-      const safeSearch = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); // ReDoS fix
+      const safeSearch = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       filter.$or = [
         { name: { $regex: safeSearch, $options: 'i' } },
         { fatherName: { $regex: safeSearch, $options: 'i' } },
         { mobileNo: { $regex: safeSearch, $options: 'i' } },
-        { subject: { $regex: safeSearch, $options: 'i' } },
         { track: { $regex: safeSearch, $options: 'i' } },
       ];
     }
 
-    const total = await Student.countDocuments(filter);
-    const students = await Student.find(filter)
-      .populate('addedBy', 'name role')
-      .sort({ createdAt: -1 })
-      .skip((_page - 1) * _limit)
-      .limit(_limit);
+    // Use Promise.all for parallel execution
+    const [total, students] = await Promise.all([
+      Student.countDocuments(filter),
+      Student.find(filter)
+        .select('name fatherName track trackName village mobileNo formSource status finalInterview createdAt') // Select only needed fields
+        .populate('addedBy', 'name')
+        .sort({ createdAt: -1 })
+        .skip((_page - 1) * _limit)
+        .limit(_limit)
+        .lean() // Use lean for better performance
+    ]);
 
-    // Attach interviewCount to each student
+    // Optimize interview count query
     const Interview = require('../models/Interview');
     const ids = students.map(s => s._id);
     const counts = await Interview.aggregate([
       { $match: { student: { $in: ids } } },
       { $group: { _id: '$student', count: { $sum: 1 } } },
     ]);
-    const countMap = {};
-    counts.forEach(({ _id, count }) => { countMap[_id.toString()] = count; });
+    
+    const countMap = new Map();
+    counts.forEach(({ _id, count }) => countMap.set(_id.toString(), count));
+    
     const studentsWithCount = students.map(s => ({
-      ...s.toObject(), interviewCount: countMap[s._id.toString()] || 0,
+      ...s,
+      interviewCount: countMap.get(s._id.toString()) || 0,
     }));
 
-    res.json({ students: studentsWithCount, total, page: _page, pages: Math.ceil(total / _limit) });
+    res.json({ 
+      students: studentsWithCount, 
+      total, 
+      page: _page, 
+      pages: Math.ceil(total / _limit),
+      hasMore: _page < Math.ceil(total / _limit)
+    });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -93,6 +117,7 @@ const TOWN_TO_MAIN_TRACK = {
   'seoni malav':  'Harda',
   'khategaon':    'Khategaon',
   'nemawar':      'Khategaon',
+  'sandalpur':    'Khategaon', // Corrected to Khategaon
   'rehti':        'Rehti',
   'gopalpur':     'Rehti',
   'bherunda':     'Rehti',
@@ -331,19 +356,50 @@ const getStatusHistory = async (req, res) => {
 };
 
 const fieldMap = {
-  'S.N.': 'sn', 'SN': 'sn', 'Sr No': 'sn', 'S.N': 'sn',
-  'Name': 'name', 'Student Name': 'name',
-  'Father Name': 'fatherName', "Father's Name": 'fatherName',
-  'Track': 'track',
+  // Serial Number variations
+  'S.N.': 'sn', 'SN': 'sn', 'Sr No': 'sn', 'S.N': 'sn', 'Serial': 'sn', 'Sr.': 'sn',
+  'S.No.': 'sn', 'S No': 'sn', 'SNo': 'sn', // Added S.No. variations
+  
+  // Name variations
+  'Name': 'name', 'Student Name': 'name', 'name': 'name', 'NAME': 'name',
+  'Student': 'name', 'Full Name': 'name',
+  
+  // Father Name variations
+  'Father Name': 'fatherName', "Father's Name": 'fatherName', 'father name': 'fatherName',
+  'FATHER NAME': 'fatherName', 'Father': 'fatherName', 'Papa Name': 'fatherName',
+  'FatherName': 'fatherName', 'Fathers Name': 'fatherName',
+  
+  // Track variations
+  'Track': 'track', 'track': 'track', 'TRACK': 'track', 'Location': 'track',
+  'Area': 'track', 'Region': 'track',
+  
+  // Mobile variations
   'Mob. No': 'mobileNo', 'Mobile': 'mobileNo', 'Mobile No': 'mobileNo',
   'Mob. no': 'mobileNo', 'Mob. No.': 'mobileNo', 'mob. no': 'mobileNo',
   'Mob No.': 'mobileNo', 'Mob No': 'mobileNo', 'mob no': 'mobileNo', 'mob no.': 'mobileNo',
+  'mobile': 'mobileNo', 'MOBILE': 'mobileNo', 'Phone': 'mobileNo', 'Contact': 'mobileNo',
+  'Mobile Number': 'mobileNo', 'Phone Number': 'mobileNo',
+  
+  // WhatsApp variations
   'Whatsapp No': 'whatsappNo', 'WhatsApp': 'whatsappNo', 'Whatsapp no.': 'whatsappNo',
   'Whatsapp No.': 'whatsappNo', 'whatsapp no.': 'whatsappNo', 'Whatsapp No': 'whatsappNo',
-  'Subject': 'subject',
-  'Full Address': 'fullAddress', 'Address': 'fullAddress',
-  'Full Adress': 'fullAddress', 'full adress': 'fullAddress',
-  'Other Track': 'otherTrack',
+  'WhatsApp No': 'whatsappNo', 'WhatsApp Number': 'whatsappNo', 'WA No': 'whatsappNo',
+  
+  // Subject variations
+  'Subject': 'subject', 'subject': 'subject', 'SUBJECT': 'subject',
+  'Stream': 'subject', 'Course': 'subject',
+  
+  // Address variations
+  'Full Address': 'fullAddress', 'Address': 'fullAddress', 'address': 'fullAddress',
+  'Full Adress': 'fullAddress', 'full adress': 'fullAddress', 'ADDRESS': 'fullAddress',
+  'Village': 'fullAddress', 'Location Address': 'fullAddress',
+  
+  // School variations
+  'School': 'schoolName', 'School Name': 'schoolName', 'school': 'schoolName',
+  'SCHOOL': 'schoolName', 'College': 'schoolName', 'Institute': 'schoolName',
+  
+  // Other Track variations
+  'Other Track': 'otherTrack', 'other track': 'otherTrack', 'Alternative Track': 'otherTrack',
 };
 
 const mapRowToStudent = (row, addedBy) => {
@@ -352,82 +408,232 @@ const mapRowToStudent = (row, addedBy) => {
   Object.keys(fieldMap).forEach((k) => { normalizedMap[normalize(k)] = fieldMap[k]; });
 
   const student = { addedBy, status: 'Applied', formSource: 'manual' };
+  
+  // Debug: Log the row headers to see what we're working with
+  console.log('Processing row with headers:', Object.keys(row));
+  
   Object.keys(row).forEach((key) => {
     const mapped = normalizedMap[normalize(key)];
-    if (mapped) student[mapped] = String(row[key]).trim();
+    if (mapped) {
+      const value = String(row[key]).trim();
+      if (value && value !== '') {
+        student[mapped] = value;
+        console.log(`Mapped: ${key} -> ${mapped} = ${value}`);
+      }
+    } else {
+      console.log(`Unmapped column: ${key}`);
+    }
   });
 
-  // Excel me jo bhi track likha ho (satwas, kannod, harda etc.) — resolve karke valid track set karo
-  if (student.track) student.track = resolveMainTrack(student.track);
+  // Validate critical fields
+  if (!student.name || student.name.trim() === '') {
+    console.log('Warning: No name found in row:', row);
+  }
+
+  // Handle track mapping logic
+  if (student.track) {
+    const originalTrackFromSheet = student.track;
+    const mainTracks = ['Harda', 'Khategaon', 'Rehti', 'Satwas & Kannod'];
+    
+    // Check if sheet track name exactly matches one of the 4 main tracks
+    if (mainTracks.includes(originalTrackFromSheet)) {
+      // Exact match - keep as is and also set as trackName
+      student.track = originalTrackFromSheet;
+      student.trackName = originalTrackFromSheet; // Also set in town field
+    } else {
+      // Not exact match - resolve to main track and move original to trackName
+      const resolvedMainTrack = resolveMainTrack(originalTrackFromSheet);
+      student.trackName = originalTrackFromSheet; // Original goes to town field
+      student.track = resolvedMainTrack; // Main track goes to track field
+    }
+  }
 
   return student;
 };
 
 
-// Bulk upload via Excel
+// Bulk upload via Excel or CSV
 const bulkUpload = async (req, res) => {
   if (!req.file) return res.status(400).json({ message: 'No file uploaded' });
 
-  const workbook = xlsx.read(req.file.buffer, { type: 'buffer', codepage: 65001 });
-  const sheet = workbook.Sheets[workbook.SheetNames[0]];
+  const fileExtension = req.file.originalname.split('.').pop().toLowerCase();
+  let rows = [];
 
-  // Get all rows as array of arrays (raw)
-  const rawRows = xlsx.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+  try {
+    if (fileExtension === 'csv') {
+      // Handle CSV file
+      const csvData = req.file.buffer.toString('utf8');
+      const lines = csvData.split('\n').filter(line => line.trim());
+      
+      if (lines.length === 0) {
+        return res.status(400).json({ message: 'CSV file is empty' });
+      }
 
-  // Find the header row (row that contains 'Name' or 'name')
-  let headerRowIndex = -1;
-  for (let i = 0; i < rawRows.length; i++) {
-    if (rawRows[i].some((cell) => String(cell).trim().toLowerCase() === 'name')) {
-      headerRowIndex = i;
-      break;
+      // Find header row (contains 'Name' or 'name')
+      let headerRowIndex = -1;
+      for (let i = 0; i < lines.length; i++) {
+        const cells = lines[i].split(',').map(cell => cell.trim().replace(/"/g, ''));
+        if (cells.some(cell => cell.toLowerCase() === 'name')) {
+          headerRowIndex = i;
+          break;
+        }
+      }
+
+      if (headerRowIndex === -1) {
+        return res.status(400).json({ message: 'Header row not found. Make sure your CSV has a "Name" column.' });
+      }
+
+      const headers = lines[headerRowIndex].split(',').map(h => h.trim().replace(/"/g, ''));
+      const dataLines = lines.slice(headerRowIndex + 1);
+
+      rows = dataLines.map(line => {
+        const cells = line.split(',').map(cell => cell.trim().replace(/"/g, ''));
+        const obj = {};
+        headers.forEach((header, index) => {
+          obj[header] = cells[index] || '';
+        });
+        return obj;
+      }).filter(row => Object.values(row).some(val => val.trim() !== ''));
+
+    } else if (['xlsx', 'xls'].includes(fileExtension)) {
+      // Handle Excel file (existing logic)
+      const workbook = xlsx.read(req.file.buffer, { type: 'buffer', codepage: 65001 });
+      const sheet = workbook.Sheets[workbook.SheetNames[0]];
+
+      // Get all rows as array of arrays (raw)
+      const rawRows = xlsx.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+
+      // Find the header row (row that contains 'Name' or 'name')
+      let headerRowIndex = -1;
+      for (let i = 0; i < rawRows.length; i++) {
+        if (rawRows[i].some((cell) => String(cell).trim().toLowerCase() === 'name')) {
+          headerRowIndex = i;
+          break;
+        }
+      }
+
+      if (headerRowIndex === -1)
+        return res.status(400).json({ message: 'Header row not found. Make sure your file has a "Name" column.' });
+
+      const headers = rawRows[headerRowIndex].map((h) => String(h).trim());
+      const dataRows = rawRows.slice(headerRowIndex + 1);
+
+      rows = dataRows
+        .filter((row) => row.some((cell) => String(cell).trim() !== ''))
+        .map((row) => {
+          const obj = {};
+          headers.forEach((h, i) => { obj[h] = String(row[i] ?? '').trim(); });
+          return obj;
+        });
+    } else {
+      return res.status(400).json({ message: 'Unsupported file format. Please upload Excel (.xlsx, .xls) or CSV (.csv) file.' });
     }
-  }
 
-  if (headerRowIndex === -1)
-    return res.status(400).json({ message: 'Header row not found. Make sure your file has a "Name" column.' });
+    if (rows.length === 0)
+      return res.status(400).json({ message: 'No data rows found after header.' });
 
-  const headers = rawRows[headerRowIndex].map((h) => String(h).trim());
-  const dataRows = rawRows.slice(headerRowIndex + 1);
+    const students = rows.map((row) => mapRowToStudent(row, req.user._id));
 
-  const rows = dataRows
-    .filter((row) => row.some((cell) => String(cell).trim() !== ''))
-    .map((row) => {
-      const obj = {};
-      headers.forEach((h, i) => { obj[h] = String(row[i] ?? '').trim(); });
-      return obj;
+    let insertedCount = 0;
+    let skippedCount = 0;
+    let errorCount = 0;
+    const errors = [];
+    
+    console.log(`Processing ${students.length} students from ${fileExtension.toUpperCase()} file...`);
+    
+    for (const [index, student] of students.entries()) {
+      try {
+        // Validate required field
+        if (!student.name || student.name.trim() === '') {
+          errorCount++;
+          errors.push(`Row ${index + 1}: Name is required`);
+          continue;
+        }
+        
+        // Check for duplicate by name + father name combination
+        let isDuplicate = false;
+        if (student.name && student.fatherName) {
+          // Both name and father name present - check combination
+          const query = {
+            name: { $regex: `^${student.name.trim()}$`, $options: 'i' },
+            fatherName: { $regex: `^${student.fatherName.trim()}$`, $options: 'i' }
+          };
+          const exists = await Student.findOne(query);
+          if (exists) {
+            isDuplicate = true;
+            console.log(`Duplicate found: ${student.name} - ${student.fatherName}`);
+          }
+        } else if (student.name && !student.fatherName) {
+          // Only name present, no father name - check if exact same name with no father name exists
+          const query = {
+            name: { $regex: `^${student.name.trim()}$`, $options: 'i' },
+            $or: [
+              { fatherName: { $exists: false } },
+              { fatherName: '' },
+              { fatherName: null }
+            ]
+          };
+          const exists = await Student.findOne(query);
+          if (exists) {
+            isDuplicate = true;
+            console.log(`Duplicate found (no father name): ${student.name}`);
+          }
+        }
+        
+        if (isDuplicate) { 
+          skippedCount++; 
+          continue; 
+        }
+        
+        const count = await Student.countDocuments();
+        student.sn = count + 1;
+        await Student.create(student);
+        insertedCount++;
+        
+        if (insertedCount % 50 === 0) {
+          console.log(`Processed ${insertedCount} students...`);
+        }
+      } catch (err) {
+        errorCount++;
+        errors.push(`Row ${index + 1} (${student.name || 'Unknown'}): ${err.message}`);
+        console.log('Row error:', err.message, student);
+      }
+    }
+
+    console.log(`Upload completed: ${insertedCount} inserted, ${skippedCount} skipped, ${errorCount} errors`);
+    if (errors.length > 0) {
+      console.log('Errors:', errors.slice(0, 10)); // Log first 10 errors
+    }
+
+    if (insertedCount === 0 && skippedCount > 0)
+      return res.json({ 
+        message: `0 students uploaded. ${skippedCount} duplicate records skipped.`,
+        details: { inserted: insertedCount, skipped: skippedCount, errors: errorCount }
+      });
+
+    if (insertedCount === 0)
+      return res.status(400).json({ 
+        message: 'No rows could be saved. Check your file format.',
+        details: { inserted: insertedCount, skipped: skippedCount, errors: errorCount },
+        errorSamples: errors.slice(0, 5)
+      });
+
+    const responseMessage = `${insertedCount} students uploaded successfully${skippedCount ? `, ${skippedCount} duplicates skipped` : ''}${errorCount ? `, ${errorCount} errors` : ''}.`;
+    
+    res.json({ 
+      message: responseMessage,
+      details: { 
+        inserted: insertedCount, 
+        skipped: skippedCount, 
+        errors: errorCount,
+        totalProcessed: students.length
+      },
+      ...(errorCount > 0 && { errorSamples: errors.slice(0, 5) })
     });
-
-  if (rows.length === 0)
-    return res.status(400).json({ message: 'No data rows found after header.' });
-
-  const students = rows.map((row) => mapRowToStudent(row, req.user._id));
-
-  let insertedCount = 0;
-  let skippedCount = 0;
-  for (const student of students) {
-    try {
-      // Check duplicate by name + fatherName + mobileNo
-      const query = { name: { $regex: `^${student.name}$`, $options: 'i' } };
-      if (student.fatherName) query.fatherName = { $regex: `^${student.fatherName}$`, $options: 'i' };
-      if (student.mobileNo) query.mobileNo = student.mobileNo;
-      const exists = await Student.findOne(query);
-      if (exists) { skippedCount++; continue; }
-      const count = await Student.countDocuments();
-      student.sn = count + 1;
-      await Student.create(student);
-      insertedCount++;
-    } catch (err) {
-      console.log('Row skip:', err.message, student);
-    }
+  } catch (err) {
+    console.error('Bulk upload error:', err);
+    res.status(500).json({ message: 'Error processing file: ' + err.message });
   }
-
-  if (insertedCount === 0 && skippedCount > 0)
-    return res.json({ message: `0 students uploaded. ${skippedCount} duplicate records skipped.` });
-
-  if (insertedCount === 0)
-    return res.status(400).json({ message: 'No rows could be saved. Check your file format.' });
-
-  res.json({ message: `${insertedCount} students uploaded successfully${skippedCount ? `, ${skippedCount} duplicates skipped` : ''}.` });
 };
 
 // Export students to Excel
@@ -461,6 +667,7 @@ const exportStudents = async (req, res) => {
       'Mobile No':        s.mobileNo || '',
       'WhatsApp No':      s.whatsappNo || '',
       'Subject':          s.subject || '',
+      'School':           s.schoolName || '',
       'Full Address':     s.fullAddress || '',
       'Other Track':      s.otherTrack || '',
       'Status':           s.status || '',
@@ -471,7 +678,7 @@ const exportStudents = async (req, res) => {
 
     const wb = xlsx.utils.book_new();
     const ws = xlsx.utils.json_to_sheet(rows);
-    ws['!cols'] = [6, 22, 22, 14, 14, 14, 12, 30, 14, 12, 30, 16, 14].map((w) => ({ wch: w }));
+    ws['!cols'] = [6, 22, 22, 14, 14, 14, 12, 20, 30, 14, 12, 30, 16, 14].map((w) => ({ wch: w }));
     xlsx.utils.book_append_sheet(wb, ws, 'Students');
     const buf = xlsx.write(wb, { type: 'buffer', bookType: 'xlsx' });
 
@@ -493,19 +700,38 @@ const exportStudents = async (req, res) => {
 
 // Download Excel template
 const downloadTemplate = (req, res) => {
-  const headers = [['S.N.', 'Name', 'Father Name', 'Track', 'Mob. no', 'Whatsapp no.', 'Subject', 'Full Adress', 'Other Track']];
+  const headers = [['S.N.', 'Name', 'Father Name', 'Track', 'Mob. no', 'Whatsapp no.', 'Subject', 'School', 'Full Adress', 'Other Track']];
   const sampleRows = [
-    [1, 'Ali Ahmed', 'Ahmed Khan', 'Harda', '9876543210', '9876543210', 'Science', 'Village Harda, MP', ''],
-    [2, 'Sara Begum', 'Mohd Raza', 'Nemawar', '9123456789', '9123456789', 'Arts', 'Village Nemawar, MP', ''],
+    [1, 'Ali Ahmed', 'Ahmed Khan', 'Harda', '9876543210', '9876543210', 'Science', 'ABC High School', 'Village Harda, MP', ''],
+    [2, 'Sara Begum', 'Mohd Raza', 'Sandalpur', '9123456789', '9123456789', 'Arts', 'XYZ School', 'Village Sandalpur, MP', ''],
+    [3, 'Rahul Kumar', 'Suresh Kumar', 'Khategaon', '9876543211', '9876543211', 'Commerce', 'PQR College', 'Village Khategaon, MP', ''],
   ];
   const wb = xlsx.utils.book_new();
   const ws = xlsx.utils.aoa_to_sheet([...headers, ...sampleRows]);
-  ws['!cols'] = [8, 20, 20, 14, 14, 14, 14, 30, 14].map((w) => ({ wch: w }));
+  ws['!cols'] = [8, 20, 20, 14, 14, 14, 14, 20, 30, 14].map((w) => ({ wch: w }));
   xlsx.utils.book_append_sheet(wb, ws, 'Students');
   const buf = xlsx.write(wb, { type: 'buffer', bookType: 'xlsx' });
   res.setHeader('Content-Disposition', 'attachment; filename=students_template.xlsx');
   res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
   res.send(buf);
+};
+
+// Download CSV template
+const downloadCSVTemplate = (req, res) => {
+  const headers = ['S.N.', 'Name', 'Father Name', 'Track', 'Mob. no', 'Whatsapp no.', 'Subject', 'School', 'Full Adress', 'Other Track'];
+  const sampleRows = [
+    [1, 'Ali Ahmed', 'Ahmed Khan', 'Harda', '9876543210', '9876543210', 'Science', 'ABC High School', 'Village Harda, MP', ''],
+    [2, 'Sara Begum', 'Mohd Raza', 'Sandalpur', '9123456789', '9123456789', 'Arts', 'XYZ School', 'Village Sandalpur, MP', ''],
+    [3, 'Rahul Kumar', 'Suresh Kumar', 'Khategaon', '9876543211', '9876543211', 'Commerce', 'PQR College', 'Village Khategaon, MP', ''],
+  ];
+  
+  const csvContent = [headers, ...sampleRows]
+    .map(row => row.map(cell => `"${cell}"`).join(','))
+    .join('\n');
+  
+  res.setHeader('Content-Disposition', 'attachment; filename=students_template.csv');
+  res.setHeader('Content-Type', 'text/csv');
+  res.send(csvContent);
 };
 
 // Track Dashboard stats (track_incharge ka apna track)
@@ -696,6 +922,7 @@ const TOWN_TO_TRACK = {
   'seoni malav': { track: 'Harda',           trackName: 'Seoni Malwa' },
   'khategaon':   { track: 'Khategaon',       trackName: 'Khategaon' },
   'nemawar':     { track: 'Khategaon',       trackName: 'Nemawar' },
+  'sandalpur':   { track: 'Khategaon',       trackName: 'Sandalpur' },
   'gopalpur':    { track: 'Rehti',           trackName: 'Gopalpur' },
   'bherunda':    { track: 'Rehti',           trackName: 'Bherunda' },
   'rehti':       { track: 'Rehti',           trackName: 'Rehti' },
@@ -766,9 +993,23 @@ const selfRegister = async (req, res) => {
 
     // trackName — central DB 'trackName' ya 'track' field se aata hai (town name hota hai)
     const resolvedTrackNameRaw = trackNameField || trackField || '';
-    const mapped = resolveTrack(resolvedTrackNameRaw, village);
-    const resolvedTrack         = mapped?.track     || '';
-    const resolvedTrackNameFinal= mapped?.trackName || resolvedTrackNameRaw || '';
+    const mainTracks = ['Harda', 'Khategaon', 'Rehti', 'Satwas & Kannod'];
+    
+    let resolvedTrack = '';
+    let resolvedTrackNameFinal = '';
+    
+    if (resolvedTrackNameRaw) {
+      // Check if it exactly matches one of the 4 main tracks
+      if (mainTracks.includes(resolvedTrackNameRaw)) {
+        resolvedTrack = resolvedTrackNameRaw;
+        resolvedTrackNameFinal = resolvedTrackNameRaw; // Set same value in town field
+      } else {
+        // Not exact match - resolve to main track and keep original as trackName
+        const mapped = resolveTrack(resolvedTrackNameRaw, village);
+        resolvedTrack = mapped?.track || '';
+        resolvedTrackNameFinal = resolvedTrackNameRaw; // Keep original as town name
+      }
+    }
 
     const student = await Student.create({
       sn:          count + 1,
@@ -822,4 +1063,4 @@ const selfRegister = async (req, res) => {
   }
 };
 
-module.exports = { getStudents, getStudent, addStudent, updateStudent, deleteStudent, updateStatus, getStatusHistory, bulkUpload, downloadTemplate, exportStudents, getStats, getTrackStats, selfRegister };
+module.exports = { getStudents, getStudent, addStudent, updateStudent, deleteStudent, updateStatus, getStatusHistory, bulkUpload, downloadTemplate, downloadCSVTemplate, exportStudents, getStats, getTrackStats, selfRegister };

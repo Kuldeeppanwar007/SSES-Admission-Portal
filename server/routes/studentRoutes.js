@@ -6,7 +6,7 @@ const { protect, authorizeRoles } = require('../middleware/authMiddleware');
 const { validate, schemas } = require('../middleware/validate');
 const {
   getStudents, getStudent, addStudent, updateStudent,
-  deleteStudent, updateStatus, getStatusHistory, bulkUpload, downloadTemplate, exportStudents, getStats, getTrackStats, selfRegister,
+  deleteStudent, updateStatus, getStatusHistory, bulkUpload, downloadTemplate, downloadCSVTemplate, exportStudents, getStats, getTrackStats, selfRegister,
 } = require('../controllers/studentController');
 
 const memStorage = multer({ storage: multer.memoryStorage() });
@@ -127,6 +127,61 @@ router.post('/recalculate-points', protect, authorizeRoles('admin'), async (req,
   }
 });
 router.get('/download-template', protect, downloadTemplate);
+router.get('/download-csv-template', protect, downloadCSVTemplate);
+
+// Admin — Data cleanup for wrong mappings
+router.post('/cleanup-data', protect, authorizeRoles('admin'), async (req, res) => {
+  try {
+    const Student = require('../models/Student');
+    
+    const TOWN_TO_MAIN_TRACK = {
+      'harda': 'Harda', 'timarni': 'Harda', 'seoni malwa': 'Harda', 'seoni malav': 'Harda',
+      'khategaon': 'Khategaon', 'nemawar': 'Khategaon', 'sandalpur': 'Khategaon',
+      'rehti': 'Rehti', 'gopalpur': 'Rehti', 'bherunda': 'Rehti',
+      'satwas': 'Satwas & Kannod', 'kannod': 'Satwas & Kannod',
+    };
+    
+    const MAIN_TRACKS = ['Harda', 'Khategaon', 'Rehti', 'Satwas & Kannod'];
+    
+    // Find students with wrong track mappings
+    const students = await Student.find({
+      track: { $nin: [...MAIN_TRACKS, '', null] }
+    });
+    
+    let fixedCount = 0;
+    const issues = [];
+    
+    for (const student of students) {
+      const lowerTrack = student.track.toLowerCase();
+      const resolvedTrack = TOWN_TO_MAIN_TRACK[lowerTrack];
+      
+      if (resolvedTrack) {
+        // Valid town name - fix it
+        await Student.findByIdAndUpdate(student._id, {
+          trackName: student.track, // Move original to town field
+          track: resolvedTrack // Set main track
+        });
+        fixedCount++;
+      } else {
+        // Invalid track value
+        issues.push({
+          id: student._id,
+          name: student.name,
+          wrongTrack: student.track
+        });
+      }
+    }
+    
+    res.json({
+      message: `Data cleanup completed. Fixed ${fixedCount} students.`,
+      fixed: fixedCount,
+      issues: issues.slice(0, 10), // Show first 10 issues
+      totalIssues: issues.length
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
 router.get('/', protect, getStudents);
 router.get('/:id', protect, getStudent);
 

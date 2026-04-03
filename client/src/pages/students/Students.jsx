@@ -1,12 +1,13 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import api from '../../api/axios';
-import { TRACKS, STATUSES, STATUS_COLORS, TRACK_TOWNS } from '../../utils/constants';
+import { TRACKS, STATUSES, STATUS_COLORS, TRACK_TOWNS, TOWN_TO_MAIN_TRACK } from '../../utils/constants';
 import useAuthStore from '../../store/authStore';
 import toast from 'react-hot-toast';
 import { FiPlus, FiUpload, FiSearch, FiEdit2, FiDownload, FiFilter, FiSlash, FiClipboard, FiExternalLink } from 'react-icons/fi';
 import DatePicker from '../../components/DatePicker';
 import { isOnline, cacheStudents, getCachedStudents } from '../../utils/offlineQueue';
+import { usePerformanceMonitor, useDebounce } from '../../hooks/usePerformance';
 
 const RATING = [
   { value: 1, label: '1. Very Weak' },
@@ -228,6 +229,7 @@ export default function Students() {
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [pages, setPages] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
   const [filters, setFilters] = useState({
     track: searchParams.get('track') || '',
     status: searchParams.get('status') || '',
@@ -235,13 +237,15 @@ export default function Students() {
     formSource: '',
     interviewFilter: '',
   });
+  const debouncedSearch = useDebounce(filters.search, 300);
   const [loading, setLoading] = useState(false);
   const [showFilters, setShowFilters] = useState(!!(searchParams.get('track') || searchParams.get('status')));
   const [selected, setSelected] = useState([]);
   const [exporting, setExporting] = useState(false);
   const [interviewStudent, setInterviewStudent] = useState(null);
+  const [searchTimeout, setSearchTimeout] = useState(null);
 
-  const fetchStudents = async () => {
+  const fetchStudents = async (loadMore = false) => {
     setLoading(true);
     try {
       if (!isOnline()) {
@@ -250,24 +254,64 @@ export default function Students() {
           setStudents(cached.data.students);
           setTotal(cached.data.total);
           setPages(cached.data.pages);
+          setHasMore(cached.data.hasMore || false);
           toast('Offline — cached data dikh raha hai', { icon: '📶' });
         }
         return;
       }
-      const params = { page, limit: 10, ...filters, ...(tab === 'disabled' ? { status: 'Disabled' } : {}), ...(filters.interviewFilter ? { interviewFilter: filters.interviewFilter } : {}) };
+      
+      const currentPage = loadMore ? page + 1 : page;
+      const params = { 
+        page: currentPage, 
+        limit: 20,
+        track: filters.track,
+        status: filters.status,
+        formSource: filters.formSource,
+        interviewFilter: filters.interviewFilter,
+        search: debouncedSearch,
+        ...(tab === 'disabled' ? { status: 'Disabled' } : {}) 
+      };
+      
       const { data } = await api.get('/students', { params });
-      setStudents(data.students);
+      
+      if (loadMore) {
+        setStudents(prev => [...prev, ...data.students]);
+        setPage(currentPage);
+      } else {
+        setStudents(data.students);
+        setSelected([]);
+      }
+      
       setTotal(data.total);
       setPages(data.pages);
-      setSelected([]);
-      if (page === 1 && tab === 'active') cacheStudents(data); // sirf first page cache karo
-    } catch { toast.error('Failed to load students'); }
-    finally { setLoading(false); }
+      setHasMore(data.hasMore || false);
+      
+      if (currentPage === 1 && tab === 'active') {
+        cacheStudents(data);
+      }
+    } catch { 
+      toast.error('Failed to load students'); 
+    } finally { 
+      setLoading(false); 
+    }
   };
 
-  useEffect(() => { fetchStudents(); }, [page, filters, tab]);
+  useEffect(() => { fetchStudents(); }, [page, filters, tab, debouncedSearch]);
 
-  const switchTab = (t) => { setTab(t); setPage(1); setFilters({ track: '', status: '', search: '', formSource: '', interviewFilter: '' }); setSelected([]); };
+  // Remove old debounced search function since we're using the hook
+  const handleSearchChange = (e) => {
+    const value = e.target.value;
+    setFilters(prev => ({ ...prev, search: value }));
+    setPage(1);
+  };
+
+  const switchTab = (t) => { 
+    setTab(t); 
+    setPage(1); 
+    setFilters({ track: '', status: '', search: '', formSource: '', interviewFilter: '' }); 
+    setSelected([]);
+    setHasMore(false);
+  };
 
   const toggleSelect = (id) => setSelected((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
   const toggleAll = () => setSelected(selected.length === students.length ? [] : students.map((s) => s._id));
@@ -316,6 +360,15 @@ export default function Students() {
     } catch { toast.error('Failed to download template'); }
   };
 
+  const handleDownloadCSVTemplate = async () => {
+    try {
+      const res = await api.get('/students/download-csv-template', { responseType: 'blob' });
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const a = document.createElement('a'); a.href = url; a.download = 'students_template.csv'; a.click();
+      window.URL.revokeObjectURL(url);
+    } catch { toast.error('Failed to download CSV template'); }
+  };
+
   const handleBulkUpload = async (e) => {
     const file = e.target.files[0]; if (!file) return;
     const formData = new FormData(); formData.append('file', file);
@@ -328,6 +381,19 @@ export default function Students() {
 
   const isDisabledTab = tab === 'disabled';
   const allSelected = students.length > 0 && selected.length === students.length;
+
+  // Memoize filtered students for better performance
+  const displayStudents = useMemo(() => {
+    return students.map((s, i) => {
+      // Convert town name to main track name for display
+      const displayTrack = TOWN_TO_MAIN_TRACK[s.track] || s.track;
+      return {
+        ...s,
+        displayTrack,
+        serialNumber: (page - 1) * 20 + i + 1
+      };
+    });
+  }, [students, page]);
 
   return (
     <div>
@@ -361,11 +427,15 @@ export default function Students() {
             <>
               <button onClick={handleDownloadTemplate}
                 className="flex items-center gap-1 border border-primary text-primary px-3 py-1.5 rounded-lg text-sm hover:bg-orange-50">
-                <FiDownload size={13} /> Template
+                <FiDownload size={13} /> Excel Template
+              </button>
+              <button onClick={handleDownloadCSVTemplate}
+                className="flex items-center gap-1 border border-primary text-primary px-3 py-1.5 rounded-lg text-sm hover:bg-orange-50">
+                <FiDownload size={13} /> CSV Template
               </button>
               <label className="flex items-center gap-1 bg-primary text-white px-3 py-1.5 rounded-lg text-sm cursor-pointer hover:bg-primary-dark">
                 <FiUpload size={13} /> Bulk Upload
-                <input type="file" accept=".xlsx,.xls" className="hidden" onChange={handleBulkUpload} />
+                <input type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleBulkUpload} />
               </label>
               <a href="https://central.ssism.org/self_registration" target="_blank" rel="noopener noreferrer"
                 className="flex items-center gap-1 bg-primary text-white px-3 py-1.5 rounded-lg text-sm">
@@ -381,15 +451,15 @@ export default function Students() {
       </div>
 
       {/* Mobile — Export + Forms buttons (full width grid) */}
-      <div className="md:hidden grid grid-cols-3 gap-2 mb-3">
+      <div className="md:hidden grid grid-cols-2 gap-2 mb-3">
         {selected.length > 0 ? (
           <button onClick={() => handleExport(selected)} disabled={exporting}
-            className="flex items-center justify-center gap-1 bg-primary text-white py-2 rounded-lg text-sm font-medium disabled:opacity-60">
+            className="flex items-center justify-center gap-1 bg-primary text-white py-2 rounded-lg text-sm font-medium disabled:opacity-60 col-span-2">
             <FiDownload size={13} /> Export ({selected.length})
           </button>
         ) : (
           <button onClick={() => handleExport([])} disabled={exporting}
-            className="flex items-center justify-center gap-1 bg-primary text-white py-2 rounded-lg text-sm font-medium disabled:opacity-60">
+            className="flex items-center justify-center gap-1 bg-primary text-white py-2 rounded-lg text-sm font-medium disabled:opacity-60 col-span-2">
             <FiDownload size={13} /> {exporting ? 'Exporting...' : 'Export All'}
           </button>
         )}
@@ -397,19 +467,23 @@ export default function Students() {
           <>
             <button onClick={handleDownloadTemplate}
               className="flex items-center justify-center gap-1 border border-primary text-primary py-2 rounded-lg text-sm font-medium hover:bg-orange-50">
-              <FiDownload size={13} /> Template
+              <FiDownload size={13} /> Excel
             </button>
-            <label className="flex items-center justify-center gap-1 bg-primary text-white py-2 rounded-lg text-sm font-medium cursor-pointer hover:bg-primary-dark">
-              <FiUpload size={13} /> Bulk Upload
-              <input type="file" accept=".xlsx,.xls" className="hidden" onChange={handleBulkUpload} />
+            <button onClick={handleDownloadCSVTemplate}
+              className="flex items-center justify-center gap-1 border border-primary text-primary py-2 rounded-lg text-sm font-medium hover:bg-orange-50">
+              <FiDownload size={13} /> CSV
+            </button>
+            <label className="flex items-center justify-center gap-1 bg-primary text-white py-2 rounded-lg text-sm font-medium cursor-pointer hover:bg-primary-dark col-span-2">
+              <FiUpload size={13} /> Bulk Upload (Excel/CSV)
+              <input type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleBulkUpload} />
             </label>
             <a href="https://central.ssism.org/self_registration" target="_blank" rel="noopener noreferrer"
               className="flex items-center justify-center gap-1 bg-primary text-white py-2 rounded-lg text-sm font-medium">
-              <FiExternalLink size={13} /> SSISM Form
+              <FiExternalLink size={13} /> SSISM
             </a>
             <a href="https://ssec.ssism.org/apply" target="_blank" rel="noopener noreferrer"
               className="flex items-center justify-center gap-1 bg-primary text-white py-2 rounded-lg text-sm font-medium">
-              <FiExternalLink size={13} /> SSEC Form
+              <FiExternalLink size={13} /> SSEC
             </a>
           </>
         )}
@@ -433,7 +507,7 @@ export default function Students() {
           <div className="flex items-center gap-2 flex-1 border border-gray-300 rounded-lg px-3">
             <FiSearch className="text-gray-400 shrink-0" size={15} />
             <input placeholder="Search name, father, mobile, track..." value={filters.search}
-              onChange={(e) => { setFilters({ ...filters, search: e.target.value }); setPage(1); }}
+              onChange={handleSearchChange}
               className="flex-1 py-2 outline-none text-sm" />
           </div>
           {!isDisabledTab && (
@@ -490,8 +564,26 @@ export default function Students() {
 
       {/* Table — desktop */}
       <div className="hidden md:block bg-white rounded-xl shadow overflow-hidden">
-        {loading ? (
-          <div className="flex justify-center items-center h-40"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" /></div>
+        {loading && students.length === 0 ? (
+          // Loading skeleton
+          <div className="animate-pulse">
+            <div className="bg-gray-50 border-b px-4 py-3">
+              <div className="flex gap-4">
+                {Array.from({ length: 11 }).map((_, i) => (
+                  <div key={i} className="h-4 bg-gray-200 rounded flex-1"></div>
+                ))}
+              </div>
+            </div>
+            {Array.from({ length: 10 }).map((_, i) => (
+              <div key={i} className="border-b px-4 py-3">
+                <div className="flex gap-4">
+                  {Array.from({ length: 11 }).map((_, j) => (
+                    <div key={j} className="h-4 bg-gray-100 rounded flex-1"></div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -509,13 +601,13 @@ export default function Students() {
               <tbody className="divide-y divide-gray-100">
                 {students.length === 0 ? (
                   <tr><td colSpan={11} className="text-center py-10 text-gray-400">No students found</td></tr>
-                ) : students.map((s, i) => (
+                ) : displayStudents.map((s, i) => (
                   <tr key={s._id} onClick={() => navigate(`/students/${s._id}`)} className={`hover:bg-gray-50 transition-colors cursor-pointer ${selected.includes(s._id) ? 'bg-orange-50/50' : ''}`}>
                     <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                       <input type="checkbox" checked={selected.includes(s._id)} onChange={() => toggleSelect(s._id)}
                         className="rounded border-gray-300 text-primary focus:ring-primary cursor-pointer" />
                     </td>
-                    <td className="px-4 py-3 text-gray-500">{(page - 1) * 10 + i + 1}</td>
+                    <td className="px-4 py-3 text-gray-500">{s.serialNumber}</td>
                     <td className="px-4 py-3 font-medium text-gray-800">
                       <span className="flex items-center gap-1.5">
                         {s.finalInterview?.result && <span className="text-emerald-500 text-base leading-none" title="Final Interview Done">★</span>}
@@ -523,7 +615,7 @@ export default function Students() {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-gray-600">{s.fatherName}</td>
-                    <td className="px-4 py-3 text-gray-600">{s.track}</td>
+                    <td className="px-4 py-3 text-gray-600">{s.displayTrack}</td>
                     <td className="px-4 py-3 text-gray-500 text-xs">{s.trackName || s.village || '—'}</td>
                     <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                       {s.mobileNo ? (
@@ -581,11 +673,31 @@ export default function Students() {
 
       {/* Cards — mobile */}
       <div className="md:hidden space-y-3">
-        {loading ? (
-          <div className="flex justify-center items-center h-40"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" /></div>
+        {loading && students.length === 0 ? (
+          // Mobile loading skeleton
+          <div className="space-y-3">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 animate-pulse">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-4 h-4 bg-gray-200 rounded"></div>
+                  <div className="h-4 bg-gray-200 rounded flex-1"></div>
+                  <div className="w-16 h-6 bg-gray-200 rounded-full"></div>
+                </div>
+                <div className="h-3 bg-gray-100 rounded mb-3 w-3/4"></div>
+                <div className="flex gap-2 mb-3">
+                  <div className="h-3 bg-gray-100 rounded flex-1"></div>
+                  <div className="h-3 bg-gray-100 rounded flex-1"></div>
+                </div>
+                <div className="flex gap-2 pt-3 border-t border-gray-100">
+                  <div className="h-8 bg-gray-200 rounded flex-1"></div>
+                  <div className="h-8 bg-gray-200 rounded flex-1"></div>
+                </div>
+              </div>
+            ))}
+          </div>
         ) : students.length === 0 ? (
           <div className="text-center py-10 text-gray-400 bg-white rounded-xl shadow">No students found</div>
-        ) : students.map((s, i) => (
+        ) : displayStudents.map((s, i) => (
           <div key={s._id} onClick={() => navigate(`/students/${s._id}`)} className={`bg-white rounded-xl shadow-sm border border-gray-100 p-4 cursor-pointer ${selected.includes(s._id) ? 'ring-2 ring-primary' : ''}`}>
 
             {/* Row 1: Checkbox + Name + Status */}
@@ -594,7 +706,7 @@ export default function Students() {
                 onClick={(e) => e.stopPropagation()}
                 className="rounded border-gray-300 text-primary focus:ring-primary cursor-pointer shrink-0" />
               <p className="font-semibold text-gray-800 flex-1 min-w-0 truncate">
-                {(page - 1) * 10 + i + 1}. {s.name}{s.finalInterview?.result && <span className="text-emerald-500 ml-1">★</span>}
+                {s.serialNumber}. {s.name}{s.finalInterview?.result && <span className="text-emerald-500 ml-1">★</span>}
               </p>
               <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold shrink-0 ${STATUS_COLORS[s.status]}`}>{s.status}</span>
             </div>
@@ -604,9 +716,9 @@ export default function Students() {
 
             {/* Row 3: Track + Mobile + Badges — all in one line */}
             <div className="flex items-center gap-2 flex-wrap pl-6 mb-3">
-              {s.track && (
+              {s.displayTrack && (
                 <span className="flex items-center gap-1 text-sm text-gray-500">
-                  <span className="text-base">📍</span> {s.track}{(s.trackName || s.village) ? ` · ${s.trackName || s.village}` : ''}
+                  <span className="text-base">📍</span> {s.displayTrack}{(s.trackName || s.village) ? ` · ${s.trackName || s.village}` : ''}
                 </span>
               )}
               {s.mobileNo && (
@@ -649,25 +761,58 @@ export default function Students() {
 
       {/* Pagination */}
       {pages > 1 && (
-        <div className="flex justify-center items-center gap-1 mt-4 flex-wrap">
+        <div className="flex justify-center items-center gap-2 mt-4 flex-wrap">
           <button onClick={() => setPage(p => Math.max(p - 1, 1))} disabled={page === 1}
             className="px-3 py-1.5 rounded text-sm border bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-40">‹</button>
+          
           {(() => {
-            const delta = 1, range = [], rangeWithDots = [];
-            for (let i = Math.max(2, page - delta); i <= Math.min(pages - 1, page + delta); i++) range.push(i);
-            if (range[0] > 2) rangeWithDots.push(1, '...'); else rangeWithDots.push(1);
+            const delta = 1;
+            const range = [];
+            const rangeWithDots = [];
+            
+            for (let i = Math.max(2, page - delta); i <= Math.min(pages - 1, page + delta); i++) {
+              range.push(i);
+            }
+            
+            if (range[0] > 2) {
+              rangeWithDots.push(1, '...');
+            } else {
+              rangeWithDots.push(1);
+            }
+            
             rangeWithDots.push(...range);
-            if (range[range.length - 1] < pages - 1) rangeWithDots.push('...', pages);
-            else if (pages > 1) rangeWithDots.push(pages);
+            
+            if (range[range.length - 1] < pages - 1) {
+              rangeWithDots.push('...', pages);
+            } else if (pages > 1) {
+              rangeWithDots.push(pages);
+            }
+            
             return rangeWithDots.map((p, idx) =>
-              p === '...' ? <span key={`d${idx}`} className="px-2 py-1.5 text-sm text-gray-400">...</span> : (
+              p === '...' ? (
+                <span key={`d${idx}`} className="px-2 py-1.5 text-sm text-gray-400">...</span>
+              ) : (
                 <button key={p} onClick={() => setPage(p)}
-                  className={`px-3 py-1.5 rounded text-sm border transition-colors ${p === page ? 'bg-primary text-white border-primary' : 'bg-white text-gray-600 hover:bg-gray-50'}`}>{p}</button>
+                  className={`px-3 py-1.5 rounded text-sm border transition-colors ${
+                    p === page 
+                      ? 'bg-primary text-white border-primary' 
+                      : 'bg-white text-gray-600 hover:bg-gray-50'
+                  }`}>
+                  {p}
+                </button>
               )
             );
           })()}
+          
           <button onClick={() => setPage(p => Math.min(p + 1, pages))} disabled={page === pages}
             className="px-3 py-1.5 rounded text-sm border bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-40">›</button>
+          
+          {hasMore && (
+            <button onClick={() => fetchStudents(true)} disabled={loading}
+              className="ml-2 px-4 py-1.5 bg-primary text-white rounded text-sm hover:bg-primary-dark disabled:opacity-60">
+              {loading ? 'Loading...' : 'Load More'}
+            </button>
+          )}
         </div>
       )}
     </div>
