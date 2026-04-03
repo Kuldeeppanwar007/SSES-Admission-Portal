@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import api from '../../api/axios';
 import { TRACKS, STATUSES, STATUS_COLORS, TRACK_TOWNS, TOWN_TO_MAIN_TRACK } from '../../utils/constants';
 import useAuthStore from '../../store/authStore';
@@ -223,27 +223,100 @@ const ACTIVE_STATUSES = STATUSES.filter((s) => s !== 'Disabled');
 export default function Students() {
   const { user } = useAuthStore();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const [tab, setTab] = useState(() => searchParams.get('tab') || 'active');
+  const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
+  
+  // Initialize state from URL params and localStorage
+  const getInitialState = () => {
+    const savedState = localStorage.getItem('studentsPageState');
+    const urlTab = searchParams.get('tab');
+    const urlTrack = searchParams.get('track');
+    const urlStatus = searchParams.get('status');
+    
+    if (savedState) {
+      try {
+        const parsed = JSON.parse(savedState);
+        return {
+          tab: urlTab || parsed.tab || 'active',
+          page: parsed.page || 1,
+          filters: {
+            track: urlTrack || parsed.filters?.track || '',
+            status: urlStatus || parsed.filters?.status || '',
+            search: parsed.filters?.search || '',
+            formSource: parsed.filters?.formSource || '',
+            interviewFilter: parsed.filters?.interviewFilter || '',
+          },
+          showFilters: parsed.showFilters || !!(urlTrack || urlStatus)
+        };
+      } catch {
+        // If parsing fails, use defaults
+      }
+    }
+    
+    return {
+      tab: urlTab || 'active',
+      page: 1,
+      filters: {
+        track: urlTrack || '',
+        status: urlStatus || '',
+        search: '',
+        formSource: '',
+        interviewFilter: '',
+      },
+      showFilters: !!(urlTrack || urlStatus)
+    };
+  };
+  
+  const initialState = getInitialState();
+  const [tab, setTab] = useState(initialState.tab);
+  const [page, setPage] = useState(initialState.page);
+  const [filters, setFilters] = useState(initialState.filters);
+  const [showFilters, setShowFilters] = useState(initialState.showFilters);
+  
   const [students, setStudents] = useState([]);
   const [total, setTotal] = useState(0);
-  const [page, setPage] = useState(1);
   const [pages, setPages] = useState(1);
   const [hasMore, setHasMore] = useState(false);
-  const [filters, setFilters] = useState({
-    track: searchParams.get('track') || '',
-    status: searchParams.get('status') || '',
-    search: '',
-    formSource: '',
-    interviewFilter: '',
-  });
   const debouncedSearch = useDebounce(filters.search, 300);
   const [loading, setLoading] = useState(false);
-  const [showFilters, setShowFilters] = useState(!!(searchParams.get('track') || searchParams.get('status')));
   const [selected, setSelected] = useState([]);
   const [exporting, setExporting] = useState(false);
   const [interviewStudent, setInterviewStudent] = useState(null);
   const [searchTimeout, setSearchTimeout] = useState(null);
+  
+  // Save state to localStorage whenever it changes
+  useEffect(() => {
+    const stateToSave = {
+      tab,
+      page,
+      filters,
+      showFilters
+    };
+    localStorage.setItem('studentsPageState', JSON.stringify(stateToSave));
+    
+    // Update URL params
+    const newParams = new URLSearchParams();
+    if (tab !== 'active') newParams.set('tab', tab);
+    if (filters.track) newParams.set('track', filters.track);
+    if (filters.status) newParams.set('status', filters.status);
+    
+    const newSearch = newParams.toString();
+    if (newSearch !== searchParams.toString()) {
+      setSearchParams(newParams, { replace: true });
+    }
+  }, [tab, page, filters, showFilters, searchParams, setSearchParams]);
+  
+  // Clear state when navigating away from students list (but not to student detail/edit)
+  useEffect(() => {
+    return () => {
+      // Only clear state when navigating completely away from students section
+      const currentPath = window.location.pathname;
+      if (!currentPath.startsWith('/students')) {
+        localStorage.removeItem('studentsPageState');
+        localStorage.removeItem('studentsScrollPosition');
+      }
+    };
+  }, []);
 
   const fetchStudents = async (loadMore = false) => {
     setLoading(true);
@@ -297,6 +370,17 @@ export default function Students() {
   };
 
   useEffect(() => { fetchStudents(); }, [page, filters, tab, debouncedSearch]);
+  
+  // Restore scroll position when returning to the page
+  useEffect(() => {
+    const savedScrollPosition = localStorage.getItem('studentsScrollPosition');
+    if (savedScrollPosition && students.length > 0) {
+      setTimeout(() => {
+        window.scrollTo(0, parseInt(savedScrollPosition));
+        localStorage.removeItem('studentsScrollPosition');
+      }, 100); // Small delay to ensure content is rendered
+    }
+  }, [students]);
 
   // Remove old debounced search function since we're using the hook
   const handleSearchChange = (e) => {
@@ -311,6 +395,8 @@ export default function Students() {
     setFilters({ track: '', status: '', search: '', formSource: '', interviewFilter: '' }); 
     setSelected([]);
     setHasMore(false);
+    // Clear saved state when switching tabs
+    localStorage.removeItem('studentsPageState');
   };
 
   const toggleSelect = (id) => setSelected((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
@@ -520,25 +606,41 @@ export default function Students() {
         {showFilters && !isDisabledTab && (
           <div className="flex flex-wrap gap-2 pt-1">
             {user?.role !== 'track_incharge' && (
-              <select value={filters.track} onChange={(e) => { setFilters({ ...filters, track: e.target.value }); setPage(1); }}
+              <select value={filters.track} onChange={(e) => { 
+                const newFilters = { ...filters, track: e.target.value };
+                setFilters(newFilters); 
+                setPage(1); 
+              }}
                 className="flex-1 min-w-32 border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none">
                 <option value="">All Tracks</option>
                 {TRACKS.map((t) => <option key={t}>{t}</option>)}
               </select>
             )}
-            <select value={filters.status} onChange={(e) => { setFilters({ ...filters, status: e.target.value }); setPage(1); }}
+            <select value={filters.status} onChange={(e) => { 
+              const newFilters = { ...filters, status: e.target.value };
+              setFilters(newFilters); 
+              setPage(1); 
+            }}
               className="flex-1 min-w-32 border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none">
               <option value="">All Status</option>
               {ACTIVE_STATUSES.map((s) => <option key={s}>{s}</option>)}
             </select>
-            <select value={filters.formSource} onChange={(e) => { setFilters({ ...filters, formSource: e.target.value }); setPage(1); }}
+            <select value={filters.formSource} onChange={(e) => { 
+              const newFilters = { ...filters, formSource: e.target.value };
+              setFilters(newFilters); 
+              setPage(1); 
+            }}
               className="flex-1 min-w-32 border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none">
               <option value="">All Forms</option>
               <option value="btech">B.Tech (ITEG)</option>
               <option value="ssism">SSISM</option>
               <option value="manual">Manual</option>
             </select>
-            <select value={filters.interviewFilter} onChange={(e) => { setFilters({ ...filters, interviewFilter: e.target.value }); setPage(1); }}
+            <select value={filters.interviewFilter} onChange={(e) => { 
+              const newFilters = { ...filters, interviewFilter: e.target.value };
+              setFilters(newFilters); 
+              setPage(1); 
+            }}
               className="flex-1 min-w-32 border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none">
               <option value="">All Interviews</option>
               <option value="hasAttempts">Has Attempts</option>
@@ -602,7 +704,12 @@ export default function Students() {
                 {students.length === 0 ? (
                   <tr><td colSpan={11} className="text-center py-10 text-gray-400">No students found</td></tr>
                 ) : displayStudents.map((s, i) => (
-                  <tr key={s._id} onClick={() => navigate(`/students/${s._id}`)} className={`hover:bg-gray-50 transition-colors cursor-pointer ${selected.includes(s._id) ? 'bg-orange-50/50' : ''}`}>
+                  <tr key={s._id} onClick={() => {
+                    // Save current scroll position
+                    const scrollPosition = window.pageYOffset;
+                    localStorage.setItem('studentsScrollPosition', scrollPosition.toString());
+                    navigate(`/students/${s._id}`);
+                  }} className={`hover:bg-gray-50 transition-colors cursor-pointer ${selected.includes(s._id) ? 'bg-orange-50/50' : ''}`}>
                     <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                       <input type="checkbox" checked={selected.includes(s._id)} onChange={() => toggleSelect(s._id)}
                         className="rounded border-gray-300 text-primary focus:ring-primary cursor-pointer" />
@@ -658,7 +765,12 @@ export default function Students() {
                       </button>
                     </td>
                     <td className="px-4 py-3">
-                      <button onClick={(e) => { e.stopPropagation(); navigate(`/students/${s._id}/edit`); }}
+                      <button onClick={(e) => { 
+                        e.stopPropagation(); 
+                        const scrollPosition = window.pageYOffset;
+                        localStorage.setItem('studentsScrollPosition', scrollPosition.toString());
+                        navigate(`/students/${s._id}/edit`); 
+                      }}
                         className="flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 bg-primary hover:bg-primary-dark text-white rounded-lg transition-colors">
                         <FiEdit2 size={11} /> Edit
                       </button>
@@ -698,7 +810,11 @@ export default function Students() {
         ) : students.length === 0 ? (
           <div className="text-center py-10 text-gray-400 bg-white rounded-xl shadow">No students found</div>
         ) : displayStudents.map((s, i) => (
-          <div key={s._id} onClick={() => navigate(`/students/${s._id}`)} className={`bg-white rounded-xl shadow-sm border border-gray-100 p-4 cursor-pointer ${selected.includes(s._id) ? 'ring-2 ring-primary' : ''}`}>
+          <div key={s._id} onClick={() => {
+            const scrollPosition = window.pageYOffset;
+            localStorage.setItem('studentsScrollPosition', scrollPosition.toString());
+            navigate(`/students/${s._id}`);
+          }} className={`bg-white rounded-xl shadow-sm border border-gray-100 p-4 cursor-pointer ${selected.includes(s._id) ? 'ring-2 ring-primary' : ''}`}>
 
             {/* Row 1: Checkbox + Name + Status */}
             <div className="flex items-center gap-2 mb-1">
@@ -746,7 +862,12 @@ export default function Students() {
 
             {/* Row 4: Buttons */}
             <div className="flex gap-2 pt-3 border-t border-gray-100">
-              <button onClick={(e) => { e.stopPropagation(); navigate(`/students/${s._id}/edit`); }}
+              <button onClick={(e) => { 
+                e.stopPropagation(); 
+                const scrollPosition = window.pageYOffset;
+                localStorage.setItem('studentsScrollPosition', scrollPosition.toString());
+                navigate(`/students/${s._id}/edit`); 
+              }}
                 className="flex-1 flex items-center justify-center gap-1.5 text-sm text-white font-semibold py-2 bg-primary hover:bg-primary-dark rounded-lg transition-colors">
                 <FiEdit2 size={14} /> Edit
               </button>
