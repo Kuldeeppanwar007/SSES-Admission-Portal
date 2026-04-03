@@ -717,13 +717,39 @@ const resolveTrack = (trackName, village) => {
 
 // Self-registration from external forms (webhook — secured by secret)
 const selfRegister = async (req, res) => {
-  // Verify webhook secret
-  const secret = req.headers['x-webhook-secret'];
+  // Verify webhook secret — header se ya body ke prkey se
+  const secret = req.headers['x-webhook-secret'] || req.body.prkey;
   if (!secret || secret !== process.env.WEBHOOK_SECRET)
     return res.status(401).json({ message: 'Unauthorized' });
 
   try {
-    const { formSource, firstName, lastName, fathersName, mobile, email, whatsappNumber, address, ...rest } = req.body;
+    const {
+      formSource, firstName, lastName, fathersName, mobile, email,
+      whatsappNumber, address,
+      // SSISM form ke actual field names (central DB se aate hain)
+      fatherName: fatherNameAlt,
+      fathersName: fathersNameAlt,
+      fatherContactNumber, parentMobile,
+      course, branch: branchField,
+      percent10, persentage10: persentage10Field,
+      percent12, persentage12: persentage12Field,
+      persentage11,
+      stream, school12Sub: school12SubField,
+      subject12, schoolName, trackName: trackNameField,
+      track: trackField,
+      joinBatch, year,
+      regFees, tutionFee, fatherIncome,
+      rollNumber10, rollNumber12,
+      sRank, linkSource, photo,
+      isTop20, prkey,
+      accRegFeesStatus, applicationTyp, applicationType, createdBy,
+      locationURL, payMode, paymentRequired, batch,
+      village, district, tehsil, pincode,
+      category, gender, dob, aadharNo, feesScheme,
+      priority1, priority2, priority3,
+      jeeScore,
+      ...rest
+    } = req.body;
 
     if (!firstName || !mobile)
       return res.status(400).json({ message: 'firstName and mobile are required' });
@@ -731,7 +757,6 @@ const selfRegister = async (req, res) => {
     const validSources = ['btech', 'ssism'];
     const resolvedSource = validSources.includes(formSource) ? formSource : null;
 
-    // Duplicate check — mobile se (email optional hai SSISM mein)
     const orConditions = [{ mobileNo: String(mobile) }];
     if (email) orConditions.push({ email });
     const existing = await Student.findOne({ $or: orConditions });
@@ -739,39 +764,57 @@ const selfRegister = async (req, res) => {
 
     const count = await Student.countDocuments();
 
-    // Track + Town mapping
-    const mapped = resolveTrack(rest.trackName, rest.village);
-    const resolvedTrack     = mapped?.track     || '';
-    const resolvedTrackName = mapped?.trackName || rest.trackName || '';
+    // trackName — central DB 'trackName' ya 'track' field se aata hai (town name hota hai)
+    const resolvedTrackNameRaw = trackNameField || trackField || '';
+    const mapped = resolveTrack(resolvedTrackNameRaw, village);
+    const resolvedTrack         = mapped?.track     || '';
+    const resolvedTrackNameFinal= mapped?.trackName || resolvedTrackNameRaw || '';
 
     const student = await Student.create({
-      sn: count + 1,
-      name: `${firstName} ${lastName || ''}`.trim(),
-      fatherName: fathersName || '',
-      mobileNo: String(mobile),
-      whatsappNo: whatsappNumber || rest.whatsappNo || '',
-      fullAddress: address || rest.fullAddress || '',
-      email,
-      formSource: resolvedSource,
-      status: 'Applied',
-      track: resolvedTrack,
-      trackName: resolvedTrackName,
-      ...rest,
-      // Numeric fields — string se number mein convert karo
-      ...(rest.persentage10  !== undefined && { persentage10:  Number(rest.persentage10)  || null }),
-      ...(rest.persentage11  !== undefined && { persentage11:  String(rest.persentage11) }),
-      ...(rest.persentage12  !== undefined && { persentage12:  Number(rest.persentage12)  || null }),
-      ...(rest.jeeScore      !== undefined && { jeeScore:      Number(rest.jeeScore)      || null }),
-      ...(rest.rollNumber10  !== undefined && { rollNumber10:  Number(rest.rollNumber10)  || null }),
-      ...(rest.rollNumber12  !== undefined && { rollNumber12:  Number(rest.rollNumber12)  || null }),
-      ...(rest.fatherIncome  !== undefined && { fatherIncome:  Number(rest.fatherIncome)  || null }),
-      ...(rest.joinBatch     !== undefined && { joinBatch:     Number(rest.joinBatch)     || null }),
-      ...(rest.pincode       !== undefined && { pincode:       Number(rest.pincode)       || null }),
-      // isTop20 — 0/1 ya true/false dono handle karo
-      ...(rest.isTop20 !== undefined && { isTop20: Boolean(Number(rest.isTop20)) }),
-      // Track mapping — ...rest ke baad override karo taaki sahi values rahe
-      track: resolvedTrack,
-      trackName: resolvedTrackName,
+      sn:          count + 1,
+      name:        `${firstName} ${lastName || ''}`.trim(),
+      fatherName:  fathersName || fathersNameAlt || fatherNameAlt || '',
+      mobileNo:    String(mobile),
+      whatsappNo:  whatsappNumber || '',
+      fullAddress: address || '',
+      email:       email  || '',
+      formSource:  resolvedSource,
+      status:      'Applied',
+      track:       resolvedTrack,
+      trackName:   resolvedTrackNameFinal,
+      village:     village    || '',
+      district:    district   || '',
+      tehsil:      tehsil     || '',
+      category:    category   || '',
+      gender:      gender     || '',
+      dob:         dob        || '',
+      aadharNo:    aadharNo   || '',
+      feesScheme:  feesScheme || '',
+      schoolName:  schoolName || '',
+      branch:      branchField || course || '',
+      school12Sub: school12SubField || stream || subject12 || '',
+      fatherContactNumber: fatherContactNumber || parentMobile || '',
+      linkSource:  linkSource || '',
+      sRank:       sRank      || '',
+      applicationType:  applicationType || applicationTyp || '',
+      accRegFeesStatus: accRegFeesStatus || '',
+      locationURL:      locationURL || '',
+      payMode:          payMode || '',
+      paymentRequired:  paymentRequired != null ? Boolean(paymentRequired) : null,
+      persentage10: Number(persentage10Field || percent10)  || null,
+      persentage11: persentage11 ? String(persentage11) : null,
+      persentage12: Number(persentage12Field || percent12)  || null,
+      rollNumber10: Number(rollNumber10) || null,
+      rollNumber12: Number(rollNumber12) || null,
+      jeeScore:     Number(jeeScore)     || null,
+      fatherIncome: Number(fatherIncome) || null,
+      regFees:      Number(regFees)      || null,
+      joinBatch:    Number(joinBatch || year) || null,
+      pincode:      Number(pincode)      || null,
+      isTop20:      Boolean(Number(isTop20)),
+      ...(priority1 && { priority1 }),
+      ...(priority2 && { priority2 }),
+      ...(priority3 && { priority3 }),
     });
     res.status(201).json({ message: 'Registration successful', id: student._id });
   } catch (err) {

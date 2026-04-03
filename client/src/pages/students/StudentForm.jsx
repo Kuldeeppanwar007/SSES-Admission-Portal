@@ -171,6 +171,12 @@ export default function StudentForm() {
           fatherOccupation: data.fatherOccupation || '', fatherIncome: data.fatherIncome ?? '',
           fatherContactNumber: data.fatherContactNumber || '',
           pincode: data.pincode ?? '', tehsil: data.tehsil || '',
+          // extra SSISM fields
+          persentage11: data.persentage11 ?? '',
+          rollNumber10: data.rollNumber10 ?? '', rollNumber12: data.rollNumber12 ?? '',
+          linkSource: data.linkSource || '', sRank: data.sRank || '',
+          regFees: data.regFees ?? '', isTop20: data.isTop20 || false,
+          fatherIncome: data.fatherIncome ?? '',
         });
         const existing = {};
         DOC_FIELDS.forEach(({ key }) => { if (data[key]) existing[key] = data[key]; });
@@ -466,14 +472,18 @@ export default function StudentForm() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {[['Email', 'email', 'email'], ['School Name', 'schoolName', 'text'],
                   ['District', 'district', 'text'], ['Village / City', 'village', 'text'],
-                  ['10th Score', 'persentage10', 'number'], ['12th Score', 'persentage12', 'number'],
+                  ['10th Score', 'persentage10', 'number'], ['11th Score', 'persentage11', 'text'],
+                  ['12th Score', 'persentage12', 'number'], ['10th Roll No', 'rollNumber10', 'number'],
+                  ['12th Roll No', 'rollNumber12', 'number'],
                   ['Date of Birth', 'dob', 'date'], ['Aadhar No', 'aadharNo', 'text'],
                   ['Father Occupation', 'fatherOccupation', 'text'], ['Father Income', 'fatherIncome', 'number'],
                   ['Father Contact', 'fatherContactNumber', 'tel'], ['Pincode', 'pincode', 'number'],
-                  ['Tehsil', 'tehsil', 'text']].map(([label, key, type]) => (
+                  ['Tehsil', 'tehsil', 'text'], ['Link Source', 'linkSource', 'text'],
+                  ['S Rank', 'sRank', 'text'], ['Reg. Fees', 'regFees', 'number'],
+                ].map(([label, key, type]) => (
                   <div key={key}>
                     <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
-                    <input type={type} value={form[key]} onChange={(e) => isManual && setForm({ ...form, [key]: e.target.value })}
+                    <input type={type} value={form[key] ?? ''} onChange={(e) => isManual && setForm({ ...form, [key]: e.target.value })}
                       disabled={!isManual}
                       className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary ${!isManual ? 'bg-gray-50 border-gray-200 text-gray-500 cursor-not-allowed' : 'border-gray-300'}`} />
                   </div>
@@ -516,6 +526,12 @@ export default function StudentForm() {
                   <input value={form.school12Sub} onChange={(e) => isManual && setForm({ ...form, school12Sub: e.target.value })}
                     disabled={!isManual}
                     className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary ${!isManual ? 'bg-gray-50 border-gray-200 text-gray-500 cursor-not-allowed' : 'border-gray-300'}`} />
+                </div>
+                <div className="flex items-center gap-2 pt-1">
+                  <input type="checkbox" id="isTop20" checked={!!form.isTop20} disabled={!isManual}
+                    onChange={(e) => isManual && setForm({ ...form, isTop20: e.target.checked })}
+                    className="rounded border-gray-300 text-primary focus:ring-primary cursor-pointer disabled:cursor-not-allowed" />
+                  <label htmlFor="isTop20" className="text-sm font-medium text-gray-700">Is Top 20</label>
                 </div>
               </div>
             </div>
