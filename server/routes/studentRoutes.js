@@ -137,7 +137,7 @@ router.post('/cleanup-data', protect, authorizeRoles('admin'), async (req, res) 
     const TOWN_TO_MAIN_TRACK = {
       'harda': 'Harda', 'timarni': 'Harda', 'seoni malwa': 'Harda', 'seoni malav': 'Harda',
       'khategaon': 'Khategaon', 'nemawar': 'Khategaon', 'sandalpur': 'Khategaon',
-      'rehti': 'Rehti', 'gopalpur': 'Rehti', 'bherunda': 'Rehti',
+      'rehti': 'Rehti', 'gopalpur': 'Rehti', 'bherunda': 'Rehti', 'narmadapuram': 'Rehti',
       'satwas': 'Satwas & Kannod', 'kannod': 'Satwas & Kannod',
     };
     

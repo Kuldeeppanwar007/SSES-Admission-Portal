@@ -117,10 +117,11 @@ const TOWN_TO_MAIN_TRACK = {
   'seoni malav':  'Harda',
   'khategaon':    'Khategaon',
   'nemawar':      'Khategaon',
-  'sandalpur':    'Khategaon', // Corrected to Khategaon
+  'sandalpur':    'Khategaon',
   'rehti':        'Rehti',
   'gopalpur':     'Rehti',
   'bherunda':     'Rehti',
+  'narmadapuram': 'Rehti',
   'satwas':       'Satwas & Kannod',
   'kannod':       'Satwas & Kannod',
 };
@@ -704,7 +705,7 @@ const downloadTemplate = (req, res) => {
   const sampleRows = [
     [1, 'Ali Ahmed', 'Ahmed Khan', 'Harda', '9876543210', '9876543210', 'Science', 'ABC High School', 'Village Harda, MP', ''],
     [2, 'Sara Begum', 'Mohd Raza', 'Sandalpur', '9123456789', '9123456789', 'Arts', 'XYZ School', 'Village Sandalpur, MP', ''],
-    [3, 'Rahul Kumar', 'Suresh Kumar', 'Khategaon', '9876543211', '9876543211', 'Commerce', 'PQR College', 'Village Khategaon, MP', ''],
+    [3, 'Rahul Kumar', 'Suresh Kumar', 'Narmadapuram', '9876543211', '9876543211', 'Commerce', 'PQR College', 'Village Narmadapuram, MP', ''],
   ];
   const wb = xlsx.utils.book_new();
   const ws = xlsx.utils.aoa_to_sheet([...headers, ...sampleRows]);
@@ -722,7 +723,7 @@ const downloadCSVTemplate = (req, res) => {
   const sampleRows = [
     [1, 'Ali Ahmed', 'Ahmed Khan', 'Harda', '9876543210', '9876543210', 'Science', 'ABC High School', 'Village Harda, MP', ''],
     [2, 'Sara Begum', 'Mohd Raza', 'Sandalpur', '9123456789', '9123456789', 'Arts', 'XYZ School', 'Village Sandalpur, MP', ''],
-    [3, 'Rahul Kumar', 'Suresh Kumar', 'Khategaon', '9876543211', '9876543211', 'Commerce', 'PQR College', 'Village Khategaon, MP', ''],
+    [3, 'Rahul Kumar', 'Suresh Kumar', 'Narmadapuram', '9876543211', '9876543211', 'Commerce', 'PQR College', 'Village Narmadapuram, MP', ''],
   ];
   
   const csvContent = [headers, ...sampleRows]
@@ -926,6 +927,7 @@ const TOWN_TO_TRACK = {
   'gopalpur':    { track: 'Rehti',           trackName: 'Gopalpur' },
   'bherunda':    { track: 'Rehti',           trackName: 'Bherunda' },
   'rehti':       { track: 'Rehti',           trackName: 'Rehti' },
+  'narmadapuram':{ track: 'Rehti',           trackName: 'Narmadapuram' },
   'kannod':      { track: 'Satwas & Kannod', trackName: 'Kannod' },
   'satwas':      { track: 'Satwas & Kannod', trackName: 'Satwas' },
 };
