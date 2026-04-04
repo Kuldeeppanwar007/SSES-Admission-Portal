@@ -8,12 +8,7 @@ const CHECK_INTERVAL_MS = 10_000; // har 10 sec check karo
 
 async function isLocationGranted() {
   try {
-    if (!Capacitor.isNativePlatform()) {
-      // Web browser — navigator.permissions se check karo
-      if (!navigator.geolocation) return false;
-      const result = await navigator.permissions.query({ name: 'geolocation' });
-      return result.state === 'granted';
-    }
+    if (!Capacitor.isNativePlatform()) return true; // Browser pe location block nahi karna
     const status = await Geolocation.checkPermissions();
     return status.location === 'granted';
   } catch {
