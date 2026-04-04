@@ -3,6 +3,7 @@ const dotenv = require('dotenv');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
 const rateLimit = require('express-rate-limit');
+const jwt = require('jsonwebtoken');
 const connectDB = require('./config/db');
 const { scheduleWeeklyBonus } = require('./utils/weeklyBonus');
 const { scheduleFollowupReminders } = require('./utils/followupReminder');
@@ -36,29 +37,42 @@ app.options('*', cors());
 app.use(express.json());
 app.use(cookieParser());
 
-// Global rate limit — poore API pe 500 requests per 15 min per IP
+// Key: JWT se user ID nikalo (bina DB call), warna IP fallback
+const userOrIpKey = (req) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1] || req.cookies?.accessToken;
+    if (token) {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      return decoded.id || req.ip;
+    }
+  } catch {}
+  return req.ip;
+};
+
+// Global rate limit — 500 requests per 15 min per user/IP
 app.use(rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 2000,
+  max: 1500,
+  keyGenerator: userOrIpKey,
   message: { message: 'Too many requests. Try again later.' },
   standardHeaders: true,
   legacyHeaders: false,
   skip: (req) => req.path.startsWith('/api/auth/login') || req.path.startsWith('/api/auth/refresh'),
 }));
 
-// Login — max 10 attempts per 15 min per IP
+// Login — max 30 attempts per 15 min per IP (user ID nahi hoga yahan)
 app.use('/api/auth/login', rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 1000,
+  max: 30,
   message: { message: 'Too many login attempts. Try again after 15 minutes.' },
   standardHeaders: true,
   legacyHeaders: false,
 }));
 
-// Refresh token — max 60 attempts per 15 min per IP
+// Refresh token — max 200 per 15 min per IP
 app.use('/api/auth/refresh', rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 120,
+  max: 200,
   message: { message: 'Too many refresh attempts. Try again later.' },
   standardHeaders: true,
   legacyHeaders: false,
