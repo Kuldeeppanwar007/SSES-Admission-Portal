@@ -6,6 +6,7 @@ const statusHistorySchema = new mongoose.Schema({
   funnelStage: { type: String, default: '' },
   remarks: { type: String, default: '' },
   changedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  changedFields: [{ field: String, oldValue: String, newValue: String }],
 }, { timestamps: true });
 
 module.exports = mongoose.model('StatusHistory', statusHistorySchema);

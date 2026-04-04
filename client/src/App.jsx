@@ -19,6 +19,7 @@ import Targets from './pages/targets/Targets';
 import Attendance from './pages/attendance/Attendance';
 import EditRequests from './pages/students/EditRequests';
 import TrackManager from './pages/settings/TrackManager';
+import ActivityLog from './pages/activity/ActivityLog';
 
 export default function App() {
   useEffect(() => {
@@ -66,6 +67,11 @@ export default function App() {
             </ProtectedRoute>
           } />
           <Route path="/edit-requests" element={<EditRequests />} />
+          <Route path="/activity-log" element={
+            <ProtectedRoute roles={['admin', 'track_incharge']}>
+              <ActivityLog />
+            </ProtectedRoute>
+          } />
           <Route path="/track-manager" element={
             <ProtectedRoute roles={['admin']}>
               <TrackManager />
