@@ -445,25 +445,87 @@ const handleViewHistory = async () => {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 p-4">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[85vh] flex flex-col">
             <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-              <h3 className="font-semibold text-gray-800">Status History</h3>
+              <div>
+                <h3 className="font-semibold text-gray-800">Activity History</h3>
+                <p className="text-xs text-gray-400 mt-0.5">{history.length} update{history.length !== 1 ? 's' : ''} found</p>
+              </div>
               <button onClick={() => setShowHistory(false)} className="text-gray-400 hover:text-gray-600"><FiX size={18} /></button>
             </div>
-            <div className="overflow-y-auto flex-1 p-4 space-y-3">
+            <div className="overflow-y-auto flex-1 p-4">
               {history.length === 0 ? (
-                <p className="text-center text-gray-400 text-sm py-6">No history found</p>
-              ) : history.map((h) => (
-                <div key={h._id} className="border border-gray-100 rounded-lg p-3">
-                  <div className="flex items-center justify-between mb-1">
-                    <div className="flex items-center gap-2">
-                      <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${STATUS_COLORS[h.status] || 'bg-gray-100 text-gray-600'}`}>{h.status}</span>
-                      {h.funnelStage && <span className="text-xs bg-orange-50 text-primary border border-orange-100 px-2 py-0.5 rounded-full font-medium">{h.funnelStage}</span>}
-                    </div>
-                    <span className="text-xs text-gray-400">{new Date(h.createdAt).toLocaleString('en-IN')}</span>
-                  </div>
-                  {h.remarks && <p className="text-sm text-gray-600 mt-1">💬 {h.remarks}</p>}
-                  <p className="text-xs text-gray-400 mt-1">By: {h.changedBy?.name || 'Unknown'} ({h.changedBy?.role || ''})</p>
+                <div className="flex flex-col items-center justify-center py-10 text-gray-400">
+                  <FiClock size={32} className="mb-2 opacity-30" />
+                  <p className="text-sm">Koi history nahi mili</p>
                 </div>
-              ))}
+              ) : (
+                <div className="relative">
+                  {/* Timeline line */}
+                  <div className="absolute left-4 top-2 bottom-2 w-0.5 bg-gray-100" />
+                  <div className="space-y-4">
+                    {history.map((h, idx) => {
+                      const roleColors = {
+                        admin: 'bg-purple-100 text-purple-700',
+                        track_incharge: 'bg-blue-100 text-blue-700',
+                        manager: 'bg-green-100 text-green-700',
+                      };
+                      const roleLabel = {
+                        admin: 'Admin',
+                        track_incharge: 'Track Incharge',
+                        manager: 'Manager',
+                      };
+                      const role = h.changedBy?.role || '';
+                      return (
+                        <div key={h._id} className="flex gap-4 relative">
+                          {/* Timeline dot */}
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 z-10 text-white text-xs font-bold shadow ${
+                            idx === 0 ? 'bg-primary' : 'bg-gray-300'
+                          }`}>
+                            {(h.changedBy?.name || 'U')[0].toUpperCase()}
+                          </div>
+                          <div className={`flex-1 rounded-xl p-3.5 border ${
+                            idx === 0 ? 'border-orange-200 bg-orange-50/40' : 'border-gray-100 bg-white'
+                          }`}>
+                            {/* Top row: who + when */}
+                            <div className="flex items-start justify-between gap-2 mb-2">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="text-sm font-semibold text-gray-800">
+                                  {h.changedBy?.name || 'Unknown'}
+                                </span>
+                                {role && (
+                                  <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${roleColors[role] || 'bg-gray-100 text-gray-500'}`}>
+                                    {roleLabel[role] || role}
+                                  </span>
+                                )}
+                              </div>
+                              <span className="text-[11px] text-gray-400 shrink-0">
+                                {new Date(h.createdAt).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                            </div>
+                            {/* Status + Funnel badges */}
+                            <div className="flex items-center gap-2 flex-wrap mb-2">
+                              <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full ${STATUS_COLORS[h.status] || 'bg-gray-100 text-gray-600'}`}>
+                                {h.status}
+                              </span>
+                              {h.funnelStage && (
+                                <span className="text-xs bg-orange-50 text-primary border border-orange-200 px-2.5 py-0.5 rounded-full font-medium">
+                                  {h.funnelStage}
+                                </span>
+                              )}
+                            </div>
+                            {/* Remark */}
+                            {h.remarks && (
+                              <div className="bg-white border border-gray-100 rounded-lg px-3 py-2 mt-1">
+                                <p className="text-xs text-gray-400 mb-0.5">Remark</p>
+                                <p className="text-sm text-gray-700">{h.remarks}</p>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>

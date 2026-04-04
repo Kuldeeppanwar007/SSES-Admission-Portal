@@ -307,16 +307,27 @@ const updateStudent = async (req, res) => {
     }
   }
 
-  // Save to status history if status or funnelStage changed
+  // Save to status history if anything changed
   const StatusHistory = require('../models/StatusHistory');
   const currentFunnel = updated.funnelStage || '';
-  if (updates.status !== prevStatus || currentFunnel !== prevFunnel || updates.remarks) {
+
+  // Track which fields changed
+  const TRACKED_FIELDS = ['name', 'fatherName', 'mobileNo', 'whatsappNo', 'track', 'subject',
+    'fullAddress', 'otherTrack', 'status', 'funnelStage', 'remarks', 'email', 'schoolName',
+    'district', 'village', 'branch', 'category', 'gender', 'trackName'];
+
+  const changedFields = TRACKED_FIELDS
+    .filter(f => updates[f] !== undefined && String(updates[f]) !== String(student[f] ?? ''))
+    .map(f => ({ field: f, oldValue: String(student[f] ?? ''), newValue: String(updates[f]) }));
+
+  if (changedFields.length > 0) {
     await StatusHistory.create({
       student: req.params.id,
       status: updated.status,
       funnelStage: currentFunnel,
       remarks: updates.remarks || '',
       changedBy: req.user._id,
+      changedFields,
     });
   }
 
@@ -369,10 +380,36 @@ const updateStatus = async (req, res) => {
 // Get status history
 const getStatusHistory = async (req, res) => {
   const StatusHistory = require('../models/StatusHistory');
-  const history = await StatusHistory.find({ student: req.params.id })
+  const filter = { student: req.params.id };
+  if (req.user.role === 'track_incharge') filter['changedBy'] = req.user._id;
+  const history = await StatusHistory.find(filter)
     .populate('changedBy', 'name role')
     .sort({ createdAt: -1 });
   res.json(history);
+};
+
+// Get all activity history (for Activity Log page)
+const getActivityLog = async (req, res) => {
+  try {
+    const StatusHistory = require('../models/StatusHistory');
+    const filter = { 'changedFields.0': { $exists: true } };
+
+    if (req.user.role === 'track_incharge') {
+      // Same track ke sabhi track_incharge users ke IDs nikalo
+      const trackUsers = await User.find({ track: req.user.track, role: 'track_incharge' }).select('_id');
+      filter.changedBy = { $in: trackUsers.map(u => u._id) };
+    }
+
+    const history = await StatusHistory.find(filter)
+      .populate('changedBy', 'name role')
+      .populate('student', 'name track')
+      .sort({ createdAt: -1 })
+      .limit(200)
+      .lean();
+    res.json(history);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 };
 
 const fieldMap = {
@@ -1107,4 +1144,4 @@ const selfRegister = async (req, res) => {
   }
 };
 
-module.exports = { getStudents, getStudent, addStudent, updateStudent, deleteStudent, updateStatus, getStatusHistory, bulkUpload, downloadTemplate, downloadCSVTemplate, exportStudents, getStats, getTrackStats, selfRegister };
+module.exports = { getStudents, getStudent, addStudent, updateStudent, deleteStudent, updateStatus, getStatusHistory, getActivityLog, bulkUpload, downloadTemplate, downloadCSVTemplate, exportStudents, getStats, getTrackStats, selfRegister };

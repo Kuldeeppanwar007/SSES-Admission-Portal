@@ -1,5 +1,5 @@
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
-import { FiHome, FiUsers, FiUserCheck, FiLogOut, FiChevronLeft, FiChevronRight, FiFlag, FiPieChart, FiChevronDown, FiMap, FiCheckSquare, FiEdit, FiSettings } from 'react-icons/fi';
+import { FiHome, FiUsers, FiUserCheck, FiLogOut, FiChevronLeft, FiChevronRight, FiFlag, FiPieChart, FiChevronDown, FiMap, FiCheckSquare, FiEdit, FiSettings, FiActivity } from 'react-icons/fi';
 import { useState } from 'react';
 import useAuthStore from '../../store/authStore';
 import { TRACKS, MAIN_TRACKS } from '../../utils/constants';
@@ -10,6 +10,8 @@ const navItems = [
   { to: '/students', Icon: FiUsers, label: 'Students' },
   { to: '/edit-requests', Icon: FiEdit, label: 'Edit Requests', adminOnly: true },
   { to: '/edit-requests', Icon: FiEdit, label: 'Edit Requests', trackOnly: true },
+  { to: '/activity-log', Icon: FiActivity, label: 'Activity Log', adminOnly: true },
+  { to: '/activity-log', Icon: FiActivity, label: 'Activity Log', trackOnly: true },
   { to: '/targets', Icon: FiFlag, label: 'Targets', adminOnly: true },
   { to: '/track-manager', Icon: FiSettings, label: 'Track Manager', adminOnly: true },
   { to: '/users', Icon: FiUserCheck, label: 'Users', adminOnly: true },

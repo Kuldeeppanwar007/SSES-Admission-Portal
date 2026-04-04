@@ -6,7 +6,7 @@ const { protect, authorizeRoles } = require('../middleware/authMiddleware');
 const { validate, schemas } = require('../middleware/validate');
 const {
   getStudents, getStudent, addStudent, updateStudent,
-  deleteStudent, updateStatus, getStatusHistory, bulkUpload, downloadTemplate, downloadCSVTemplate, exportStudents, getStats, getTrackStats, selfRegister,
+  deleteStudent, updateStatus, getStatusHistory, getActivityLog, bulkUpload, downloadTemplate, downloadCSVTemplate, exportStudents, getStats, getTrackStats, selfRegister,
 } = require('../controllers/studentController');
 
 const memStorage = multer({ storage: multer.memoryStorage() });
@@ -182,6 +182,7 @@ router.post('/cleanup-data', protect, authorizeRoles('admin'), async (req, res) 
     res.status(500).json({ message: err.message });
   }
 });
+router.get('/activity-log', protect, authorizeRoles('admin', 'track_incharge'), getActivityLog);
 router.get('/', protect, getStudents);
 router.get('/:id', protect, getStudent);
 
