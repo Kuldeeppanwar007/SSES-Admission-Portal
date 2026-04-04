@@ -4,7 +4,7 @@ import api from '../../api/axios';
 import { TRACKS, STATUSES, STATUS_COLORS, TRACK_TOWNS, TOWN_TO_MAIN_TRACK } from '../../utils/constants';
 import useAuthStore from '../../store/authStore';
 import toast from 'react-hot-toast';
-import { FiPlus, FiUpload, FiSearch, FiEdit2, FiDownload, FiFilter, FiSlash, FiClipboard, FiExternalLink } from 'react-icons/fi';
+import { FiPlus, FiUpload, FiSearch, FiEdit2, FiDownload, FiFilter, FiSlash, FiClipboard, FiExternalLink, FiChevronDown } from 'react-icons/fi';
 import DatePicker from '../../components/DatePicker';
 import { isOnline, cacheStudents, getCachedStudents } from '../../utils/offlineQueue';
 import { usePerformanceMonitor, useDebounce } from '../../hooks/usePerformance';
@@ -246,6 +246,7 @@ export default function Students() {
             search: parsed.filters?.search || '',
             formSource: parsed.filters?.formSource || '',
             interviewFilter: parsed.filters?.interviewFilter || '',
+            funnelStage: parsed.filters?.funnelStage || '',
           },
           showFilters: parsed.showFilters || !!(urlTrack || urlStatus)
         };
@@ -264,6 +265,7 @@ export default function Students() {
         search: '',
         formSource: '',
         interviewFilter: '',
+        funnelStage: '',
       },
       showFilters: !!(urlTrack || urlStatus)
     };
@@ -355,6 +357,7 @@ export default function Students() {
         town: filters.town,
         formSource: filters.formSource,
         interviewFilter: filters.interviewFilter,
+        funnelStage: filters.funnelStage,
         search: debouncedSearch,
         ...(tab === 'disabled' ? { status: 'Disabled' } : {}) 
       };
@@ -406,7 +409,7 @@ export default function Students() {
   const switchTab = (t) => { 
     setTab(t); 
     setPage(1); 
-    setFilters({ track: '', status: '', town: '', search: '', formSource: '', interviewFilter: '' }); 
+    setFilters({ track: '', status: '', town: '', search: '', formSource: '', interviewFilter: '', funnelStage: '' }); 
     setSelected([]);
     setHasMore(false);
     // Clear saved state when switching tabs
@@ -481,6 +484,7 @@ export default function Students() {
 
   const isDisabledTab = tab === 'disabled';
   const allSelected = students.length > 0 && selected.length === students.length;
+  const [showMobileActions, setShowMobileActions] = useState(false);
 
   // Memoize filtered students for better performance
   const displayStudents = useMemo(() => {
@@ -550,42 +554,51 @@ export default function Students() {
         </div>
       </div>
 
-      {/* Mobile — Export + Forms buttons (full width grid) */}
-      <div className="md:hidden grid grid-cols-2 gap-2 mb-3">
-        {selected.length > 0 ? (
-          <button onClick={() => handleExport(selected)} disabled={exporting}
-            className="flex items-center justify-center gap-1 bg-primary text-white py-2 rounded-lg text-sm font-medium disabled:opacity-60 col-span-2">
-            <FiDownload size={13} /> Export ({selected.length})
-          </button>
-        ) : (
-          <button onClick={() => handleExport([])} disabled={exporting}
-            className="flex items-center justify-center gap-1 bg-primary text-white py-2 rounded-lg text-sm font-medium disabled:opacity-60 col-span-2">
-            <FiDownload size={13} /> {exporting ? 'Exporting...' : 'Export All'}
-          </button>
-        )}
-        {!isDisabledTab && (
-          <>
-            <button onClick={handleDownloadTemplate}
-              className="flex items-center justify-center gap-1 border border-primary text-primary py-2 rounded-lg text-sm font-medium hover:bg-orange-50">
-              <FiDownload size={13} /> Excel
-            </button>
-            <button onClick={handleDownloadCSVTemplate}
-              className="flex items-center justify-center gap-1 border border-primary text-primary py-2 rounded-lg text-sm font-medium hover:bg-orange-50">
-              <FiDownload size={13} /> CSV
-            </button>
-            <label className="flex items-center justify-center gap-1 bg-primary text-white py-2 rounded-lg text-sm font-medium cursor-pointer hover:bg-primary-dark col-span-2">
-              <FiUpload size={13} /> Bulk Upload (Excel/CSV)
-              <input type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleBulkUpload} />
-            </label>
-            <a href="https://central.ssism.org/self_registration" target="_blank" rel="noopener noreferrer"
-              className="flex items-center justify-center gap-1 bg-primary text-white py-2 rounded-lg text-sm font-medium">
-              <FiExternalLink size={13} /> SSISM
-            </a>
-            <a href="https://ssec.ssism.org/apply" target="_blank" rel="noopener noreferrer"
-              className="flex items-center justify-center gap-1 bg-primary text-white py-2 rounded-lg text-sm font-medium">
-              <FiExternalLink size={13} /> SSEC
-            </a>
-          </>
+      {/* Mobile — Actions dropdown */}
+      <div className="md:hidden relative mb-3">
+        <button onClick={() => setShowMobileActions(v => !v)}
+          className="w-full flex items-center justify-between bg-primary text-white px-4 py-2.5 rounded-lg text-sm font-medium">
+          <span>Actions</span>
+          <FiChevronDown size={16} className={`transition-transform ${showMobileActions ? 'rotate-180' : ''}`} />
+        </button>
+        {showMobileActions && (
+          <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-20 overflow-hidden">
+            {selected.length > 0 ? (
+              <button onClick={() => { handleExport(selected); setShowMobileActions(false); }} disabled={exporting}
+                className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 border-b border-gray-100 disabled:opacity-60">
+                <FiDownload size={15} className="text-primary" /> Export Selected ({selected.length})
+              </button>
+            ) : (
+              <button onClick={() => { handleExport([]); setShowMobileActions(false); }} disabled={exporting}
+                className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 border-b border-gray-100 disabled:opacity-60">
+                <FiDownload size={15} className="text-primary" /> {exporting ? 'Exporting...' : 'Export All'}
+              </button>
+            )}
+            {!isDisabledTab && (
+              <>
+                <button onClick={() => { handleDownloadTemplate(); setShowMobileActions(false); }}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 border-b border-gray-100">
+                  <FiDownload size={15} className="text-primary" /> Excel Template
+                </button>
+                <button onClick={() => { handleDownloadCSVTemplate(); setShowMobileActions(false); }}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 border-b border-gray-100">
+                  <FiDownload size={15} className="text-primary" /> CSV Template
+                </button>
+                <label className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 border-b border-gray-100 cursor-pointer">
+                  <FiUpload size={15} className="text-primary" /> Bulk Upload (Excel/CSV)
+                  <input type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={(e) => { handleBulkUpload(e); setShowMobileActions(false); }} />
+                </label>
+                <a href="https://central.ssism.org/self_registration" target="_blank" rel="noopener noreferrer"
+                  className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 border-b border-gray-100">
+                  <FiExternalLink size={15} className="text-primary" /> SSISM Form
+                </a>
+                <a href="https://ssec.ssism.org/apply" target="_blank" rel="noopener noreferrer"
+                  className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50">
+                  <FiExternalLink size={15} className="text-primary" /> SSEC Form
+                </a>
+              </>
+            )}
+          </div>
         )}
       </div>
 
@@ -669,6 +682,16 @@ export default function Students() {
               <option value="hasAttempts">Has Attempts</option>
               <option value="finalCleared">Final Cleared</option>
             </select>
+            <select value={filters.funnelStage} onChange={(e) => {
+              setFilters({ ...filters, funnelStage: e.target.value });
+              setPage(1);
+            }}
+              className="flex-1 min-w-32 border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none">
+              <option value="">All Funnel Stages</option>
+              <option value="Call Completed">Call Completed</option>
+              <option value="Lead Interested">Lead Interested</option>
+              <option value="Admission Closed">Admission Closed</option>
+            </select>
           </div>
         )}
       </div>
@@ -718,7 +741,7 @@ export default function Students() {
                     <input type="checkbox" checked={allSelected} onChange={toggleAll}
                       className="rounded border-gray-300 text-primary focus:ring-primary cursor-pointer" />
                   </th>
-                  {['S.N.', 'Name', 'Father Name', 'Track', 'Town', 'Mobile', 'Form', 'Status', 'Attempt', 'Interview', 'Actions'].map((h) => (
+                  {['S.N.', 'Name', 'Father Name', 'Track', 'Town', 'Mobile', 'Form', 'Status', 'Funnel', 'Attempt', 'Interview', 'Actions'].map((h) => (
                     <th key={h} className={`px-4 py-3 text-xs font-semibold uppercase text-gray-500 ${h === 'Attempt' ? 'text-center' : 'text-left'}`}>{h}</th>
                   ))}
                 </tr>
@@ -767,6 +790,15 @@ export default function Students() {
                     </td>
                     <td className="px-4 py-3">
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${STATUS_COLORS[s.status]}`}>{s.status}</span>
+                    </td>
+                    <td className="px-4 py-3">
+                      {s.funnelStage ? (
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                          s.funnelStage === 'Admission Closed' ? 'bg-green-100 text-green-700' :
+                          s.funnelStage === 'Lead Interested'  ? 'bg-blue-100 text-blue-700' :
+                          'bg-orange-100 text-orange-700'
+                        }`}>{s.funnelStage}</span>
+                      ) : <span className="text-gray-300 text-xs">—</span>}
                     </td>
                     <td className="px-4 py-3 text-center">
                       {s.finalInterview?.result === 'Pass' ? (
@@ -871,6 +903,13 @@ export default function Students() {
                   s.formSource === 'btech' ? 'bg-blue-100 text-blue-700' :
                   s.formSource === 'ssism' ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-600'
                 }`}>{s.formSource === 'btech' ? 'B.Tech' : s.formSource === 'ssism' ? 'SSISM' : 'Manual'}</span>
+              )}
+              {s.funnelStage && (
+                <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
+                  s.funnelStage === 'Admission Closed' ? 'bg-green-100 text-green-700' :
+                  s.funnelStage === 'Lead Interested'  ? 'bg-blue-100 text-blue-700' :
+                  'bg-orange-100 text-orange-700'
+                }`}>{s.funnelStage}</span>
               )}
               {s.finalInterview?.result === 'Pass' ? (
                 <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700">✓ Final Cleared</span>

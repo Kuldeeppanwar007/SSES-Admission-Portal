@@ -5,7 +5,7 @@ const xlsx = require('xlsx');
 // Get all students (admin/manager = all, track_incharge = own track)
 const getStudents = async (req, res) => {
   try {
-    const { track, town, status, search, formSource, interviewFilter, page = 1, limit = 20 } = req.query;
+    const { track, town, status, search, formSource, interviewFilter, funnelStage, page = 1, limit = 20 } = req.query;
     const filter = {};
     const _limit = Math.min(Number(limit), 50); // Increased default limit
     const _page = Number(page);
@@ -34,6 +34,7 @@ const getStudents = async (req, res) => {
     }
 
     if (formSource) filter.formSource = formSource;
+    if (funnelStage) filter.funnelStage = funnelStage;
 
     // Optimize interview filter
     if (interviewFilter === 'finalCleared') {
@@ -71,7 +72,7 @@ const getStudents = async (req, res) => {
     const [total, students] = await Promise.all([
       Student.countDocuments(filter),
       Student.find(filter)
-        .select('name fatherName track trackName village mobileNo formSource status finalInterview createdAt') // Select only needed fields
+        .select('name fatherName track trackName village mobileNo formSource status funnelStage finalInterview createdAt') // Select only needed fields
         .populate('addedBy', 'name')
         .sort({ createdAt: -1 })
         .skip((_page - 1) * _limit)
