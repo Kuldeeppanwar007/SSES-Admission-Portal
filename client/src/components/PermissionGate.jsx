@@ -8,15 +8,7 @@ import { registerPlugin } from '@capacitor/core';
 
 const LocationTracking = registerPlugin('LocationTracking');
 
-const PERMISSIONS = [
-  {
-    key: 'battery',
-    label: 'Background Activity',
-    reason: 'Required to track attendance even when app is in background.',
-    check: async () => LocationTracking.checkBatteryOptimization(),
-    request: async () => { await LocationTracking.requestBatteryOptimization(); },
-    granted: (s) => s.granted === true,
-  },
+const REQUIRED_PERMISSIONS = [
   {
     key: 'location',
     label: 'Location',
@@ -43,31 +35,43 @@ const PERMISSIONS = [
   },
 ];
 
+// Battery optimization — optional, non-blocking
+const OPTIONAL_PERMISSIONS = [
+  {
+    key: 'battery',
+    label: 'Background Activity',
+    reason: 'Required to track attendance even when app is in background.',
+    request: async () => { try { await LocationTracking.requestBatteryOptimization(); } catch { } },
+  },
+];
+
+const PERMISSIONS = [...OPTIONAL_PERMISSIONS, ...REQUIRED_PERMISSIONS];
+
 async function checkAllGranted() {
   try {
-    const results = await Promise.all(PERMISSIONS.map((p) => p.check()));
-    return PERMISSIONS.every((p, i) => p.granted(results[i]));
+    const results = await Promise.all(REQUIRED_PERMISSIONS.map((p) => p.check()));
+    return REQUIRED_PERMISSIONS.every((p, i) => p.granted(results[i]));
   } catch {
     return false;
   }
 }
 
-// Request permissions one by one so Android shows each dialog sequentially
 async function requestAllSequentially(onBatteryRequested) {
-  for (const p of PERMISSIONS) {
-    try {
-      if (p.key === 'battery') {
-        await p.request();
-        // Battery dialog is a system activity — wait for appStateChange to recheck
-        await onBatteryRequested();
-      } else {
-        await p.request();
-      }
-    } catch { /* ignore */ }
+  // Battery optional — request karo but block mat karo
+  try {
+    await LocationTracking.requestBatteryOptimization();
+    await onBatteryRequested();
+  } catch { }
+  // Required permissions
+  for (const p of REQUIRED_PERMISSIONS) {
+    try { await p.request(); } catch { }
   }
 }
 
 export default function PermissionGate({ children }) {
+  // TODO: Re-enable after testing phase
+  if (Capacitor.isNativePlatform()) return children;
+
   const [status, setStatus] = useState('checking');
 
   useEffect(() => {
