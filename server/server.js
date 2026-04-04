@@ -33,13 +33,14 @@ app.options('*', cors());
 app.use(express.json());
 app.use(cookieParser());
 
-// Global rate limit — poore API pe 200 requests per 15 min per IP
+// Global rate limit — poore API pe 500 requests per 15 min per IP
 app.use(rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 200,
+  max: 1000,
   message: { message: 'Too many requests. Try again later.' },
   standardHeaders: true,
   legacyHeaders: false,
+  skip: (req) => req.path.startsWith('/api/auth/login') || req.path.startsWith('/api/auth/refresh'),
 }));
 
 // Login — max 10 attempts per 15 min per IP
@@ -51,10 +52,10 @@ app.use('/api/auth/login', rateLimit({
   legacyHeaders: false,
 }));
 
-// Refresh token — max 30 attempts per 15 min per IP
+// Refresh token — max 60 attempts per 15 min per IP
 app.use('/api/auth/refresh', rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 30,
+  max: 120,
   message: { message: 'Too many refresh attempts. Try again later.' },
   standardHeaders: true,
   legacyHeaders: false,
