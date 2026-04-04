@@ -9,11 +9,7 @@ import { Geolocation } from '@capacitor/geolocation';
 
 async function checkLocationPermission() {
   try {
-    if (!Capacitor.isNativePlatform()) {
-      if (!navigator.geolocation) return false;
-      const result = await navigator.permissions.query({ name: 'geolocation' });
-      return result.state === 'granted';
-    }
+    if (!Capacitor.isNativePlatform()) return true; // Browser pe block nahi karna
     const status = await Geolocation.checkPermissions();
     return status.location === 'granted';
   } catch {
