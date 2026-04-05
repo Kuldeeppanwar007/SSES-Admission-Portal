@@ -1,10 +1,10 @@
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import api from '../../api/axios';
 import { TRACKS, STATUSES, STATUS_COLORS, TRACK_TOWNS, TOWN_TO_MAIN_TRACK } from '../../utils/constants';
 import useAuthStore from '../../store/authStore';
 import toast from 'react-hot-toast';
-import { FiPlus, FiUpload, FiSearch, FiEdit2, FiDownload, FiFilter, FiSlash, FiClipboard, FiExternalLink } from 'react-icons/fi';
+import { FiPlus, FiUpload, FiSearch, FiEdit2, FiDownload, FiFilter, FiSlash, FiClipboard, FiExternalLink, FiChevronDown } from 'react-icons/fi';
 import DatePicker from '../../components/DatePicker';
 import { isOnline, cacheStudents, getCachedStudents } from '../../utils/offlineQueue';
 import { usePerformanceMonitor, useDebounce } from '../../hooks/usePerformance';
@@ -287,6 +287,14 @@ export default function Students() {
   const [exporting, setExporting] = useState(false);
   const [interviewStudent, setInterviewStudent] = useState(null);
   const [searchTimeout, setSearchTimeout] = useState(null);
+  const [mobileActionsOpen, setMobileActionsOpen] = useState(false);
+  const mobileActionsRef = useRef(null);
+
+  useEffect(() => {
+    const handler = (e) => { if (mobileActionsRef.current && !mobileActionsRef.current.contains(e.target)) setMobileActionsOpen(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
   
   // Save state to localStorage whenever it changes
   useEffect(() => {
@@ -553,42 +561,52 @@ export default function Students() {
         </div>
       </div>
 
-      {/* Mobile — Export + Forms buttons (full width grid) */}
-      <div className="md:hidden grid grid-cols-2 gap-2 mb-3">
+      {/* Mobile — Actions dropdown */}
+      <div className="md:hidden mb-3 flex gap-2">
         {selected.length > 0 ? (
           <button onClick={() => handleExport(selected)} disabled={exporting}
-            className="flex items-center justify-center gap-1 bg-primary text-white py-2 rounded-lg text-sm font-medium disabled:opacity-60 col-span-2">
+            className="flex-1 flex items-center justify-center gap-1 bg-primary text-white py-2 rounded-lg text-sm font-medium disabled:opacity-60">
             <FiDownload size={13} /> Export ({selected.length})
           </button>
         ) : (
           <button onClick={() => handleExport([])} disabled={exporting}
-            className="flex items-center justify-center gap-1 bg-primary text-white py-2 rounded-lg text-sm font-medium disabled:opacity-60 col-span-2">
-            <FiDownload size={13} /> {exporting ? 'Exporting...' : 'Export All'}
+            className="flex-1 flex items-center justify-center gap-1 bg-primary text-white py-2 rounded-lg text-sm font-medium disabled:opacity-60">
+            <FiDownload size={13} /> {exporting ? 'Exporting...' : 'Export'}
           </button>
         )}
         {!isDisabledTab && (
-          <>
-            <button onClick={handleDownloadTemplate}
-              className="flex items-center justify-center gap-1 border border-primary text-primary py-2 rounded-lg text-sm font-medium hover:bg-orange-50">
-              <FiDownload size={13} /> Excel
+          <div className="relative flex-1" ref={mobileActionsRef}>
+            <button onClick={() => setMobileActionsOpen(o => !o)}
+              className="w-full flex items-center justify-center gap-1 border border-primary text-primary px-4 py-2 rounded-lg text-sm font-medium hover:bg-orange-50">
+              Actions <FiChevronDown size={14} className={`transition-transform ${mobileActionsOpen ? 'rotate-180' : ''}`} />
             </button>
-            <button onClick={handleDownloadCSVTemplate}
-              className="flex items-center justify-center gap-1 border border-primary text-primary py-2 rounded-lg text-sm font-medium hover:bg-orange-50">
-              <FiDownload size={13} /> CSV
-            </button>
-            <label className="flex items-center justify-center gap-1 bg-primary text-white py-2 rounded-lg text-sm font-medium cursor-pointer hover:bg-primary-dark col-span-2">
-              <FiUpload size={13} /> Bulk Upload (Excel/CSV)
-              <input type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleBulkUpload} />
-            </label>
-            <a href="https://central.ssism.org/self_registration" target="_blank" rel="noopener noreferrer"
-              className="flex items-center justify-center gap-1 bg-primary text-white py-2 rounded-lg text-sm font-medium">
-              <FiExternalLink size={13} /> SSISM
-            </a>
-            <a href="https://ssec.ssism.org/apply" target="_blank" rel="noopener noreferrer"
-              className="flex items-center justify-center gap-1 bg-primary text-white py-2 rounded-lg text-sm font-medium">
-              <FiExternalLink size={13} /> SSEC
-            </a>
-          </>
+            {mobileActionsOpen && (
+              <div className="absolute right-0 mt-1 w-52 bg-white rounded-xl shadow-lg border border-gray-100 py-1 z-50">
+                <button onClick={() => { handleDownloadTemplate(); setMobileActionsOpen(false); }}
+                  className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-orange-50 hover:text-primary">
+                  <FiDownload size={14} /> Excel Template
+                </button>
+                <button onClick={() => { handleDownloadCSVTemplate(); setMobileActionsOpen(false); }}
+                  className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-orange-50 hover:text-primary">
+                  <FiDownload size={14} /> CSV Template
+                </button>
+                <label className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-orange-50 hover:text-primary cursor-pointer">
+                  <FiUpload size={14} /> Bulk Upload
+                  <input type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={(e) => { handleBulkUpload(e); setMobileActionsOpen(false); }} />
+                </label>
+                <a href="https://central.ssism.org/self_registration" target="_blank" rel="noopener noreferrer"
+                  onClick={() => setMobileActionsOpen(false)}
+                  className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-orange-50 hover:text-primary">
+                  <FiExternalLink size={14} /> SSISM Form
+                </a>
+                <a href="https://ssec.ssism.org/apply" target="_blank" rel="noopener noreferrer"
+                  onClick={() => setMobileActionsOpen(false)}
+                  className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-orange-50 hover:text-primary">
+                  <FiExternalLink size={14} /> SSEC Form
+                </a>
+              </div>
+            )}
+          </div>
         )}
       </div>
 
