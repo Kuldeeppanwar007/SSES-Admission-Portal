@@ -35,6 +35,9 @@ const getStudents = async (req, res) => {
 
     if (formSource) filter.formSource = formSource;
 
+    // Funnel stage filter
+    if (req.query.funnelStage) filter.funnelStage = req.query.funnelStage;
+
     // Optimize interview filter
     if (interviewFilter === 'finalCleared') {
       filter['finalInterview.result'] = 'Pass';
@@ -163,24 +166,29 @@ const getSubjectPoints = async (track, subject) => {
 const FUNNEL_POINTS = {
   'Call Completed':  5,
   'Lead Interested': 10,
+  'Call Not Received': 5,
+  'Wrong Number':    5,
+  'Switch Off':      5,
   // 'Admission Closed' ke points ab Target model se aayenge (per subject)
 };
+
+// Naye calling stages jo sirf remark ke saath points denge
+const CALLING_ONLY_STAGES = ['Call Not Received', 'Wrong Number', 'Switch Off'];
 
 // Funnel points get karo — Admission Closed ke liye Target se, baaki hardcoded
 const getFunnelPoints = async (funnelStage, track, subject) => {
   if (funnelStage === 'Admission Closed') {
-    // Target model mein 'Admission Closed' subject ke liye points check karo
-    // Agar nahi mila to 100 default
     const Target = require('../models/Target');
     const mainTrack = resolveMainTrack(track);
     const t = await Target.findOne({ track: mainTrack, subject: 'Admission Closed' });
     return t?.points ?? 100;
   }
+  // Naye calling stages — sirf remark ke saath points milenge (check updateStudent mein hoga)
   return FUNNEL_POINTS[funnelStage] || 0;
 };
 
 const ALLOWED_FUNNEL = {
-  'Calling':  ['Call Completed', 'Lead Interested'],
+  'Calling':  ['Call Completed', 'Lead Interested', 'Call Not Received', 'Wrong Number', 'Switch Off'],
   'Admitted': ['Admission Closed'],
 };
 
@@ -270,7 +278,6 @@ const updateStudent = async (req, res) => {
     pointsDelta = 0;
   } else {
     // Normal (track nahi badla) — existing logic
-    const newFunnel = updates.funnelStage !== undefined ? updates.funnelStage : prevFunnel;
     const awardedFunnelStages = student.awardedFunnelStages || [];
 
     // Subject admission points — status Admitted ho ya subject change ho Admitted state mein
@@ -283,12 +290,20 @@ const updateStudent = async (req, res) => {
     if (leavingAdmitted && student.subject)
       pointsDelta -= await getSubjectPoints(newTrack, student.subject);
 
-  // Funnel stage points — sirf ek baar per stage per student
-    // NOTE: becomingAdmitted ke saath bhi funnel check karo — dono ek saath aa sakte hain
+  // Funnel stage points — ek time pe sirf ek active stage
     const effectiveFunnel = updates.funnelStage !== undefined ? updates.funnelStage : prevFunnel;
-    if (effectiveFunnel && effectiveFunnel !== prevFunnel && !awardedFunnelStages.includes(effectiveFunnel)) {
-      pointsDelta += await getFunnelPoints(effectiveFunnel, newTrack || prevMainTrack, subjectForPoints);
-      await Student.findByIdAndUpdate(req.params.id, { $addToSet: { awardedFunnelStages: effectiveFunnel } });
+    if (effectiveFunnel !== prevFunnel) {
+      // Purani stage ke points revert karo
+      if (prevFunnel && awardedFunnelStages.includes(prevFunnel)) {
+        const prevFunnelPts = await getFunnelPoints(prevFunnel, newTrack || prevMainTrack, subjectForPoints);
+        pointsDelta -= prevFunnelPts;
+        await Student.findByIdAndUpdate(req.params.id, { $pull: { awardedFunnelStages: prevFunnel } });
+      }
+      // Nayi stage ke points add karo
+      if (effectiveFunnel) {
+        pointsDelta += await getFunnelPoints(effectiveFunnel, newTrack || prevMainTrack, subjectForPoints);
+        await Student.findByIdAndUpdate(req.params.id, { $addToSet: { awardedFunnelStages: effectiveFunnel } });
+      }
     }
 
     // Calling status remark points — sirf ek baar per student, flat 5 pts

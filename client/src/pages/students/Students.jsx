@@ -246,6 +246,7 @@ export default function Students() {
             search: parsed.filters?.search || '',
             formSource: parsed.filters?.formSource || '',
             interviewFilter: parsed.filters?.interviewFilter || '',
+            funnelStage: parsed.filters?.funnelStage || '',
           },
           showFilters: parsed.showFilters || !!(urlTrack || urlStatus)
         };
@@ -264,6 +265,7 @@ export default function Students() {
         search: '',
         formSource: '',
         interviewFilter: '',
+        funnelStage: '',
       },
       showFilters: !!(urlTrack || urlStatus)
     };
@@ -354,6 +356,7 @@ export default function Students() {
         status: filters.status,
         town: filters.town,
         formSource: filters.formSource,
+        funnelStage: filters.funnelStage,
         interviewFilter: filters.interviewFilter,
         search: debouncedSearch,
         ...(tab === 'disabled' ? { status: 'Disabled' } : {}) 
@@ -406,7 +409,7 @@ export default function Students() {
   const switchTab = (t) => { 
     setTab(t); 
     setPage(1); 
-    setFilters({ track: '', status: '', town: '', search: '', formSource: '', interviewFilter: '' }); 
+    setFilters({ track: '', status: '', town: '', search: '', formSource: '', interviewFilter: '', funnelStage: '' }); 
     setSelected([]);
     setHasMore(false);
     // Clear saved state when switching tabs
@@ -668,6 +671,17 @@ export default function Students() {
               <option value="">All Interviews</option>
               <option value="hasAttempts">Has Attempts</option>
               <option value="finalCleared">Final Cleared</option>
+            </select>
+            <select value={filters.funnelStage} onChange={(e) => { 
+              const newFilters = { ...filters, funnelStage: e.target.value };
+              setFilters(newFilters); 
+              setPage(1); 
+            }}
+              className="flex-1 min-w-32 border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none">
+              <option value="">All Funnel Stages</option>
+              {['Call Completed', 'Lead Interested', 'Admission Closed', 'Call Not Received', 'Wrong Number', 'Switch Off'].map((s) => (
+                <option key={s} value={s}>{s}</option>
+              ))}
             </select>
           </div>
         )}
