@@ -84,6 +84,17 @@ router.post('/recalculate-points', protect, authorizeRoles('admin'), async (req,
       'BBA': [130, 143, 163], 'Bcom': [130, 143, 163],
       'Bio': [120, 132, 150], 'Micro': [120, 132, 150],
     };
+    const FUNNEL_POINTS = {
+      'Call Completed': 5, 'Lead Interested': 10,
+      'Call Not Received': 5, 'Wrong Number': 5, 'Switch Off': 5,
+      'Admission Closed': 100,
+    };
+    const TOWN_TO_MAIN_TRACK = {
+      'Harda': 'Harda', 'Timarni': 'Harda', 'Seoni Malwa': 'Harda',
+      'Khategaon': 'Khategaon', 'Nemawar': 'Khategaon', 'Sandalpur': 'Khategaon',
+      'Rehti': 'Rehti', 'Gopalpur': 'Rehti', 'Bherunda': 'Rehti', 'Narmadapuram': 'Rehti',
+      'Satwas': 'Satwas & Kannod', 'Kannod': 'Satwas & Kannod',
+    };
     const getSubjectPoints = (track, subject) => {
       const g = (TRACK_GROUP[track] || 1) - 1;
       return (SUBJECT_POINTS_BY_GROUP[subject] || [0, 0, 0])[g];
@@ -100,13 +111,13 @@ router.post('/recalculate-points', protect, authorizeRoles('admin'), async (req,
       pointsMap[track] = (pointsMap[track] || 0) + getSubjectPoints(track, subject);
     });
 
-    // Funnel points recalculate
-    const FUNNEL_POINTS = { 'Call Completed': 5, 'Lead Interested': 10, 'Admission Closed': 100 };
-    const funnelStudents = await Student.find({ awardedFunnelStages: { $exists: true, $ne: [] }, isDisabled: { $ne: true } });
-    funnelStudents.forEach(({ track, awardedFunnelStages }) => {
-      if (!track) return;
-      const pts = (awardedFunnelStages || []).reduce((s, f) => s + (FUNNEL_POINTS[f] || 0), 0);
-      pointsMap[track] = (pointsMap[track] || 0) + pts;
+    // Funnel points recalculate — sirf current active funnelStage ke points
+    const funnelStudents = await Student.find({ funnelStage: { $nin: ['', null] }, isDisabled: { $ne: true } });
+    funnelStudents.forEach(({ track, funnelStage }) => {
+      if (!track || !funnelStage) return;
+      const mainTrack = TOWN_TO_MAIN_TRACK[track] || track;
+      const pts = FUNNEL_POINTS[funnelStage] || (funnelStage === 'Admission Closed' ? 100 : 0);
+      pointsMap[mainTrack] = (pointsMap[mainTrack] || 0) + pts;
     });
 
     // Calling points recalculate

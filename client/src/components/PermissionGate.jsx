@@ -69,14 +69,11 @@ async function requestAllSequentially(onBatteryRequested) {
 }
 
 export default function PermissionGate({ children }) {
-  // TODO: Re-enable after testing phase
-  if (Capacitor.isNativePlatform()) return children;
-
   const [status, setStatus] = useState('checking');
 
   useEffect(() => {
-    if (!Capacitor.isNativePlatform()) { setStatus('granted'); return; }
-    checkAllGranted().then((ok) => setStatus(ok ? 'granted' : 'needed'));
+    // TODO: Re-enable after testing phase — abhi sab bypass
+    setStatus('granted');
   }, []);
 
   const recheck = async () => {

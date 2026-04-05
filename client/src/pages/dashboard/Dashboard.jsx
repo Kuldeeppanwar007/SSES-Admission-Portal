@@ -343,10 +343,7 @@ export default function Dashboard() {
           <p className="text-sm text-gray-500 mt-0.5">Overview of all admissions</p>
         </div>
         {user?.role === 'admin' && (
-          <button onClick={handleRecalculate}
-            className="flex items-center gap-1.5 text-xs border border-gray-200 text-gray-500 px-3 py-1.5 rounded-lg hover:border-primary hover:text-primary transition-colors">
-            🔄 Recalculate Points
-          </button>
+          <div />
         )}
       </div>
 
