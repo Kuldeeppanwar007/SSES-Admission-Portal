@@ -37,16 +37,18 @@ app.options('*', cors());
 app.use(express.json());
 app.use(cookieParser());
 
+const { ipKeyGenerator } = require('express-rate-limit');
+
 // Key: JWT se user ID nikalo (bina DB call), warna IP fallback
 const userOrIpKey = (req) => {
   try {
     const token = req.headers.authorization?.split(' ')[1] || req.cookies?.accessToken;
     if (token) {
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      return decoded.id || req.ip;
+      if (decoded.id) return decoded.id;
     }
   } catch {}
-  return req.ip;
+  return ipKeyGenerator(req);
 };
 
 // Global rate limit — 500 requests per 15 min per user/IP
