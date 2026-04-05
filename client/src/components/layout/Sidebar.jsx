@@ -23,8 +23,13 @@ export default function Sidebar({ open, onClose, collapsed, onToggle }) {
   const navigate = useNavigate();
   const location = useLocation();
   const [trackMenuOpen, setTrackMenuOpen] = useState(location.pathname.startsWith('/admin-track'));
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
 
-  const handleLogout = () => { logout(); navigate('/login'); };
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+    setShowLogoutModal(false);
+  };
   const links = navItems.filter((i) => {
     if (i.adminOnly) return user?.role === 'admin';
     if (i.trackOnly) return user?.role === 'track_incharge';
@@ -107,7 +112,7 @@ export default function Sidebar({ open, onClose, collapsed, onToggle }) {
             <p className="text-xs text-gray-400 mb-3">{user?.email}</p>
           </>
         )}
-        <button onClick={handleLogout}
+        <button onClick={() => setShowLogoutModal(true)}
           className={`flex items-center gap-2 text-gray-500 hover:text-primary transition-colors text-sm ${collapsed ? 'justify-center w-full' : ''}`}
           title={collapsed ? 'Logout' : ''}>
           <FiLogOut size={18} />
@@ -131,6 +136,31 @@ export default function Sidebar({ open, onClose, collapsed, onToggle }) {
           <aside className="relative w-64 bg-white h-full flex flex-col shadow-xl">
             {sidebarContent}
           </aside>
+        </div>
+      )}
+
+      {/* Logout Confirmation Modal */}
+      {showLogoutModal && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 px-6">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xs p-6 space-y-4">
+            <div className="flex flex-col items-center text-center gap-2">
+              <div className="w-12 h-12 rounded-full bg-orange-50 border border-orange-200 flex items-center justify-center">
+                <FiLogOut size={22} className="text-primary" />
+              </div>
+              <h3 className="text-base font-bold text-gray-800">Logout karna chahte hain?</h3>
+              <p className="text-sm text-gray-400">Aap portal se bahar ho jaayenge.</p>
+            </div>
+            <div className="flex gap-3">
+              <button onClick={() => setShowLogoutModal(false)}
+                className="flex-1 border border-gray-200 text-gray-600 py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-50 transition-colors">
+                Cancel
+              </button>
+              <button onClick={handleLogout}
+                className="flex-1 bg-primary text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-primary-dark transition-colors">
+                Logout
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </>

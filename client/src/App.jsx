@@ -1,7 +1,9 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import toast from 'react-hot-toast';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
+import { App as CapApp } from '@capacitor/app';
+import { Capacitor } from '@capacitor/core';
 import { setupOfflineSync } from './utils/offlineQueue';
 import Layout from './components/layout/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -21,6 +23,54 @@ import EditRequests from './pages/students/EditRequests';
 import TrackManager from './pages/settings/TrackManager';
 import ActivityLog from './pages/activity/ActivityLog';
 
+// Android back button handler
+function BackButtonHandler() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const lastBackPress = useRef(0);
+
+  const rootPaths = ['/dashboard', '/track-dashboard'];
+  const isRoot = rootPaths.includes(location.pathname);
+
+  // Web — browser back button on root page
+  useEffect(() => {
+    if (Capacitor.isNativePlatform()) return;
+    if (!isRoot) return;
+
+    window.history.pushState(null, '', window.location.href);
+    const handler = () => {
+      window.history.pushState(null, '', window.location.href);
+      // Custom modal nahi laga sakte popstate mein, toast use karo
+      toast('Browser back se bahar nahi ja sakte. Logout button use karein.', { icon: 'ℹ️', duration: 3000 });
+    };
+    window.addEventListener('popstate', handler);
+    return () => window.removeEventListener('popstate', handler);
+  }, [isRoot]);
+
+  // Native Android back button
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+
+    const handler = CapApp.addListener('backButton', () => {
+      if (isRoot) {
+        const now = Date.now();
+        if (now - lastBackPress.current < 2000) {
+          CapApp.exitApp();
+        } else {
+          lastBackPress.current = now;
+          toast('Press back again to exit', { icon: '👋', duration: 2000 });
+        }
+      } else {
+        navigate(-1);
+      }
+    });
+
+    return () => { handler.then(l => l.remove()); };
+  }, [isRoot, navigate]);
+
+  return null;
+}
+
 export default function App() {
   useEffect(() => {
     setupOfflineSync(({ synced }) => {
@@ -32,6 +82,7 @@ export default function App() {
     <BrowserRouter>
       <Toaster position="top-right" />
       <LocationBlocker />
+      <BackButtonHandler />
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
