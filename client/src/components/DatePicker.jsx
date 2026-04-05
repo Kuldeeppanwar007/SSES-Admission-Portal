@@ -32,7 +32,7 @@ export default function DatePicker({ value, onChange, max, min, label, className
   };
 
   const selectDate = (d) => {
-    const iso = d.toISOString().slice(0, 10);
+    const iso = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
     onChange(iso);
     setOpen(false);
   };

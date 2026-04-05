@@ -59,6 +59,22 @@ const saveLocation = async (req, res) => {
   if (lat < -90 || lat > 90 || lng < -180 || lng > 180)
     return res.status(400).json({ message: 'Invalid coordinates' });
 
+  // Last location check — 150m ke andar same jagah ho toh naya log mat banao
+  const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
+  const lastLog = await LocationLog.findOne({
+    user: req.user._id, status: 'ok', lat: { $ne: null },
+    timestamp: { $gte: todayStart }
+  }).sort({ timestamp: -1 });
+  if (lastLog) {
+    const dist = haversine(lastLog.lat, lastLog.lng, lat, lng);
+    if (dist < 150) {
+      await LocationLog.findByIdAndUpdate(lastLog._id, {
+        timestamp: timestamp ? new Date(Number(timestamp)) : new Date()
+      });
+      return res.status(201).json({ ok: true, skipped: true });
+    }
+  }
+
   await LocationLog.create({
     user: req.user._id,
     lat, lng,
