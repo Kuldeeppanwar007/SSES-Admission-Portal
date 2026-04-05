@@ -56,7 +56,6 @@ public class LocationWorker extends Worker {
 
             if (location == null) {
                 sendPingWithRefresh(apiUrl, null, -1, "unavailable");
-                showLocationOffNotif();
                 return Result.success();
             }
 
@@ -158,39 +157,6 @@ public class LocationWorker extends Worker {
             if (conn != null) conn.disconnect();
         }
         return null;
-    }
-
-    private void showLocationOffNotif() {
-        try {
-            android.app.NotificationManager nm =
-                (android.app.NotificationManager) getApplicationContext()
-                    .getSystemService(Context.NOTIFICATION_SERVICE);
-
-            // Delete old channel to force recreate with sound
-            nm.deleteNotificationChannel("location_alert");
-
-            android.app.NotificationChannel ch = new android.app.NotificationChannel(
-                "location_alert", "Location Alert", android.app.NotificationManager.IMPORTANCE_HIGH);
-            ch.enableVibration(true);
-            ch.setVibrationPattern(new long[]{0, 500, 200, 500, 200, 500});
-            ch.setSound(
-                android.media.RingtoneManager.getDefaultUri(android.media.RingtoneManager.TYPE_NOTIFICATION),
-                new android.media.AudioAttributes.Builder()
-                    .setUsage(android.media.AudioAttributes.USAGE_NOTIFICATION_EVENT)
-                    .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                    .build()
-            );
-            nm.createNotificationChannel(ch);
-
-            androidx.core.app.NotificationCompat.Builder b =
-                new androidx.core.app.NotificationCompat.Builder(getApplicationContext(), "location_alert")
-                    .setContentTitle("⚠️ Location Band Hai!")
-                    .setContentText("SSES Portal ke liye location on rakhen. Band rehne par attendance block ho sakti hai.")
-                    .setSmallIcon(android.R.drawable.ic_dialog_alert)
-                    .setPriority(androidx.core.app.NotificationCompat.PRIORITY_HIGH)
-                    .setAutoCancel(false);
-            nm.notify(102, b.build());
-        } catch (Exception ignored) {}
     }
 
     private void dismissLocationOffNotif() {

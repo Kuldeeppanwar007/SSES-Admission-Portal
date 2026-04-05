@@ -46,6 +46,7 @@ public class LocationService extends Service {
     private CancellationTokenSource     activeCts;
     private boolean                     isRunning = false;
     private long                        lastSentTime = 0;
+    private boolean                     mockNotifShown = false;
 
     @Override
     public void onCreate() {
@@ -194,7 +195,6 @@ public class LocationService extends Service {
         bgHandler.postDelayed(() -> {
             if (!cts.getToken().isCancellationRequested()) {
                 cts.cancel();
-                showLocationOffNotification();
                 sendUnavailablePing(token, apiUrl);
                 long elapsed = System.currentTimeMillis() - startTime;
                 scheduleNext(Math.max(0, INTERVAL_MS - elapsed));
@@ -211,7 +211,6 @@ public class LocationService extends Service {
                     long nextDelay = Math.max(0, INTERVAL_MS - elapsed);
 
                     if (location == null) {
-                        showLocationOffNotification();
                         sendUnavailablePing(token, apiUrl);
                     } else if (location.isFromMockProvider()) {
                         showMockLocationNotification();
@@ -225,14 +224,12 @@ public class LocationService extends Service {
                 })
                 .addOnFailureListener(e -> {
                     e.printStackTrace();
-                    showLocationOffNotification();
                     sendUnavailablePing(token, apiUrl);
                     long elapsed = System.currentTimeMillis() - startTime;
                     scheduleNext(Math.max(0, INTERVAL_MS - elapsed));
                 });
         } catch (SecurityException e) {
             e.printStackTrace();
-            showLocationOffNotification();
             sendUnavailablePing(token, apiUrl);
             scheduleNext(INTERVAL_MS);
         }
@@ -319,22 +316,13 @@ public class LocationService extends Service {
 
     // ─── Notifications ────────────────────────────────────────────────────────
 
-    private void showLocationOffNotification() {
-        Notification notif = new NotificationCompat.Builder(this, ALERT_CHANNEL_ID)
-            .setContentTitle("⚠️ Location Band Hai!")
-            .setContentText("SSES Portal ke liye location on rakhen. Band rehne par attendance block ho sakti hai.")
-            .setSmallIcon(android.R.drawable.ic_dialog_alert)
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .setAutoCancel(false)
-            .build();
-        getSystemService(NotificationManager.class).notify(ALERT_NOTIF_ID, notif);
-    }
-
     private void dismissLocationOffNotification() {
         getSystemService(NotificationManager.class).cancel(ALERT_NOTIF_ID);
     }
 
     private void showMockLocationNotification() {
+        if (mockNotifShown) return;
+        mockNotifShown = true;
         Notification notif = new NotificationCompat.Builder(this, ALERT_CHANNEL_ID)
             .setContentTitle("⚠️ Fake Location Detected!")
             .setContentText("Mock location app band karo. Fake location use karne par attendance block ho jayegi.")
@@ -346,6 +334,7 @@ public class LocationService extends Service {
     }
 
     private void dismissMockLocationNotification() {
+        mockNotifShown = false;
         getSystemService(NotificationManager.class).cancel(MOCK_NOTIF_ID);
     }
 
