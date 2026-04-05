@@ -1,7 +1,4 @@
 import axios from 'axios';
-import { Capacitor } from '@capacitor/core';
-
-const isNative = Capacitor.isNativePlatform();
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || 'https://sses-admission-portal-1.onrender.com/api',
@@ -38,11 +35,12 @@ api.interceptors.response.use(
       original._retry = true;
       isRefreshing = true;
       try {
+        const user = JSON.parse(localStorage.getItem('sses_user') || '{}');
         const { data } = await axios.post(
           `${import.meta.env.VITE_API_URL || 'https://sses-admission-portal-1.onrender.com/api'}/auth/refresh`,
-          {}, { withCredentials: true }
+          { refreshToken: user?.refreshToken || '' },
+          { withCredentials: true }
         );
-        const user = JSON.parse(localStorage.getItem('sses_user') || '{}');
         user.token = data.token;
         if (data.refreshToken) user.refreshToken = data.refreshToken;
         localStorage.setItem('sses_user', JSON.stringify(user));
