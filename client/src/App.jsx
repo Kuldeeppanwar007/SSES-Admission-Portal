@@ -22,6 +22,7 @@ import Attendance from './pages/attendance/Attendance';
 import EditRequests from './pages/students/EditRequests';
 import TrackManager from './pages/settings/TrackManager';
 import ActivityLog from './pages/activity/ActivityLog';
+import Profile from './pages/profile/Profile';
 
 // Android back button handler
 function BackButtonHandler() {
@@ -118,6 +119,7 @@ export default function App() {
             </ProtectedRoute>
           } />
           <Route path="/edit-requests" element={<EditRequests />} />
+          <Route path="/profile" element={<Profile />} />
           <Route path="/activity-log" element={
             <ProtectedRoute roles={['admin', 'track_incharge']}>
               <ActivityLog />

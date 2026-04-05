@@ -92,4 +92,22 @@ const getMe = async (req, res) => {
   res.json(req.user);
 };
 
-module.exports = { register, login, refreshToken, logout, getMe };
+const changePassword = async (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+  if (!currentPassword || !newPassword)
+    return res.status(400).json({ message: 'Current and new password required' });
+  if (newPassword.length < 6)
+    return res.status(400).json({ message: 'Password must be at least 6 characters' });
+
+  const user = await User.findById(req.user._id);
+  const isMatch = await user.matchPassword(currentPassword);
+  if (!isMatch) return res.status(400).json({ message: 'Current password is incorrect' });
+
+  user.password = newPassword;
+  user.refreshToken = null; // invalidate all sessions on all devices
+  await user.save();
+  res.clearCookie('refreshToken');
+  res.json({ message: 'Password updated successfully' });
+};
+
+module.exports = { register, login, refreshToken, logout, getMe, changePassword };
