@@ -83,7 +83,8 @@ const selfRegisterSchema = Joi.object({
   locationURL:         Joi.string().optional().allow('', null),
   payMode:             Joi.string().optional().allow('', null),
   paymentRequired:     Joi.alternatives().try(Joi.boolean(), Joi.string(), Joi.number()).optional().allow(null),
-  prkey:               Joi.string().optional().allow('', null),  // webhook secret in body
+  prkey:               Joi.string().optional().allow('', null),  // student external ID
+  webhookSecret:       Joi.string().optional().allow('', null),  // optional auth header in body
   batch:               Joi.alternatives().try(Joi.number(), Joi.string()).optional().allow(null, ''),
 });
 

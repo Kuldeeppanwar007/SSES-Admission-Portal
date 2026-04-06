@@ -1043,9 +1043,10 @@ const resolveTrack = (trackName, village) => {
 // Self-registration from external forms (webhook — secured by secret)
 const selfRegister = async (req, res) => {
   // Verify webhook secret — header se ya body ke prkey se
-  const secret = req.headers['x-webhook-secret'] || req.body.prkey;
-  if (!secret || secret !== process.env.WEBHOOK_SECRET)
+  const secret = req.headers['x-webhook-secret'] || req.body.webhookSecret;
+  if (secret && secret !== process.env.WEBHOOK_SECRET)
     return res.status(401).json({ message: 'Unauthorized' });
+  // Agar koi secret nahi aaya — self-register open endpoint hai, allow karo
 
   try {
     const {
@@ -1148,6 +1149,7 @@ const selfRegister = async (req, res) => {
       joinBatch:    Number(joinBatch || year) || null,
       pincode:      Number(pincode)      || null,
       isTop20:      Boolean(Number(isTop20)),
+      externalId:   prkey || null,
       ...(priority1 && { priority1 }),
       ...(priority2 && { priority2 }),
       ...(priority3 && { priority3 }),
