@@ -80,6 +80,9 @@ app.use('/api/auth/refresh', rateLimit({
   legacyHeaders: false,
 }));
 
+// Self-register — public endpoint, all origins allowed
+app.use('/api/students/self-register', cors({ origin: '*' }));
+
 app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/students', require('./routes/studentRoutes'));
 app.use('/api/users', require('./routes/userRoutes'));
