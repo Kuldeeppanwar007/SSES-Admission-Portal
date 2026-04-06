@@ -26,10 +26,13 @@ const selfRegisterSchema = Joi.object({
   firstName:           Joi.string().min(2).max(60).required(),
   lastName:            Joi.string().max(60).optional().allow(''),
   fathersName:         Joi.string().max(60).optional().allow(''),
-  mobile:              Joi.string().pattern(/^[6-9]\d{9}$/).required()
-                         .messages({ 'string.pattern.base': 'mobile must be a valid 10-digit Indian number' }),
+  fatherName:          Joi.string().max(60).optional().allow(''),  // alternate field name
+  mobile:              Joi.string().pattern(/^\d{10}$/).required()  // any 10-digit number
+                         .messages({ 'string.pattern.base': 'mobile must be a 10-digit number' }),
   email:               Joi.string().email().optional().allow('', null),
-  whatsappNumber:      Joi.string().pattern(/^[6-9]\d{9}$/).optional().allow(''),
+  whatsappNumber:      Joi.string().optional().allow('', null),
+  parentMobile:        Joi.string().optional().allow('', null),
+  parentMobil:         Joi.string().optional().allow('', null),  // typo variant
   address:             Joi.string().max(300).optional().allow(''),
   district:            Joi.string().max(60).optional().allow(''),
   village:             Joi.string().max(60).optional().allow(''),
@@ -41,6 +44,8 @@ const selfRegisterSchema = Joi.object({
   persentage12:        Joi.alternatives().try(Joi.number(), Joi.string()).optional().allow(null, ''),
   persentage10:        Joi.alternatives().try(Joi.number(), Joi.string()).optional().allow(null, ''),
   persentage11:        Joi.alternatives().try(Joi.number(), Joi.string()).optional().allow(null, ''),
+  percent10:           Joi.alternatives().try(Joi.number(), Joi.string()).optional().allow(null, ''),  // alternate
+  percent12:           Joi.alternatives().try(Joi.number(), Joi.string()).optional().allow(null, ''),  // alternate
   rollNumber12:        Joi.alternatives().try(Joi.number(), Joi.string()).optional().allow(null, ''),
   rollNumber10:        Joi.alternatives().try(Joi.number(), Joi.string()).optional().allow(null, ''),
   passout12:           Joi.string().max(10).optional().allow(''),
@@ -54,13 +59,17 @@ const selfRegisterSchema = Joi.object({
   priority2:           Joi.string().max(50).optional().allow(''),
   priority3:           Joi.string().max(50).optional().allow(''),
   branch:              Joi.string().optional().allow('', null),
+  course:              Joi.string().optional().allow('', null),  // alternate for branch
+  stream:              Joi.string().optional().allow('', null),  // alternate for school12Sub
   year:                Joi.string().optional().allow('', null),
   feesScheme:          Joi.string().optional().allow('', null),
   linkSource:          Joi.string().optional().allow('', null),
   trackName:           Joi.string().optional().allow('', null),
+  track:               Joi.string().optional().allow('', null),  // alternate for trackName
   joinBatch:           Joi.alternatives().try(Joi.number(), Joi.string()).optional().allow(null, ''),
   isTop20:             Joi.alternatives().try(Joi.boolean(), Joi.number(), Joi.string()).optional().allow(null, ''),
   regFees:             Joi.alternatives().try(Joi.number(), Joi.string()).optional().allow(null, ''),
+  tutionFee:           Joi.alternatives().try(Joi.number(), Joi.string()).optional().allow(null, ''),
   tuitionFee:          Joi.alternatives().try(Joi.number(), Joi.string()).optional().allow(null, ''),
   sRank:               Joi.string().optional().allow('', null),
   subject12:           Joi.string().optional().allow('', null),
@@ -68,11 +77,14 @@ const selfRegisterSchema = Joi.object({
   school12Sub:         Joi.string().optional().allow('', null),
   accRegFeesStatus:    Joi.string().optional().allow('', null),
   applicationType:     Joi.string().optional().allow('', null),
+  applicationTyp:      Joi.string().optional().allow('', null),  // typo variant
   createdBy:           Joi.string().optional().allow('', null),
   jsId:                Joi.string().optional().allow('', null),
   locationURL:         Joi.string().optional().allow('', null),
   payMode:             Joi.string().optional().allow('', null),
-  paymentRequired:     Joi.alternatives().try(Joi.boolean(), Joi.string()).optional().allow(null),
+  paymentRequired:     Joi.alternatives().try(Joi.boolean(), Joi.string(), Joi.number()).optional().allow(null),
+  prkey:               Joi.string().optional().allow('', null),  // webhook secret in body
+  batch:               Joi.alternatives().try(Joi.number(), Joi.string()).optional().allow(null, ''),
 });
 
 const addUserSchema = Joi.object({

@@ -143,6 +143,7 @@ const TOWN_TO_MAIN_TRACK = {
   'rehti':        'Rehti',
   'gopalpur':     'Rehti',
   'bherunda':     'Rehti',
+  'nasrullaganj': 'Rehti',
   'narmadapuram': 'Rehti',
   'satwas':       'Satwas & Kannod',
   'kannod':       'Satwas & Kannod',
@@ -1020,6 +1021,7 @@ const TOWN_TO_TRACK = {
   'sandalpur':   { track: 'Khategaon',       trackName: 'Sandalpur' },
   'gopalpur':    { track: 'Rehti',           trackName: 'Gopalpur' },
   'bherunda':    { track: 'Rehti',           trackName: 'Bherunda' },
+  'nasrullaganj':{ track: 'Rehti',           trackName: 'Bherunda' },
   'rehti':       { track: 'Rehti',           trackName: 'Rehti' },
   'narmadapuram':{ track: 'Rehti',           trackName: 'Narmadapuram' },
   'kannod':      { track: 'Satwas & Kannod', trackName: 'Kannod' },
@@ -1049,10 +1051,9 @@ const selfRegister = async (req, res) => {
     const {
       formSource, firstName, lastName, fathersName, mobile, email,
       whatsappNumber, address,
-      // SSISM form ke actual field names (central DB se aate hain)
       fatherName: fatherNameAlt,
       fathersName: fathersNameAlt,
-      fatherContactNumber, parentMobile,
+      fatherContactNumber, parentMobile, parentMobil,
       course, branch: branchField,
       percent10, persentage10: persentage10Field,
       percent12, persentage12: persentage12Field,
@@ -1087,23 +1088,21 @@ const selfRegister = async (req, res) => {
 
     const count = await Student.countDocuments();
 
-    // trackName — central DB 'trackName' ya 'track' field se aata hai (town name hota hai)
-    const resolvedTrackNameRaw = trackNameField || trackField || '';
+    // trackName — payload me 'track' ya 'trackName' field se aata hai (town name hota hai)
+    const resolvedTrackNameRaw = trackNameField || trackField || village || '';
     const mainTracks = ['Harda', 'Khategaon', 'Rehti', 'Satwas & Kannod'];
     
     let resolvedTrack = '';
     let resolvedTrackNameFinal = '';
     
     if (resolvedTrackNameRaw) {
-      // Check if it exactly matches one of the 4 main tracks
       if (mainTracks.includes(resolvedTrackNameRaw)) {
         resolvedTrack = resolvedTrackNameRaw;
-        resolvedTrackNameFinal = resolvedTrackNameRaw; // Set same value in town field
+        resolvedTrackNameFinal = resolvedTrackNameRaw;
       } else {
-        // Not exact match - resolve to main track and keep original as trackName
         const mapped = resolveTrack(resolvedTrackNameRaw, village);
         resolvedTrack = mapped?.track || '';
-        resolvedTrackNameFinal = resolvedTrackNameRaw; // Keep original as town name
+        resolvedTrackNameFinal = mapped?.trackName || resolvedTrackNameRaw;
       }
     }
 
@@ -1130,7 +1129,7 @@ const selfRegister = async (req, res) => {
       schoolName:  schoolName || '',
       branch:      branchField || course || '',
       school12Sub: school12SubField || stream || subject12 || '',
-      fatherContactNumber: fatherContactNumber || parentMobile || '',
+      fatherContactNumber: fatherContactNumber || parentMobile || parentMobil || '',
       linkSource:  linkSource || '',
       sRank:       sRank      || '',
       applicationType:  applicationType || applicationTyp || '',
@@ -1145,7 +1144,7 @@ const selfRegister = async (req, res) => {
       rollNumber12: Number(rollNumber12) || null,
       jeeScore:     Number(jeeScore)     || null,
       fatherIncome: Number(fatherIncome) || null,
-      regFees:      Number(regFees)      || null,
+      regFees:      Number(regFees || tutionFee) || null,
       joinBatch:    Number(joinBatch || year) || null,
       pincode:      Number(pincode)      || null,
       isTop20:      Boolean(Number(isTop20)),
