@@ -45,6 +45,7 @@ const selfRegisterSchema = Joi.object({
   persentage10:        Joi.alternatives().try(Joi.number(), Joi.string()).optional().allow(null, ''),
   persentage11:        Joi.alternatives().try(Joi.number(), Joi.string()).optional().allow(null, ''),
   percent10:           Joi.alternatives().try(Joi.number(), Joi.string()).optional().allow(null, ''),  // alternate
+  percent11:           Joi.alternatives().try(Joi.number(), Joi.string()).optional().allow(null, ''),  // alternate
   percent12:           Joi.alternatives().try(Joi.number(), Joi.string()).optional().allow(null, ''),  // alternate
   rollNumber12:        Joi.alternatives().try(Joi.number(), Joi.string()).optional().allow(null, ''),
   rollNumber10:        Joi.alternatives().try(Joi.number(), Joi.string()).optional().allow(null, ''),
