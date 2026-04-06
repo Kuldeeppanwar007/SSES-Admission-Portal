@@ -408,21 +408,50 @@ const getStatusHistory = async (req, res) => {
 const getActivityLog = async (req, res) => {
   try {
     const StatusHistory = require('../models/StatusHistory');
+    const { from, to, userId } = req.query;
     const filter = { 'changedFields.0': { $exists: true } };
 
     if (req.user.role === 'track_incharge') {
-      // Same track ke sabhi track_incharge users ke IDs nikalo
       const trackUsers = await User.find({ track: req.user.track, role: 'track_incharge' }).select('_id');
       filter.changedBy = { $in: trackUsers.map(u => u._id) };
+    } else if (userId) {
+      filter.changedBy = userId;
+    }
+
+    if (from || to) {
+      filter.createdAt = {};
+      if (from) filter.createdAt.$gte = new Date(from);
+      if (to) { const d = new Date(to); d.setHours(23,59,59,999); filter.createdAt.$lte = d; }
     }
 
     const history = await StatusHistory.find(filter)
-      .populate('changedBy', 'name role')
+      .populate('changedBy', 'name role track')
       .populate('student', 'name track')
       .sort({ createdAt: -1 })
-      .limit(200)
+      .limit(500)
       .lean();
-    res.json(history);
+
+    // Summary stats per user
+    const statsMap = {};
+    history.forEach(h => {
+      const uid = h.changedBy?._id?.toString();
+      if (!uid) return;
+      if (!statsMap[uid]) statsMap[uid] = {
+        userId: uid, name: h.changedBy.name,
+        role: h.changedBy.role, track: h.changedBy.track,
+        totalUpdates: 0, callingUpdates: 0,
+        statusChanges: 0, funnelChanges: 0, remarksAdded: 0,
+      };
+      const s = statsMap[uid];
+      s.totalUpdates++;
+      h.changedFields?.forEach(f => {
+        if (f.field === 'status') { s.statusChanges++; if (f.newValue === 'Calling') s.callingUpdates++; }
+        if (f.field === 'funnelStage') s.funnelChanges++;
+        if (f.field === 'remarks' && f.newValue) s.remarksAdded++;
+      });
+    });
+
+    res.json({ logs: history, stats: Object.values(statsMap).sort((a,b) => b.totalUpdates - a.totalUpdates) });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
