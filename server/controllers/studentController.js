@@ -908,6 +908,7 @@ const getTrackStats = async (req, res) => {
     const FUNNEL_POINTS_MAP = {
       'Call Completed': 5, 'Lead Interested': 10,
       'Admission Closed': 100,
+      'Call Not Received': 5, 'Wrong Number': 5, 'Switch Off': 5,
     };
     const funnelBreakdown = await Student.aggregate([
       { $match: { track, funnelStage: { $ne: '' }, funnelStage: { $exists: true } } },

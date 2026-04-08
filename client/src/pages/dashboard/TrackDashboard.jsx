@@ -20,6 +20,9 @@ const FUNNEL_COLORS = {
   'Visit Scheduled':  'bg-amber-50 text-amber-700 border-amber-100',
   'Visit Completed':  'bg-orange-50 text-primary border-orange-100',
   'Admission Closed': 'bg-emerald-50 text-emerald-700 border-emerald-100',
+  'Call Not Received':'bg-rose-50 text-rose-600 border-rose-100',
+  'Wrong Number':     'bg-red-50 text-red-600 border-red-100',
+  'Switch Off':       'bg-gray-50 text-gray-600 border-gray-200',
 };
 
 const SUBJECT_COLORS = {
