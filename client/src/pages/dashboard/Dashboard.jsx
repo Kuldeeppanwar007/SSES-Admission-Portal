@@ -13,7 +13,7 @@ const SSISM_BRANCHES = [
   { label: 'BSC (BT)',      subject: 'Bio',   limit: 60,  color: 'text-rose-600',   bg: 'bg-rose-50',   border: 'border-rose-200',   bar: 'bg-rose-500'   },
   { label: 'BSC (MICRO)',   subject: 'Micro', limit: 60,  color: 'text-cyan-600',   bg: 'bg-cyan-50',   border: 'border-cyan-200',   bar: 'bg-cyan-500'   },
   { label: 'B.COM (CA)',    subject: 'Bcom',  limit: 60,  color: 'text-emerald-600',bg: 'bg-emerald-50',border: 'border-emerald-200',bar: 'bg-emerald-500'},
-  { label: 'ITEG DIPLOMA',  subject: 'B.Tech',limit: null,color: 'text-blue-600',   bg: 'bg-blue-50',   border: 'border-blue-200',   bar: 'bg-blue-500'   },
+  { label: 'ITEG DIPLOMA',  subject: 'ITEG Diploma', limit: null,color: 'text-blue-600',   bg: 'bg-blue-50',   border: 'border-blue-200',   bar: 'bg-blue-500'   },
 ];
 
 function CapacityCard({ label, admitted, limit, color, bg, border, bar }) {
@@ -71,13 +71,19 @@ function SSISMCapacityCards({ trackWise }) {
 }
 
 const BTECH_BRANCHES = [
-  { label: 'CS',    key: 'CS',    limit: 60, color: 'text-blue-600',   bg: 'bg-blue-50',   border: 'border-blue-200',   bar: 'bg-blue-500'   },
-  { label: 'IT',    key: 'IT',    limit: 60, color: 'text-indigo-600', bg: 'bg-indigo-50', border: 'border-indigo-200', bar: 'bg-indigo-500' },
-  { label: 'AI/ML', key: 'AI/ML', limit: 60, color: 'text-purple-600', bg: 'bg-purple-50', border: 'border-purple-200', bar: 'bg-purple-500' },
-  { label: 'ECE',   key: 'ECE',   limit: 60, color: 'text-teal-600',   bg: 'bg-teal-50',   border: 'border-teal-200',   bar: 'bg-teal-500'   },
+  { label: 'B.Tech (CS)',    subject: 'B.Tech(CS)',    limit: 60, color: 'text-blue-600',   bg: 'bg-blue-50',   border: 'border-blue-200',   bar: 'bg-blue-500'   },
+  { label: 'B.Tech (IT)',    subject: 'B.Tech(IT)',    limit: 60, color: 'text-indigo-600', bg: 'bg-indigo-50', border: 'border-indigo-200', bar: 'bg-indigo-500' },
+  { label: 'B.Tech (ECE)',   subject: 'B.Tech(ECE)',   limit: 60, color: 'text-teal-600',   bg: 'bg-teal-50',   border: 'border-teal-200',   bar: 'bg-teal-500'   },
+  { label: 'B.Tech (AI/ML)', subject: 'B.Tech(AI/ML)', limit: 60, color: 'text-purple-600', bg: 'bg-purple-50', border: 'border-purple-200', bar: 'bg-purple-500' },
 ];
 
-function BTechCapacityCards({ btechByBranch }) {
+function BTechCapacityCards({ trackWise }) {
+  const admittedBySubject = {};
+  (trackWise || []).forEach(({ subjects }) => {
+    (subjects || []).forEach(({ subject, admitted }) => {
+      admittedBySubject[subject] = (admittedBySubject[subject] || 0) + (admitted || 0);
+    });
+  });
   return (
     <div>
       <div className="flex items-center gap-2 mb-3">
@@ -86,7 +92,7 @@ function BTechCapacityCards({ btechByBranch }) {
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {BTECH_BRANCHES.map((b) => (
-          <CapacityCard key={b.label} {...b} admitted={btechByBranch?.[b.key] || 0} />
+          <CapacityCard key={b.label} {...b} admitted={admittedBySubject[b.subject] || 0} />
         ))}
       </div>
     </div>
@@ -94,12 +100,15 @@ function BTechCapacityCards({ btechByBranch }) {
 }
 
 const SUBJECT_COLORS = {
-  'B.Tech': 'bg-blue-100 text-blue-700',
-  'BCA':    'bg-violet-100 text-violet-700',
-  'BBA':    'bg-amber-100 text-amber-700',
-  'Bcom':   'bg-emerald-100 text-emerald-700',
-  'Bio':    'bg-rose-100 text-rose-700',
-  'Micro':  'bg-cyan-100 text-cyan-700',
+  'B.Tech(CS)': 'bg-blue-100 text-blue-700',
+  'B.Tech(IT)': 'bg-indigo-100 text-indigo-700',
+  'B.Tech(ECE)':'bg-teal-100 text-teal-700',
+  'AI/ML':      'bg-purple-100 text-purple-700',
+  'BCA':        'bg-violet-100 text-violet-700',
+  'BBA':        'bg-amber-100 text-amber-700',
+  'Bcom':       'bg-emerald-100 text-emerald-700',
+  'Bio':        'bg-rose-100 text-rose-700',
+  'Micro':      'bg-cyan-100 text-cyan-700',
 };
 
 const STAT_META = [
@@ -110,6 +119,7 @@ const STAT_META = [
   { key: 'disabled', label: 'Disabled',         icon: FiSlash,       iconBg: 'bg-gray-100',    iconColor: 'text-gray-400',   text: 'text-gray-500' },
 ];
 
+const BTECH_SUBJECTS = ['B.Tech(CS)', 'B.Tech(IT)', 'B.Tech(ECE)', 'B.Tech(AI/ML)'];
 const SUBJECTS = ['B.Tech', 'BCA', 'BBA', 'Bcom', 'Bio', 'Micro'];
 const SUBJECT_LABELS = { 'B.Tech': 'BTech', 'BCA': 'BCA', 'BBA': 'BBA', 'Bcom': 'BCom', 'Bio': 'Bio/BSc', 'Micro': 'Micro' };
 
@@ -168,7 +178,13 @@ function PointsTable({ trackWise }) {
             <tbody className="divide-y divide-gray-50">
               {tracks.map(({ track, subjects, points, admissionPoints }) => {
                 const subjectMap = {};
-                (subjects || []).forEach(({ subject, admitted }) => { subjectMap[subject] = admitted || 0; });
+                (subjects || []).forEach(({ subject, admitted }) => {
+                  if (BTECH_SUBJECTS.includes(subject)) {
+                    subjectMap['B.Tech'] = (subjectMap['B.Tech'] || 0) + (admitted || 0);
+                  } else {
+                    subjectMap[subject] = (subjectMap[subject] || 0) + (admitted || 0);
+                  }
+                });
                 return (
                   <tr key={track} className="hover:bg-orange-50/30 transition-colors">
                     <td className="px-5 py-3 font-bold text-gray-800 whitespace-nowrap">
@@ -378,7 +394,7 @@ export default function Dashboard() {
       <SSISMCapacityCards trackWise={stats.trackWise || []} />
 
       {/* B.Tech Branch Capacity */}
-      <BTechCapacityCards btechByBranch={stats.btechByBranch || {}} />
+      <BTechCapacityCards trackWise={stats.trackWise || []} />
 
       {/* Points Table */}
       {(stats.trackWise || []).length > 0 && (

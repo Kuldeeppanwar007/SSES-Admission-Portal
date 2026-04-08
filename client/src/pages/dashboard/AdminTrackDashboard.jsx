@@ -6,12 +6,15 @@ import { TRACKS, MAIN_TRACKS, TRACK_TOWNS } from '../../utils/constants';
 import { FiUsers, FiFileText, FiAward, FiXCircle, FiTarget, FiSlash, FiChevronDown, FiTrendingUp } from 'react-icons/fi';
 
 const SUBJECT_COLORS = {
-  'B.Tech': 'bg-blue-100 text-blue-700',
-  'BCA':    'bg-violet-100 text-violet-700',
-  'BBA':    'bg-amber-100 text-amber-700',
-  'Bcom':   'bg-emerald-100 text-emerald-700',
-  'Bio':    'bg-rose-100 text-rose-700',
-  'Micro':  'bg-cyan-100 text-cyan-700',
+  'B.Tech(CS)': 'bg-blue-100 text-blue-700',
+  'B.Tech(IT)': 'bg-indigo-100 text-indigo-700',
+  'B.Tech(ECE)':'bg-teal-100 text-teal-700',
+  'AI/ML':      'bg-purple-100 text-purple-700',
+  'BCA':        'bg-violet-100 text-violet-700',
+  'BBA':        'bg-amber-100 text-amber-700',
+  'Bcom':       'bg-emerald-100 text-emerald-700',
+  'Bio':        'bg-rose-100 text-rose-700',
+  'Micro':      'bg-cyan-100 text-cyan-700',
 };
 
 const STATUS_COLORS = {

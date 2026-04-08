@@ -82,6 +82,11 @@ const studentSchema = new mongoose.Schema({
   receiptS3Url:         { type: String, default: null },
   externalId:           { type: String, default: null }, // id from external SQL DB
   formSource:           { type: String, enum: ['btech', 'ssism', 'manual', null], default: null },
+  admissionType: {
+    type: String,
+    enum: ['SNS', 'SVS', 'Shri Ram', 'Full Fees', null],
+    default: null,
+  },
   finalInterview: {
     round:   { type: Number, default: null },
     remarks: { type: String, default: '' },

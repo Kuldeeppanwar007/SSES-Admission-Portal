@@ -141,11 +141,9 @@ const handleViewHistory = async () => {
     },
     {
       title: 'B.Tech Preferences',
-      show: !!(s.priority1 || s.priority2 || s.priority3),
+      show: !!(s.priority1 || s.branch),
       fields: [
-        ['Priority 1', fmt(s.priority1)],
-        ['Priority 2', fmt(s.priority2)],
-        ['Priority 3', fmt(s.priority3)],
+        ['Branch', fmt(s.branch || s.priority1)],
       ],
     },
     {

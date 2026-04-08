@@ -208,10 +208,10 @@ const updateStudent = async (req, res) => {
   const prevTrack  = student.track || '';
 
   // Whitelist — sirf allowed fields accept karo, raw req.body directly use mat karo
-  const ALLOWED_FIELDS = ['status', 'remarks', 'funnelStage', 'subject',
+  const ALLOWED_FIELDS = ['status', 'remarks', 'funnelStage', 'subject', 'admissionType',
     'name', 'fatherName', 'track', 'mobileNo', 'whatsappNo', 'fullAddress', 'otherTrack',
     'formSource', 'email', 'schoolName', 'district', 'village', 'whatsappNumber',
-    'priority1', 'priority2', 'priority3', 'jeeScore', 'persentage12', 'persentage10',
+    'jeeScore', 'persentage12', 'persentage10',
     'persentage11', 'branch', 'year', 'joinBatch', 'feesScheme', 'category', 'gender',
     'school12Sub', 'dob', 'aadharNo', 'fatherOccupation', 'fatherIncome',
     'fatherContactNumber', 'pincode', 'tehsil', 'trackName',
@@ -946,6 +946,8 @@ const getStats = async (req, res) => {
     const disabled = await Student.countDocuments({ isDisabled: true });
     const unassigned = await Student.countDocuments({ $or: [{ track: '' }, { track: null }, { track: { $exists: false } }] });
 
+    const BTECH_SUBJECTS = ['B.Tech(CS)', 'B.Tech(IT)', 'B.Tech(ECE)', 'B.Tech(AI/ML)'];
+
     const trackSubjectAdmitted = await Student.aggregate([
       { $match: { status: 'Admitted' } },
       { $group: { _id: { track: '$track', subject: '$subject' }, admitted: { $sum: 1 } } },
@@ -954,7 +956,7 @@ const getStats = async (req, res) => {
     const targets = await Target.find({});
 
     const trackMap = {};
-    const pointsPerSubject = {}; // track -> subject -> points per admission
+    const pointsPerSubject = {};
     targets.forEach(({ track, subject, target, points: pts }) => {
       if (!trackMap[track]) trackMap[track] = { subjects: {} };
       trackMap[track].subjects[subject] = { target, admitted: 0 };
@@ -966,7 +968,7 @@ const getStats = async (req, res) => {
       const { track, subject } = _id;
       if (!trackMap[track]) trackMap[track] = { subjects: {} };
       if (!trackMap[track].subjects[subject]) trackMap[track].subjects[subject] = { target: 0, admitted: 0 };
-      trackMap[track].subjects[subject].admitted = admitted;
+      trackMap[track].subjects[subject].admitted += admitted;
     });
 
     const TrackPoints = require('../models/TrackPoints');
@@ -1008,7 +1010,9 @@ const getStats = async (req, res) => {
 
     const trackWise = Object.entries(trackMap).map(([track, { subjects }]) => {
       const admissionPoints = Object.entries(subjects).reduce((sum, [subject, { admitted }]) => {
-        return sum + (admitted || 0) * (pointsPerSubject[track]?.[subject] || 0);
+        // B.Tech ke 4 subjects ke liye 'B.Tech' target ke points use karo
+        const pointsKey = BTECH_SUBJECTS.includes(subject) ? 'B.Tech' : subject;
+        return sum + (admitted || 0) * (pointsPerSubject[track]?.[pointsKey] || 0);
       }, 0);
       const callingPoints = (callingMap[track]?.calledCount || 0) * 5;
       const funnelPoints  = funnelPointsMap[track] || 0;
@@ -1157,7 +1161,7 @@ const selfRegister = async (req, res) => {
       aadharNo:    aadharNo   || '',
       feesScheme:  feesScheme || '',
       schoolName:  schoolName || '',
-      branch:      branchField || course || '',
+      branch:      branchField || course || priority1 || '',
       school12Sub: school12SubField || stream || subject12 || '',
       fatherContactNumber: fatherContactNumber || parentMobile || parentMobil || '',
       linkSource:  linkSource || '',

@@ -6,7 +6,7 @@ import useAuthStore from '../../store/authStore';
 import toast from 'react-hot-toast';
 import { FiExternalLink, FiCamera, FiImage, FiFileText, FiUser, FiCreditCard, FiX } from 'react-icons/fi';
 
-const SUBJECTS = ['B.Tech', 'BCA', 'BBA', 'Bcom', 'Bio', 'Micro'];
+const SUBJECTS = ['B.Tech(CS)', 'B.Tech(IT)', 'B.Tech(ECE)', 'B.Tech(AI/ML)', 'BCA', 'BBA', 'Bcom', 'Bio', 'Micro'];
 const BTECH_BRANCHES = ['CS', 'IT', 'AI/ML', 'ECE'];
 const SSISM_BRANCHES = ['BCA(ITEG)', 'BBA', 'BSC(BT)', 'BSC(MICRO)', 'B.Com (CA)', 'ITEG Diploma'];
 
@@ -20,13 +20,15 @@ const ALLOWED_FUNNEL = {
   'Disabled': [],
 };
 
+const ADMISSION_TYPES = ['SNS', 'SVS', 'Shri Ram', 'Full Fees'];
+
 const initialForm = {
-  status: 'Applied', remarks: '', funnelStage: '', subject: '', village: '',
+  status: 'Applied', remarks: '', funnelStage: '', subject: '', admissionType: '', village: '',
   name: '', fatherName: '', mobileNo: '', whatsappNo: '', trackName: '',
   formSource: '',
   // B.Tech fields
   email: '', schoolName: '', district: '', whatsappNumber: '',
-  persentage12: '', jeeScore: '', priority1: '', priority2: '', priority3: '', fullAddress: '',
+  persentage12: '', jeeScore: '', fullAddress: '',
   // SSISM fields
   branch: '', year: '', joinBatch: '', feesScheme: '', category: '', gender: '',
   school12Sub: '', persentage10: '', dob: '', aadharNo: '',
@@ -128,6 +130,7 @@ export default function StudentForm() {
   const [cameraFor, setCameraFor] = useState(null);
   const [originalFormSource, setOriginalFormSource] = useState('manual');
   const isAdmin = user?.role === 'admin';
+  const isManager = user?.role === 'manager';
   const isManual = !originalFormSource || originalFormSource === 'manual' || isAdmin;
 
   useEffect(() => {
@@ -155,16 +158,14 @@ export default function StudentForm() {
         setTrackTowns(towns);
         setForm({
           status: data.status, remarks: '', funnelStage: data.funnelStage || '',
-          subject: data.subject || '', village: data.village || '',
+          subject: data.subject || data.branch || data.priority1 || '', admissionType: data.admissionType || '', village: data.village || '',
           name: data.name || '', fatherName: data.fatherName || '',
           mobileNo: data.mobileNo || '', whatsappNo: data.whatsappNo || '',
           trackName: data.trackName || '', formSource: data.formSource || '',
           email: data.email || '', schoolName: data.schoolName || '',
           district: data.district || '', whatsappNumber: data.whatsappNumber || '',
           persentage12: data.persentage12 ?? '', jeeScore: data.jeeScore ?? '',
-          priority1: data.priority1 || '', priority2: data.priority2 || '',
-          priority3: data.priority3 || '', fullAddress: data.fullAddress || '',
-          branch: data.branch || '', year: data.year || '',
+          branch: data.branch || data.priority1 || '', fullAddress: data.fullAddress || '', year: data.year || '',
           joinBatch: data.joinBatch ?? '', feesScheme: data.feesScheme || '',
           category: data.category || '', gender: data.gender || '',
           school12Sub: data.school12Sub || '', persentage10: data.persentage10 ?? '',
@@ -196,6 +197,7 @@ export default function StudentForm() {
       formData.append('remarks', form.remarks);
       formData.append('funnelStage', form.funnelStage);
       formData.append('subject', form.subject);
+      formData.append('admissionType', form.admissionType);
       if (form.village !== undefined) formData.append('village', form.village);
       formData.append('name', form.name);
       formData.append('fatherName', form.fatherName);
@@ -205,7 +207,7 @@ export default function StudentForm() {
       formData.append('formSource', form.formSource);
       // B.Tech fields
       ['email','schoolName','district','whatsappNumber','persentage12','jeeScore',
-       'priority1','priority2','priority3','fullAddress'].forEach((k) => formData.append(k, form[k]));
+       'fullAddress'].forEach((k) => formData.append(k, form[k]));
       // SSISM fields
       ['branch','year','joinBatch','feesScheme','category','gender','school12Sub',
        'persentage10','dob','aadharNo','fatherOccupation','fatherIncome',
@@ -400,6 +402,16 @@ export default function StudentForm() {
                 <p className="text-xs text-gray-400 mt-1">No funnel stages for this status</p>
               )}
             </div>
+            {(isAdmin || isManager) && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Admission Type</label>
+                <select value={form.admissionType} onChange={(e) => setForm({ ...form, admissionType: e.target.value })}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary">
+                  <option value="">Select Type</option>
+                  {ADMISSION_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+                </select>
+              </div>
+            )}
           </div>
         </div>
 
@@ -443,19 +455,15 @@ export default function StudentForm() {
                 ))}
               </div>
               <div className="border border-gray-200 rounded-xl p-4">
-                <p className="text-sm font-semibold text-gray-700 mb-3">Branch Preferences</p>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  {['priority1', 'priority2', 'priority3'].map((p, i) => (
-                    <div key={p}>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Priority {i + 1}</label>
-                      <select value={form[p]} onChange={(e) => isManual && setForm({ ...form, [p]: e.target.value })}
-                        disabled={!isManual}
-                        className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary ${!isManual ? 'bg-gray-50 border-gray-200 text-gray-500 cursor-not-allowed' : 'border-gray-300'}`}>
-                        <option value="">Select</option>
-                        {BTECH_BRANCHES.map((b) => <option key={b}>{b}</option>)}
-                      </select>
-                    </div>
-                  ))}
+                <p className="text-sm font-semibold text-gray-700 mb-3">Branch Preference</p>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Branch</label>
+                  <select value={form.branch} onChange={(e) => isManual && setForm({ ...form, branch: e.target.value })}
+                    disabled={!isManual}
+                    className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary ${!isManual ? 'bg-gray-50 border-gray-200 text-gray-500 cursor-not-allowed' : 'border-gray-300'}`}>
+                    <option value="">Select</option>
+                    {BTECH_BRANCHES.map((b) => <option key={b}>{b}</option>)}
+                  </select>
                 </div>
               </div>
               <div>
