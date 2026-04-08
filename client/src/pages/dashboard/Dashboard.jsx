@@ -124,7 +124,7 @@ const SUBJECT_COLORS = {
   'B.Tech(CS)': 'bg-blue-100 text-blue-700',
   'B.Tech(IT)': 'bg-indigo-100 text-indigo-700',
   'B.Tech(ECE)':'bg-teal-100 text-teal-700',
-  'AI/ML':      'bg-purple-100 text-purple-700',
+  'B.Tech(AI/ML)': 'bg-purple-100 text-purple-700',
   'BCA':        'bg-violet-100 text-violet-700',
   'BBA':        'bg-amber-100 text-amber-700',
   'Bcom':       'bg-emerald-100 text-emerald-700',
