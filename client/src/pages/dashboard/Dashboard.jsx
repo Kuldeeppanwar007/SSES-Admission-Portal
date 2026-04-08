@@ -77,13 +77,7 @@ const BTECH_BRANCHES = [
   { label: 'B.Tech (AI/ML)', subject: 'B.Tech(AI/ML)', limit: 60, color: 'text-purple-600', bg: 'bg-purple-50', border: 'border-purple-200', bar: 'bg-purple-500' },
 ];
 
-function BTechCapacityCards({ trackWise }) {
-  const admittedBySubject = {};
-  (trackWise || []).forEach(({ subjects }) => {
-    (subjects || []).forEach(({ subject, admitted }) => {
-      admittedBySubject[subject] = (admittedBySubject[subject] || 0) + (admitted || 0);
-    });
-  });
+function BTechCapacityCards({ btechByBranch }) {
   return (
     <div>
       <div className="flex items-center gap-2 mb-3">
@@ -92,7 +86,34 @@ function BTechCapacityCards({ trackWise }) {
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {BTECH_BRANCHES.map((b) => (
-          <CapacityCard key={b.label} {...b} admitted={admittedBySubject[b.subject] || 0} />
+          <CapacityCard key={b.label} {...b} admitted={btechByBranch?.[b.subject] || 0} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+const ADMISSION_TYPES = [
+  { key: 'SNS',      color: 'text-blue-600',   bg: 'bg-blue-50',   border: 'border-blue-200' },
+  { key: 'SVS',      color: 'text-violet-600', bg: 'bg-violet-50', border: 'border-violet-200' },
+  { key: 'Shri Ram', color: 'text-amber-600',  bg: 'bg-amber-50',  border: 'border-amber-200' },
+  { key: 'Full Fees',color: 'text-emerald-600',bg: 'bg-emerald-50', border: 'border-emerald-200' },
+];
+
+function AdmissionTypeCards({ admissionTypeBreakdown }) {
+  return (
+    <div>
+      <div className="flex items-center gap-2 mb-3">
+        <span className="text-sm font-bold text-gray-700 uppercase tracking-wide">Admission Type Breakdown</span>
+        <div className="flex-1 h-px bg-gray-200" />
+      </div>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {ADMISSION_TYPES.map(({ key, color, bg, border }) => (
+          <div key={key} className={`bg-white rounded-2xl border ${border} shadow-sm p-4`}>
+            <p className={`text-xs font-bold uppercase tracking-wide ${color}`}>{key}</p>
+            <p className="text-2xl font-bold text-gray-800 mt-1">{admissionTypeBreakdown?.[key] || 0}</p>
+            <p className="text-xs text-gray-400">admitted</p>
+          </div>
         ))}
       </div>
     </div>
@@ -394,7 +415,10 @@ export default function Dashboard() {
       <SSISMCapacityCards trackWise={stats.trackWise || []} />
 
       {/* B.Tech Branch Capacity */}
-      <BTechCapacityCards trackWise={stats.trackWise || []} />
+      <BTechCapacityCards btechByBranch={stats.btechByBranch || {}} />
+
+      {/* Admission Type Breakdown */}
+      <AdmissionTypeCards admissionTypeBreakdown={stats.admissionTypeBreakdown || {}} />
 
       {/* Points Table */}
       {(stats.trackWise || []).length > 0 && (
@@ -495,28 +519,26 @@ export default function Dashboard() {
                     isClickable ? 'cursor-pointer hover:border-orange-200' : ''
                   }`}>
                   {/* Card Header */}
-                  <div className="px-5 py-4 bg-gradient-to-r from-gray-50 to-white border-b border-gray-100">
-                    <div className="flex items-center justify-between mb-1.5">
+                  <div className="px-4 py-3 bg-gradient-to-r from-gray-50 to-white border-b border-gray-100">
+                    <div className="flex items-center justify-between mb-1">
                       <p className="font-bold text-gray-800 text-sm">{track}</p>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1.5">
                         <span className="text-xs bg-orange-50 text-primary font-bold px-2 py-0.5 rounded-full border border-orange-100">
                           🏆 {points || 0}
                         </span>
-                        <div className="w-9 h-9 rounded-xl bg-orange-50 border border-orange-100 flex items-center justify-center">
-                          <FiTarget size={15} className="text-primary" />
+                        <div className="w-8 h-8 rounded-xl bg-orange-50 border border-orange-100 flex items-center justify-center shrink-0">
+                          <FiTarget size={14} className="text-primary" />
                         </div>
                       </div>
                     </div>
-                    {/* Towns */}
-                    {(TRACK_TOWNS[track] || []).length > 0 && (
-                      <div className="flex flex-wrap gap-1 mb-1">
-                        {(TRACK_TOWNS[track] || []).map((town) => (
-                          <span key={town} className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-orange-50 text-primary border border-orange-100">
-                            {town}
-                          </span>
-                        ))}
-                      </div>
-                    )}
+                    {/* Towns — single line, nowrap */}
+                    <div className="flex items-center gap-1 mb-1 overflow-hidden h-5">
+                      {(TRACK_TOWNS[track] || []).map((town) => (
+                        <span key={town} className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-orange-50 text-primary border border-orange-100 whitespace-nowrap shrink-0">
+                          {town}
+                        </span>
+                      ))}
+                    </div>
                     <p className="text-xs text-gray-400">{totalAdmitted} / {totalTarget} admitted</p>
                   </div>
 

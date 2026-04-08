@@ -38,6 +38,9 @@ const getStudents = async (req, res) => {
     // Funnel stage filter
     if (req.query.funnelStage) filter.funnelStage = req.query.funnelStage;
 
+    // Admission type filter
+    if (req.query.admissionType) filter.admissionType = req.query.admissionType;
+
     // Optimize interview filter
     if (interviewFilter === 'finalCleared') {
       filter['finalInterview.result'] = 'Pass';
@@ -966,9 +969,11 @@ const getStats = async (req, res) => {
 
     trackSubjectAdmitted.forEach(({ _id, admitted }) => {
       const { track, subject } = _id;
+      // B.Tech ke 4 subjects ko 'B.Tech' ke under group karo
+      const mappedSubject = BTECH_SUBJECTS.includes(subject) ? 'B.Tech' : subject;
       if (!trackMap[track]) trackMap[track] = { subjects: {} };
-      if (!trackMap[track].subjects[subject]) trackMap[track].subjects[subject] = { target: 0, admitted: 0 };
-      trackMap[track].subjects[subject].admitted += admitted;
+      if (!trackMap[track].subjects[mappedSubject]) trackMap[track].subjects[mappedSubject] = { target: trackMap[track].subjects[mappedSubject]?.target || 0, admitted: 0 };
+      trackMap[track].subjects[mappedSubject].admitted += admitted;
     });
 
     const TrackPoints = require('../models/TrackPoints');
@@ -1029,15 +1034,23 @@ const getStats = async (req, res) => {
       });
     });
 
-    // B.Tech branch-wise admitted count (priority1 field)
+    // B.Tech branch-wise admitted count (subject field se)
     const btechBranches = await Student.aggregate([
-      { $match: { status: 'Admitted', formSource: 'btech', priority1: { $nin: [null, ''] } } },
-      { $group: { _id: '$priority1', admitted: { $sum: 1 } } },
+      { $match: { status: 'Admitted', subject: { $in: BTECH_SUBJECTS } } },
+      { $group: { _id: '$subject', admitted: { $sum: 1 } } },
     ]);
     const btechByBranch = {};
     btechBranches.forEach(({ _id, admitted }) => { btechByBranch[_id] = admitted; });
 
-    res.json({ total, applied, admitted, rejected, disabled, unassigned, trackWise, btechByBranch });
+    // AdmissionType breakdown
+    const admissionTypeData = await Student.aggregate([
+      { $match: { status: 'Admitted', admissionType: { $nin: [null, ''] } } },
+      { $group: { _id: '$admissionType', count: { $sum: 1 } } },
+    ]);
+    const admissionTypeBreakdown = {};
+    admissionTypeData.forEach(({ _id, count }) => { admissionTypeBreakdown[_id] = count; });
+
+    res.json({ total, applied, admitted, rejected, disabled, unassigned, trackWise, btechByBranch, admissionTypeBreakdown });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

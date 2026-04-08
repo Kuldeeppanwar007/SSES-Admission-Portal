@@ -247,6 +247,7 @@ export default function Students() {
             formSource: parsed.filters?.formSource || '',
             interviewFilter: parsed.filters?.interviewFilter || '',
             funnelStage: parsed.filters?.funnelStage || '',
+            admissionType: parsed.filters?.admissionType || '',
           },
           showFilters: parsed.showFilters || !!(urlTrack || urlStatus)
         };
@@ -266,6 +267,7 @@ export default function Students() {
         formSource: '',
         interviewFilter: '',
         funnelStage: '',
+        admissionType: '',
       },
       showFilters: !!(urlTrack || urlStatus)
     };
@@ -365,6 +367,7 @@ export default function Students() {
         town: filters.town,
         formSource: filters.formSource,
         funnelStage: filters.funnelStage,
+        admissionType: filters.admissionType,
         interviewFilter: filters.interviewFilter,
         search: debouncedSearch,
         ...(tab === 'disabled' ? { status: 'Disabled' } : {}) 
@@ -417,7 +420,7 @@ export default function Students() {
   const switchTab = (t) => { 
     setTab(t); 
     setPage(1); 
-    setFilters({ track: '', status: '', town: '', search: '', formSource: '', interviewFilter: '', funnelStage: '' }); 
+    setFilters({ track: '', status: '', town: '', search: '', formSource: '', interviewFilter: '', funnelStage: '', admissionType: '' }); 
     setSelected([]);
     setHasMore(false);
     // Clear saved state when switching tabs
@@ -701,6 +704,13 @@ export default function Students() {
                 <option key={s} value={s}>{s}</option>
               ))}
             </select>
+            {(user?.role === 'admin' || user?.role === 'manager') && (
+              <select value={filters.admissionType || ''} onChange={(e) => { setFilters({ ...filters, admissionType: e.target.value }); setPage(1); }}
+                className="flex-1 min-w-32 border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none">
+                <option value="">All Admission Types</option>
+                {['SNS', 'SVS', 'Shri Ram', 'Full Fees'].map((t) => <option key={t} value={t}>{t}</option>)}
+              </select>
+            )}
           </div>
         )}
       </div>
