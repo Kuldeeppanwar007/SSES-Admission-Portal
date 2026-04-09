@@ -788,7 +788,7 @@ export default function Students() {
                     </td>
                     <td className="px-4 py-3 text-gray-600">{s.fatherName}</td>
                     <td className="px-4 py-3 text-gray-600">{s.displayTrack}</td>
-                    <td className="px-4 py-3 text-gray-500 text-xs">{s.trackName || s.village || '—'}</td>
+                    <td className="px-4 py-3 text-gray-500 text-xs">{s.trackName || '—'}</td>
                     <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                       {s.mobileNo ? (
                         <a href={`tel:${s.mobileNo}`} className="text-gray-600 hover:text-primary hover:underline">
@@ -899,7 +899,7 @@ export default function Students() {
             <div className="flex items-center gap-2 flex-wrap pl-6 mb-3">
               {s.displayTrack && (
                 <span className="flex items-center gap-1 text-sm text-gray-500">
-                  <span className="text-base">📍</span> {s.displayTrack}{(s.trackName || s.village) ? ` · ${s.trackName || s.village}` : ''}
+                  <span className="text-base">📍</span> {s.displayTrack}{s.trackName ? ` · ${s.trackName}` : ''}
                 </span>
               )}
               {s.mobileNo && (
