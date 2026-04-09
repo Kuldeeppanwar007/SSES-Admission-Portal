@@ -1137,7 +1137,7 @@ const selfRegister = async (req, res) => {
     const count = await Student.countDocuments();
 
     // trackName — payload me 'track' ya 'trackName' field se aata hai (town name hota hai)
-    const resolvedTrackNameRaw = trackNameField || trackField || village || '';
+    const resolvedTrackNameRaw = trackNameField || trackField || '';
     const mainTracks = ['Harda', 'Khategaon', 'Rehti', 'Satwas & Kannod'];
     
     let resolvedTrack = '';
