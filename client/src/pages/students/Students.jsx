@@ -498,14 +498,14 @@ export default function Students() {
 
   // Memoize filtered students for better performance
   const displayStudents = useMemo(() => {
-    return students.map((s, i) => {
-      // Convert town name to main track name for display
+    const sorted = [...students].sort((a, b) => {
+      if (b.isPriority && !a.isPriority) return 1;
+      if (a.isPriority && !b.isPriority) return -1;
+      return 0;
+    });
+    return sorted.map((s, i) => {
       const displayTrack = TOWN_TO_MAIN_TRACK[s.track] || s.track;
-      return {
-        ...s,
-        displayTrack,
-        serialNumber: (page - 1) * 20 + i + 1
-      };
+      return { ...s, displayTrack, serialNumber: (page - 1) * 20 + i + 1 };
     });
   }, [students, page]);
 
@@ -774,7 +774,10 @@ export default function Students() {
                     const scrollPosition = window.pageYOffset;
                     localStorage.setItem('studentsScrollPosition', scrollPosition.toString());
                     navigate(`/students/${s._id}`);
-                  }} className={`hover:bg-gray-50 transition-colors cursor-pointer ${selected.includes(s._id) ? 'bg-orange-50/50' : ''}`}>
+                  }} className={`hover:bg-gray-50 transition-colors cursor-pointer ${
+                    s.isPriority ? 'bg-violet-50 border-l-4 border-l-violet-400' :
+                    selected.includes(s._id) ? 'bg-orange-50/50' : ''
+                  }`}>
                     <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                       <input type="checkbox" checked={selected.includes(s._id)} onChange={() => toggleSelect(s._id)}
                         className="rounded border-gray-300 text-primary focus:ring-primary cursor-pointer" />
@@ -782,6 +785,8 @@ export default function Students() {
                     <td className="px-4 py-3 text-gray-500">{s.serialNumber}</td>
                     <td className="px-4 py-3 font-medium text-gray-800">
                       <span className="flex items-center gap-1.5">
+                        {s.isPriority && <span className="text-violet-500 text-xs font-bold" title="Priority">⚡</span>}
+                        {s.isTopper && <span className="text-yellow-500 text-xs" title="Topper">🏆</span>}
                         {s.finalInterview?.result && <span className="text-emerald-500 text-base leading-none" title="Final Interview Done">★</span>}
                         {s.name}
                       </span>
@@ -812,7 +817,7 @@ export default function Students() {
                     </td>
                     <td className="px-4 py-3 text-center">
                       {s.finalInterview?.result === 'Pass' ? (
-                        <span className="text-xs font-bold px-2 py-1 rounded-full bg-emerald-100 text-emerald-700">✓ Final Cleared</span>
+                        <span className="text-xs font-bold px-2 py-1 rounded-full bg-emerald-100 text-emerald-700">✓ Cleared</span>
                       ) : s.finalInterview?.result === 'Fail' ? (
                         <span className="text-xs font-bold px-2 py-1 rounded-full bg-rose-100 text-rose-600">✗ Final Failed</span>
                       ) : s.finalInterview?.result === 'Pending' ? (
@@ -879,7 +884,10 @@ export default function Students() {
             const scrollPosition = window.pageYOffset;
             localStorage.setItem('studentsScrollPosition', scrollPosition.toString());
             navigate(`/students/${s._id}`);
-          }} className={`bg-white rounded-xl shadow-sm border border-gray-100 p-4 cursor-pointer ${selected.includes(s._id) ? 'ring-2 ring-primary' : ''}`}>
+          }} className={`bg-white rounded-xl shadow-sm border cursor-pointer ${
+            s.isPriority ? 'border-l-4 border-l-violet-400 border-violet-200 bg-violet-50/30' :
+            selected.includes(s._id) ? 'ring-2 ring-primary border-gray-100' : 'border-gray-100'
+          } p-4`}>
 
             {/* Row 1: Checkbox + Name + Status */}
             <div className="flex items-center gap-2 mb-1">
@@ -887,6 +895,8 @@ export default function Students() {
                 onClick={(e) => e.stopPropagation()}
                 className="rounded border-gray-300 text-primary focus:ring-primary cursor-pointer shrink-0" />
               <p className="font-semibold text-gray-800 flex-1 min-w-0 truncate">
+                {s.isPriority && <span className="mr-1">⚡</span>}
+                {s.isTopper && <span className="mr-1">🏆</span>}
                 {s.serialNumber}. {s.name}{s.finalInterview?.result && <span className="text-emerald-500 ml-1">★</span>}
               </p>
               <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold shrink-0 ${STATUS_COLORS[s.status]}`}>{s.status}</span>
@@ -915,7 +925,7 @@ export default function Students() {
                 }`}>{s.formSource === 'btech' ? 'B.Tech' : s.formSource === 'ssism' ? 'SSISM' : 'Manual'}</span>
               )}
               {s.finalInterview?.result === 'Pass' ? (
-                <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700">✓ Final Cleared</span>
+                <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700">✓ Cleared</span>
               ) : s.finalInterview?.result === 'Fail' ? (
                 <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-rose-100 text-rose-600">✗ Final Failed</span>
               ) : s.finalInterview?.result === 'Pending' ? (

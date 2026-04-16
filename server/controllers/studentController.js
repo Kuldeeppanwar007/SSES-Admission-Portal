@@ -1,6 +1,7 @@
 const Student = require('../models/Student');
 const User = require('../models/User');
 const xlsx = require('xlsx');
+const { sendPriorityAlert } = require('../utils/mailer');
 
 // Get all students (admin/manager = all, track_incharge = own track)
 const getStudents = async (req, res) => {
@@ -77,7 +78,7 @@ const getStudents = async (req, res) => {
     const [total, students] = await Promise.all([
       Student.countDocuments(filter),
       Student.find(filter)
-        .select('name fatherName track trackName village mobileNo formSource status finalInterview createdAt') // Select only needed fields
+        .select('name fatherName track trackName village mobileNo formSource status finalInterview createdAt isTopper isPriority') // Select only needed fields
         .populate('addedBy', 'name')
         .sort({ createdAt: -1 })
         .skip((_page - 1) * _limit)
@@ -217,7 +218,7 @@ const updateStudent = async (req, res) => {
     'jeeScore', 'persentage12', 'persentage10',
     'persentage11', 'branch', 'year', 'joinBatch', 'feesScheme', 'category', 'gender',
     'school12Sub', 'dob', 'aadharNo', 'fatherOccupation', 'fatherIncome',
-    'fatherContactNumber', 'pincode', 'tehsil', 'trackName',
+    'fatherContactNumber', 'pincode', 'tehsil', 'trackName', 'isTopper', 'isPriority',
   ];
   const updates = {};
   ALLOWED_FIELDS.forEach((f) => { if (req.body[f] !== undefined) updates[f] = req.body[f]; });
@@ -348,6 +349,27 @@ const updateStudent = async (req, res) => {
       changedBy: req.user._id,
       changedFields,
     });
+  }
+
+  // Priority flag true hone par track ke sabhi users ko mail bhejo
+  if (updates.isPriority === true && !student.isPriority && updated.track) {
+    try {
+      const trackUsers = await User.find({ track: updated.track, isActive: true }).select('email').lean();
+      const emails = trackUsers.map(u => u.email).filter(Boolean);
+      if (emails.length > 0) {
+        await sendPriorityAlert({
+          studentName: updated.name,
+          fatherName:  updated.fatherName,
+          track:       updated.track,
+          mobileNo:    updated.mobileNo,
+          subject:     updated.subject,
+          status:      updated.status,
+          recipients:  emails,
+        });
+      }
+    } catch (mailErr) {
+      console.error('Priority mail error:', mailErr.message);
+    }
   }
 
   res.json(updated);

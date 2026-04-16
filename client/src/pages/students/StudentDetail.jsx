@@ -19,6 +19,7 @@ export default function StudentDetail() {
   const [finalLoading, setFinalLoading] = useState(false);
   const [editReqForm, setEditReqForm] = useState(null); // null = closed
   const [editReqLoading, setEditReqLoading] = useState(false);
+  const [flagLoading, setFlagLoading] = useState(false);
 
   const handleExport = async () => {
     setExporting(true);
@@ -72,6 +73,16 @@ const handleViewHistory = async () => {
       setEditReqForm(null);
     } catch { toast.error('Request failed'); }
     finally { setEditReqLoading(false); }
+  };
+
+  const handleFlagToggle = async (flag) => {
+    setFlagLoading(true);
+    try {
+      const { data } = await api.put(`/students/${id}`, { [flag]: !student[flag] });
+      setStudent(data);
+      toast.success(`${flag === 'isTopper' ? 'Topper' : 'Priority'} flag ${!student[flag] ? 'set' : 'removed'}!`);
+    } catch { toast.error('Update failed'); }
+    finally { setFlagLoading(false); }
   };
 
   if (!student) return <div className="flex justify-center items-center h-64"><div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary"></div></div>;
@@ -225,6 +236,26 @@ const handleViewHistory = async () => {
             <span className={`mt-1 inline-block px-3 py-1 rounded-full text-xs font-medium ${STATUS_COLORS[student.status]}`}>{student.status}</span>
           </div>
         </div>
+
+        {/* Flags — Topper & Priority */}
+        {(user?.role === 'admin' || user?.role === 'manager') && (
+          <div className="flex gap-4 mb-5 pb-5 border-b border-gray-100">
+            <label className={`flex items-center gap-2 cursor-pointer select-none px-4 py-2 rounded-xl border-2 transition-all ${
+              student.isTopper ? 'border-yellow-400 bg-yellow-50' : 'border-gray-200 bg-gray-50'
+            } ${flagLoading ? 'opacity-60 pointer-events-none' : ''}`}>
+              <input type="checkbox" checked={!!student.isTopper} onChange={() => handleFlagToggle('isTopper')}
+                className="w-4 h-4 accent-yellow-500 cursor-pointer" />
+              <span className="text-sm font-semibold text-yellow-700">🏆 Topper</span>
+            </label>
+            <label className={`flex items-center gap-2 cursor-pointer select-none px-4 py-2 rounded-xl border-2 transition-all ${
+              student.isPriority ? 'border-violet-400 bg-violet-50' : 'border-gray-200 bg-gray-50'
+            } ${flagLoading ? 'opacity-60 pointer-events-none' : ''}`}>
+              <input type="checkbox" checked={!!student.isPriority} onChange={() => handleFlagToggle('isPriority')}
+                className="w-4 h-4 accent-violet-500 cursor-pointer" />
+              <span className="text-sm font-semibold text-violet-700">⚡ Priority</span>
+            </label>
+          </div>
+        )}
 
         {SECTIONS.map(({ title, fields, show }) => {
           if (show === false) return null;
