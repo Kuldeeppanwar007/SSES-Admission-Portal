@@ -2,9 +2,60 @@ import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../api/axios';
 import useAuthStore from '../../store/authStore';
-import { FiClock, FiUser, FiFilter, FiBarChart2, FiList } from 'react-icons/fi';
+import { FiClock, FiUser, FiFilter, FiBarChart2, FiList, FiDownload } from 'react-icons/fi';
 
 const today = new Date().toISOString().slice(0, 10);
+
+const printStats = (stats, from, to) => {
+  const dateRange = (from || to)
+    ? `${from ? new Date(from).toLocaleDateString('en-IN') : ''} — ${to ? new Date(to).toLocaleDateString('en-IN') : ''}`
+    : 'All Time';
+
+  const rows = stats.map((s, i) => `
+    <tr style="background:${i % 2 === 0 ? '#fff' : '#f9fafb'}">
+      <td style="padding:10px 14px;font-weight:600;color:#1f2937">${s.name || '—'}</td>
+      <td style="padding:10px 14px;color:#6b7280;font-size:12px">${s.track || '—'}</td>
+      <td style="padding:10px 14px;text-align:center;font-weight:700;color:#f97316;font-size:16px">${s.totalUpdates}</td>
+      <td style="padding:10px 14px;text-align:center;font-weight:700;color:#7c3aed">${s.callingUpdates}</td>
+      <td style="padding:10px 14px;text-align:center;font-weight:700;color:#2563eb">${s.statusChanges}</td>
+      <td style="padding:10px 14px;text-align:center;font-weight:700;color:#059669">${s.remarksAdded}</td>
+    </tr>
+  `).join('');
+
+  const html = `<!DOCTYPE html><html><head><title>Summary Stats — SSES Admission Portal</title>
+    <style>
+      * { margin:0; padding:0; box-sizing:border-box; }
+      body { font-family: Arial, sans-serif; padding: 32px; color: #111; }
+      h1 { font-size: 20px; font-weight: 700; color: #1f2937; margin-bottom: 4px; }
+      .subtitle { font-size: 13px; color: #6b7280; margin-bottom: 24px; }
+      table { width: 100%; border-collapse: collapse; border: 1px solid #e5e7eb; overflow: hidden; }
+      thead tr { background: #f3f4f6; }
+      th { padding: 10px 14px; text-align: left; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #6b7280; border-bottom: 1px solid #e5e7eb; }
+      th.center { text-align: center; }
+      td { border-top: 1px solid #f3f4f6; font-size: 13px; }
+      .footer { margin-top: 20px; font-size: 11px; color: #9ca3af; text-align: right; }
+      @media print { body { padding: 16px; } }
+    </style></head><body>
+    <h1>Summary Stats — SSES Admission Portal</h1>
+    <p class="subtitle">Period: ${dateRange} &nbsp;|&nbsp; Generated: ${new Date().toLocaleString('en-IN')}</p>
+    <table>
+      <thead><tr>
+        <th>Name</th><th>Track</th>
+        <th class="center">Total Updates</th>
+        <th class="center">Calling</th>
+        <th class="center">Status Changes</th>
+        <th class="center">Remarks Added</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <p class="footer">Total Users: ${stats.length}</p>
+    </body></html>`;
+
+  const win = window.open('', '_blank');
+  win.document.write(html);
+  win.document.close();
+  setTimeout(() => { win.print(); }, 400);
+};
 
 export default function ActivityLog() {
   const { user } = useAuthStore();
@@ -111,12 +162,18 @@ export default function ActivityLog() {
                 <p className="text-center text-gray-400 py-12 text-sm">No data for selected filters.</p>
               ) : (
                 <>
-                  <div className="grid grid-cols-6 px-5 py-3 bg-gray-50 border-b border-gray-100 text-xs font-bold text-gray-500 uppercase tracking-wide">
-                    <span className="col-span-2">Name / Track</span>
-                    <span className="text-center">Total Updates</span>
-                    <span className="text-center">Calling</span>
-                    <span className="text-center">Status Changes</span>
-                    <span className="text-center">Remarks Added</span>
+                  <div className="flex items-center justify-between px-5 py-3 bg-gray-50 border-b border-gray-100">
+                    <div className="grid grid-cols-6 flex-1 text-xs font-bold text-gray-500 uppercase tracking-wide">
+                      <span className="col-span-2">Name / Track</span>
+                      <span className="text-center">Total Updates</span>
+                      <span className="text-center">Calling</span>
+                      <span className="text-center">Status Changes</span>
+                      <span className="text-center">Remarks Added</span>
+                    </div>
+                    <button onClick={() => printStats(stats, from, to)}
+                      className="flex items-center gap-1.5 ml-4 px-3 py-1.5 bg-primary text-white text-xs font-semibold rounded-lg hover:opacity-90 shrink-0">
+                      <FiDownload size={12} /> PDF
+                    </button>
                   </div>
                   <div className="divide-y divide-gray-50">
                     {stats.map(s => (

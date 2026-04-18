@@ -449,6 +449,7 @@ const getActivityLog = async (req, res) => {
       if (to) { const d = new Date(to); d.setHours(23,59,59,999); filter.createdAt.$lte = d; }
     }
 
+    // Logs — limit 500 for feed display
     const history = await StatusHistory.find(filter)
       .populate('changedBy', 'name role track')
       .populate('student', 'name track')
@@ -456,27 +457,73 @@ const getActivityLog = async (req, res) => {
       .limit(500)
       .lean();
 
-    // Summary stats per user
-    const statsMap = {};
-    history.forEach(h => {
-      const uid = h.changedBy?._id?.toString();
-      if (!uid) return;
-      if (!statsMap[uid]) statsMap[uid] = {
-        userId: uid, name: h.changedBy.name,
-        role: h.changedBy.role, track: h.changedBy.track,
-        totalUpdates: 0, callingUpdates: 0,
-        statusChanges: 0, funnelChanges: 0, remarksAdded: 0,
-      };
-      const s = statsMap[uid];
-      s.totalUpdates++;
-      h.changedFields?.forEach(f => {
-        if (f.field === 'status') { s.statusChanges++; if (f.newValue === 'Calling') s.callingUpdates++; }
-        if (f.field === 'funnelStage') s.funnelChanges++;
-        if (f.field === 'remarks' && f.newValue) s.remarksAdded++;
-      });
-    });
+    // Stats — aggregate WITHOUT limit so all records are counted
+    const statsFilter = { 'changedFields.0': { $exists: true } };
+    if (req.user.role === 'track_incharge') {
+      const trackUsers = await User.find({ track: req.user.track, role: 'track_incharge' }).select('_id');
+      statsFilter.changedBy = { $in: trackUsers.map(u => u._id) };
+    } else if (userId) {
+      statsFilter.changedBy = require('mongoose').Types.ObjectId.createFromHexString(userId);
+    }
+    if (from || to) {
+      statsFilter.createdAt = {};
+      if (from) statsFilter.createdAt.$gte = new Date(from);
+      if (to) { const d = new Date(to); d.setHours(23,59,59,999); statsFilter.createdAt.$lte = d; }
+    }
 
-    res.json({ logs: history, stats: Object.values(statsMap).sort((a,b) => b.totalUpdates - a.totalUpdates) });
+    const statsAgg = await StatusHistory.aggregate([
+      { $match: statsFilter },
+      { $unwind: '$changedFields' },
+      {
+        $group: {
+          _id: '$changedBy',
+          totalUpdates:  { $addToSet: '$_id' },
+          statusChanges: { $sum: { $cond: [{ $eq: ['$changedFields.field', 'status'] }, 1, 0] } },
+          funnelChanges: { $sum: { $cond: [{ $eq: ['$changedFields.field', 'funnelStage'] }, 1, 0] } },
+          remarksAdded:  { $sum: { $cond: [{ $and: [{ $eq: ['$changedFields.field', 'remarks'] }, { $gt: ['$changedFields.newValue', ''] }] }, 1, 0] } },
+          // Unique students jinka status Calling set hua
+          calledStudents: {
+            $addToSet: {
+              $cond: [
+                { $and: [{ $eq: ['$changedFields.field', 'status'] }, { $eq: ['$changedFields.newValue', 'Calling'] }] },
+                '$student',
+                null
+              ]
+            }
+          },
+        }
+      },
+      {
+        $lookup: {
+          from: 'users',
+          localField: '_id',
+          foreignField: '_id',
+          as: 'user'
+        }
+      },
+      { $unwind: { path: '$user', preserveNullAndEmptyArrays: true } },
+      {
+        $project: {
+          userId:        { $toString: '$_id' },
+          name:          '$user.name',
+          role:          '$user.role',
+          track:         '$user.track',
+          totalUpdates:  { $size: '$totalUpdates' },
+          statusChanges: 1,
+          funnelChanges: 1,
+          remarksAdded:  1,
+          // null values hata ke unique called students count karo
+          callingUpdates: {
+            $size: {
+              $filter: { input: '$calledStudents', as: 'x', cond: { $ne: ['$$x', null] } }
+            }
+          },
+        }
+      },
+      { $sort: { totalUpdates: -1 } }
+    ]);
+
+    res.json({ logs: history, stats: statsAgg });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
