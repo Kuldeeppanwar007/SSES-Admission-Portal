@@ -935,13 +935,14 @@ const downloadCSVTemplate = (req, res) => {
 const getTrackStats = async (req, res) => {
   try {
     const Target = require('../models/Target');
-    const track = req.user.track;
+    const track = req.user.role === 'admin' ? (req.query.track || req.user.track) : req.user.track;
     if (!track) return res.status(400).json({ message: 'No track assigned' });
 
     const filter = { track };
-    const [total, applied, admitted, rejected] = await Promise.all([
+    const [total, applied, calling, admitted, rejected] = await Promise.all([
       Student.countDocuments(filter),
       Student.countDocuments({ ...filter, status: 'Applied' }),
+      Student.countDocuments({ ...filter, status: 'Calling' }),
       Student.countDocuments({ ...filter, status: 'Admitted' }),
       Student.countDocuments({ ...filter, status: 'Rejected' }),
     ]);
@@ -996,7 +997,7 @@ const getTrackStats = async (req, res) => {
     const callingEfficiency = totalActive > 0 ? Math.round((callingCount / totalActive) * 100) : 0;
 
     res.json({
-      track, total, applied, admitted, rejected, disabled, subjects,
+      track, total, applied, calling, admitted, rejected, disabled, subjects,
       points: trackPoints?.points || 0,
       statusBreakdown: statusBreakdown.map(({ _id, count }) => ({ status: _id, count })),
       funnelBreakdown: funnelData,

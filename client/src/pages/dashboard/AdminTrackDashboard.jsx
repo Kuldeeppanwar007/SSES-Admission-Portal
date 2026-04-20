@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import api from '../../api/axios';
 import toast from 'react-hot-toast';
 import { TRACKS, MAIN_TRACKS, TRACK_TOWNS } from '../../utils/constants';
-import { FiUsers, FiFileText, FiAward, FiXCircle, FiTarget, FiSlash, FiChevronDown, FiTrendingUp } from 'react-icons/fi';
+import { FiUsers, FiFileText, FiAward, FiXCircle, FiTarget, FiSlash, FiChevronDown, FiTrendingUp, FiPhone } from 'react-icons/fi';
 
 const SUBJECT_COLORS = {
   'B.Tech(CS)': 'bg-blue-100 text-blue-700',
@@ -35,11 +35,12 @@ const FUNNEL_COLORS = {
 };
 
 const STAT_META = [
-  { key: 'total',    label: 'Total',    icon: FiUsers,    iconBg: 'bg-blue-100',    iconColor: 'text-blue-500',   text: 'text-blue-600' },
-  { key: 'applied',  label: 'Applied',  icon: FiFileText, iconBg: 'bg-amber-100',   iconColor: 'text-amber-500',  text: 'text-amber-600' },
-  { key: 'admitted', label: 'Admitted', icon: FiAward,    iconBg: 'bg-emerald-100', iconColor: 'text-emerald-500',text: 'text-emerald-600' },
-  { key: 'rejected', label: 'Rejected', icon: FiXCircle,  iconBg: 'bg-rose-100',    iconColor: 'text-rose-500',   text: 'text-rose-600' },
-  { key: 'disabled', label: 'Disabled', icon: FiSlash,    iconBg: 'bg-gray-100',    iconColor: 'text-gray-400',   text: 'text-gray-500' },
+  { key: 'total',    label: 'Total',       icon: FiUsers,    iconBg: 'bg-blue-100',    iconColor: 'text-blue-500',   text: 'text-blue-600' },
+  { key: 'applied',  label: 'Not Calling', icon: FiFileText, iconBg: 'bg-amber-100',   iconColor: 'text-amber-500',  text: 'text-amber-600' },
+  { key: 'calling',  label: 'Calling',     icon: FiPhone,    iconBg: 'bg-sky-100',     iconColor: 'text-sky-500',    text: 'text-sky-600' },
+  { key: 'admitted', label: 'Admitted',    icon: FiAward,    iconBg: 'bg-emerald-100', iconColor: 'text-emerald-500',text: 'text-emerald-600' },
+  { key: 'rejected', label: 'Rejected',    icon: FiXCircle,  iconBg: 'bg-rose-100',    iconColor: 'text-rose-500',   text: 'text-rose-600' },
+  { key: 'disabled', label: 'Disabled',    icon: FiSlash,    iconBg: 'bg-gray-100',    iconColor: 'text-gray-400',   text: 'text-gray-500' },
 ];
 
 export default function AdminTrackDashboard() {
@@ -98,7 +99,7 @@ export default function AdminTrackDashboard() {
       ) : (
         <>
           {/* Stat Cards */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
             {STAT_META.map(({ key, label, icon: Icon, iconBg, iconColor, text }) => (
               <div key={key} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex flex-col gap-3 hover:shadow-md transition-shadow">
                 <div className={`w-10 h-10 rounded-xl ${iconBg} flex items-center justify-center`}>
