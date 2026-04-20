@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import api from '../../api/axios';
 import toast from 'react-hot-toast';
 import useAuthStore from '../../store/authStore';
-import { FiUsers, FiFileText, FiAward, FiXCircle, FiTarget, FiSlash, FiChevronDown, FiGift, FiClock } from 'react-icons/fi';
+import { FiUsers, FiFileText, FiAward, FiXCircle, FiTarget, FiSlash, FiChevronDown, FiGift, FiClock, FiPhone } from 'react-icons/fi';
 import { TRACK_TOWNS } from '../../utils/constants';
 
 // SSISM branch capacity limits
@@ -134,10 +134,11 @@ const SUBJECT_COLORS = {
 
 const STAT_META = [
   { key: 'total',    label: 'Total Students', icon: FiUsers,       iconBg: 'bg-blue-100',    iconColor: 'text-blue-500',   text: 'text-blue-600' },
-  { key: 'applied',  label: 'Applied',         icon: FiFileText,    iconBg: 'bg-amber-100',   iconColor: 'text-amber-500',  text: 'text-amber-600' },
-  { key: 'admitted', label: 'Admitted',         icon: FiAward,       iconBg: 'bg-emerald-100', iconColor: 'text-emerald-500',text: 'text-emerald-600' },
-  { key: 'rejected', label: 'Rejected',         icon: FiXCircle,     iconBg: 'bg-rose-100',    iconColor: 'text-rose-500',   text: 'text-rose-600' },
-  { key: 'disabled', label: 'Disabled',         icon: FiSlash,       iconBg: 'bg-gray-100',    iconColor: 'text-gray-400',   text: 'text-gray-500' },
+  { key: 'applied',  label: 'Not Calling',    icon: FiFileText,    iconBg: 'bg-amber-100',   iconColor: 'text-amber-500',  text: 'text-amber-600' },
+  { key: 'calling',  label: 'Calling',        icon: FiPhone,       iconBg: 'bg-sky-100',     iconColor: 'text-sky-500',    text: 'text-sky-600' },
+  { key: 'admitted', label: 'Admitted',        icon: FiAward,       iconBg: 'bg-emerald-100', iconColor: 'text-emerald-500',text: 'text-emerald-600' },
+  { key: 'rejected', label: 'Rejected',        icon: FiXCircle,     iconBg: 'bg-rose-100',    iconColor: 'text-rose-500',   text: 'text-rose-600' },
+  { key: 'disabled', label: 'Disabled',        icon: FiSlash,       iconBg: 'bg-gray-100',    iconColor: 'text-gray-400',   text: 'text-gray-500' },
 ];
 
 const BTECH_SUBJECTS = ['B.Tech(CS)', 'B.Tech(IT)', 'B.Tech(ECE)', 'B.Tech(AI/ML)'];
@@ -385,13 +386,15 @@ export default function Dashboard() {
       </div>
 
       {/* Stat Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
         {STAT_META.map(({ key, label, icon: Icon, iconBg, iconColor, text }) => {
           const isClickable = user?.role === 'admin';
           const href = key === 'disabled'
             ? '/students?tab=disabled'
             : key === 'total'
             ? '/students'
+            : key === 'calling'
+            ? '/students?status=Calling'
             : `/students?status=${key.charAt(0).toUpperCase() + key.slice(1)}`;
           return (
             <div key={key}

@@ -1014,6 +1014,7 @@ const getStats = async (req, res) => {
     const Target = require('../models/Target');
     const total = await Student.countDocuments();
     const applied = await Student.countDocuments({ status: 'Applied' });
+    const calling = await Student.countDocuments({ status: 'Calling' });
     const admitted = await Student.countDocuments({ status: 'Admitted' });
     const rejected = await Student.countDocuments({ status: 'Rejected' });
     const disabled = await Student.countDocuments({ isDisabled: true });
@@ -1120,7 +1121,7 @@ const getStats = async (req, res) => {
     const admissionTypeBreakdown = {};
     admissionTypeData.forEach(({ _id, count }) => { admissionTypeBreakdown[_id] = count; });
 
-    res.json({ total, applied, admitted, rejected, disabled, unassigned, trackWise, btechByBranch, admissionTypeBreakdown });
+    res.json({ total, applied, calling, admitted, rejected, disabled, unassigned, trackWise, btechByBranch, admissionTypeBreakdown });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
