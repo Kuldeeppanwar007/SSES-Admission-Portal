@@ -63,6 +63,9 @@ const getStudents = async (req, res) => {
 
     if (formSource) filter.formSource = formSource;
 
+    // Village filter
+    if (req.query.village) filter.village = { $regex: `^${req.query.village.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, $options: 'i' };
+
     // Branch filter — normalized values ke saath branch ya priority1 dono check karo
     if (req.query.branch) {
       // Sab aliases jo is normalized value se map hote hain
@@ -1345,6 +1348,18 @@ const selfRegister = async (req, res) => {
   }
 };
 
+// Distinct village values
+const getDistinctVillages = async (req, res) => {
+  try {
+    const filter = { village: { $nin: [null, ''] } };
+    if (req.user.role === 'track_incharge') filter.track = req.user.track;
+    const villages = await Student.distinct('village', filter);
+    res.json(villages.filter(Boolean).sort());
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
 // Distinct branch values
 const getDistinctBranches = async (req, res) => {
   try {
@@ -1357,4 +1372,4 @@ const getDistinctBranches = async (req, res) => {
   }
 };
 
-module.exports = { getStudents, getStudent, addStudent, updateStudent, deleteStudent, updateStatus, getStatusHistory, getActivityLog, bulkUpload, downloadTemplate, downloadCSVTemplate, exportStudents, getStats, getTrackStats, selfRegister, getDistinctBranches };
+module.exports = { getStudents, getStudent, addStudent, updateStudent, deleteStudent, updateStatus, getStatusHistory, getActivityLog, bulkUpload, downloadTemplate, downloadCSVTemplate, exportStudents, getStats, getTrackStats, selfRegister, getDistinctBranches, getDistinctVillages };
