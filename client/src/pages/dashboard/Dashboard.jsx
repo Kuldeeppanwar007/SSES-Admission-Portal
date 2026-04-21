@@ -163,14 +163,12 @@ const getSubjectPoints = (track, subject) => {
   return (SUBJECT_POINTS_BY_GROUP[subject] || [0, 0, 0])[g];
 };
 
+const RANK_BADGE = ['🥇', '🥈', '🥉'];
+
 function PointsTable({ trackWise }) {
   const [open, setOpen] = useState(true);
 
-  // Server se jo actual points aaye hain (TrackPoints collection) unhe use karo
-  // Per-subject breakdown ke liye: admitted * (total points / total admitted) nahi,
-  // balki sirf total points dikhao — subject-wise breakdown accurate nahi hogi
-  // isliye subject column mein admitted count dikhao, Total mein actual DB points
-  const tracks = [...trackWise].sort((a, b) => (b.points || 0) - (a.points || 0));
+  const tracks = [...trackWise].sort((a, b) => (b.admissionPoints || 0) - (a.admissionPoints || 0));
 
   return (
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
@@ -188,6 +186,7 @@ function PointsTable({ trackWise }) {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-100">
+                <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 whitespace-nowrap">#</th>
                 <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 whitespace-nowrap">Center ↓ / Course →</th>
                 {SUBJECTS.map((s) => (
                   <th key={s} className="px-5 py-3 text-left text-xs font-semibold text-gray-500 whitespace-nowrap">
@@ -198,7 +197,7 @@ function PointsTable({ trackWise }) {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {tracks.map(({ track, subjects, points, admissionPoints }) => {
+              {tracks.map(({ track, subjects, admissionPoints }, i) => {
                 const subjectMap = {};
                 (subjects || []).forEach(({ subject, admitted }) => {
                   if (BTECH_SUBJECTS.includes(subject)) {
@@ -207,8 +206,12 @@ function PointsTable({ trackWise }) {
                     subjectMap[subject] = (subjectMap[subject] || 0) + (admitted || 0);
                   }
                 });
+                const isTop3 = i < 3;
                 return (
-                  <tr key={track} className="hover:bg-orange-50/30 transition-colors">
+                  <tr key={track} className={`transition-colors ${isTop3 ? 'bg-orange-50/40 hover:bg-orange-50/70' : 'hover:bg-gray-50/60'}`}>
+                    <td className="px-5 py-3 text-base">
+                      {RANK_BADGE[i] || <span className="text-xs text-gray-400 font-semibold">{i + 1}</span>}
+                    </td>
                     <td className="px-5 py-3 font-bold text-gray-800 whitespace-nowrap">
                       {track.toUpperCase()}
                     </td>
@@ -428,11 +431,6 @@ export default function Dashboard() {
         <PointsTable trackWise={stats.trackWise} />
       )}
 
-      {/* Points Leaderboard */}
-      {(stats.trackWise || []).some((t) => t.points > 0) && (
-        <LeaderboardSection stats={stats} user={user} />
-      )}
-
       {/* Admin — Manual Weekly Bonus */}
       {user?.role === 'admin' && (() => {
         const thisWeekStart = (() => {
@@ -490,6 +488,11 @@ export default function Dashboard() {
           </div>
         );
       })()}
+
+      {/* Points Leaderboard */}
+      {(stats.trackWise || []).some((t) => t.points > 0) && (
+        <LeaderboardSection stats={stats} user={user} />
+      )}
 
       {/* Track-wise */}
       <div>

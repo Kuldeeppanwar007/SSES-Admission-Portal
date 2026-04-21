@@ -4,17 +4,47 @@ const WeeklyBonus = require('../models/WeeklyBonus');
 
 const BONUS = { 1: 200, 2: 150, 3: 100 };
 
+const BTECH_SUBJECTS = ['B.Tech(CS)', 'B.Tech(IT)', 'B.Tech(ECE)', 'B.Tech(AI/ML)'];
+
 // Get Monday of current week in IST
 const getWeekStart = () => {
   const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
   const nowIST = new Date(Date.now() + IST_OFFSET_MS);
-  const day  = nowIST.getUTCDay(); // 0=Sun in IST
+  const day  = nowIST.getUTCDay();
   const diff = nowIST.getUTCDate() - day + (day === 0 ? -6 : 1);
   const monday = new Date(nowIST);
   monday.setUTCDate(diff);
   monday.setUTCHours(0, 0, 0, 0);
-  // Convert back to actual UTC (subtract IST offset)
   return new Date(monday.getTime() - IST_OFFSET_MS);
+};
+
+// Final Points Table ke hisab se har track ke admission points calculate karo
+const calcAdmissionPointsPerTrack = async () => {
+  const Student = require('../models/Student');
+  const Target  = require('../models/Target');
+
+  const targets = await Target.find({});
+  const pointsPerSubject = {}; // { track: { subject: pts } }
+  targets.forEach(({ track, subject, points }) => {
+    if (!pointsPerSubject[track]) pointsPerSubject[track] = {};
+    pointsPerSubject[track][subject] = points || 0;
+  });
+
+  const admittedAgg = await Student.aggregate([
+    { $match: { status: 'Admitted', isDisabled: { $ne: true } } },
+    { $group: { _id: { track: '$track', subject: '$subject' }, count: { $sum: 1 } } },
+  ]);
+
+  const admissionPointsMap = {}; // { track: totalAdmissionPoints }
+  admittedAgg.forEach(({ _id: { track, subject }, count }) => {
+    if (!track || !subject) return;
+    // B.Tech ke 4 subjects ko 'B.Tech' ke under group karo (same as getStats)
+    const subjectKey = BTECH_SUBJECTS.includes(subject) ? 'B.Tech' : subject;
+    const pts = pointsPerSubject[track]?.[subjectKey] || 0;
+    admissionPointsMap[track] = (admissionPointsMap[track] || 0) + count * pts;
+  });
+
+  return admissionPointsMap;
 };
 
 const runWeeklyBonus = async () => {
@@ -28,22 +58,31 @@ const runWeeklyBonus = async () => {
       return { skipped: true };
     }
 
-    // Get all tracks sorted by points descending
-    const tracks = await TrackPoints.find({}).sort({ points: -1 });
-    if (tracks.length === 0) return;
+    // Final Points Table ke hisab se admission points calculate karo
+    const admissionPointsMap = await calcAdmissionPointsPerTrack();
+    if (Object.keys(admissionPointsMap).length === 0) {
+      console.log('[WeeklyBonus] No admission data found, skipping.');
+      return;
+    }
 
-    const top3 = tracks.slice(0, 3);
+    // Sort tracks by admissionPoints descending — yahi Final Points Table ka order hai
+    const sorted = Object.entries(admissionPointsMap)
+      .sort(([, a], [, b]) => b - a);
+
+    const top3 = sorted.slice(0, 3);
     const bonuses = [];
 
     for (let i = 0; i < top3.length; i++) {
-      const rank = i + 1;
+      const [track, admPts] = top3[i];
+      const rank  = i + 1;
       const bonus = BONUS[rank];
       await TrackPoints.findOneAndUpdate(
-        { track: top3[i].track },
-        { $inc: { points: bonus } }
+        { track },
+        { $inc: { points: bonus } },
+        { upsert: true }
       );
-      bonuses.push({ track: top3[i].track, rank, points: bonus });
-      console.log(`[WeeklyBonus] Rank #${rank} — ${top3[i].track} +${bonus} pts`);
+      bonuses.push({ track, rank, points: bonus });
+      console.log(`[WeeklyBonus] Rank #${rank} — ${track} (admPts: ${admPts}) +${bonus} pts`);
     }
 
     await WeeklyBonus.create({ weekStart, bonuses });

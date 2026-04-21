@@ -169,18 +169,18 @@ const getSubjectPoints = async (track, subject) => {
 };
 
 const FUNNEL_POINTS = {
-  'Call Completed':  5,
-  'Lead Interested': 10,
-  'Call Not Received': 5,
-  'Wrong Number':    5,
-  'Switch Off':      5,
+  // 'Call Completed':  5,
+  // 'Lead Interested': 10,
+  // 'Call Not Received': 5,
+  // 'Wrong Number':    5,
+  // 'Switch Off':      5,
   // 'Admission Closed' ke points ab Target model se aayenge (per subject)
 };
 
 // Naye calling stages jo sirf remark ke saath points denge
-const CALLING_ONLY_STAGES = ['Call Not Received', 'Wrong Number', 'Switch Off'];
+// const CALLING_ONLY_STAGES = ['Call Not Received', 'Wrong Number', 'Switch Off'];
 
-// Funnel points get karo — Admission Closed ke liye Target se, baaki hardcoded
+// Funnel points get karo — sirf Admission Closed ke liye Target se
 const getFunnelPoints = async (funnelStage, track, subject) => {
   if (funnelStage === 'Admission Closed') {
     const Target = require('../models/Target');
@@ -188,8 +188,8 @@ const getFunnelPoints = async (funnelStage, track, subject) => {
     const t = await Target.findOne({ track: mainTrack, subject: 'Admission Closed' });
     return t?.points ?? 100;
   }
-  // Naye calling stages — sirf remark ke saath points milenge (check updateStudent mein hoga)
-  return FUNNEL_POINTS[funnelStage] || 0;
+  // Calling funnel stages ke points disabled hain
+  return 0;
 };
 
 const ALLOWED_FUNNEL = {
@@ -264,21 +264,21 @@ const updateStudent = async (req, res) => {
       }
     }
 
-    // Funnel points migrate
-    const awardedFunnels = updated.awardedFunnelStages || [];
-    if (awardedFunnels.length > 0) {
-      const funnelTotal = awardedFunnels.reduce((sum, f) => sum + (FUNNEL_POINTS[f] || 0), 0);
-      if (funnelTotal > 0) {
-        await TrackPoints.findOneAndUpdate({ track: prevMainTrack }, { $inc: { points: -funnelTotal } }, { upsert: true });
-        await TrackPoints.findOneAndUpdate({ track: newTrack },      { $inc: { points:  funnelTotal } }, { upsert: true });
-      }
-    }
+    // Funnel points migrate (calling stage points disabled hain, sirf Admission Closed migrate hoga)
+    // const awardedFunnels = updated.awardedFunnelStages || [];
+    // if (awardedFunnels.length > 0) {
+    //   const funnelTotal = awardedFunnels.reduce((sum, f) => sum + (FUNNEL_POINTS[f] || 0), 0);
+    //   if (funnelTotal > 0) {
+    //     await TrackPoints.findOneAndUpdate({ track: prevMainTrack }, { $inc: { points: -funnelTotal } }, { upsert: true });
+    //     await TrackPoints.findOneAndUpdate({ track: newTrack },      { $inc: { points:  funnelTotal } }, { upsert: true });
+    //   }
+    // }
 
-    // Calling points migrate
-    if (updated.callingPointsAwarded) {
-      await TrackPoints.findOneAndUpdate({ track: prevMainTrack }, { $inc: { points: -CALLING_POINTS_PER_STUDENT } }, { upsert: true });
-      await TrackPoints.findOneAndUpdate({ track: newTrack },      { $inc: { points:  CALLING_POINTS_PER_STUDENT } }, { upsert: true });
-    }
+    // Calling points migrate — disabled (callingPointsAwarded ab award nahi hota)
+    // if (updated.callingPointsAwarded) {
+    //   await TrackPoints.findOneAndUpdate({ track: prevMainTrack }, { $inc: { points: -CALLING_POINTS_PER_STUDENT } }, { upsert: true });
+    //   await TrackPoints.findOneAndUpdate({ track: newTrack },      { $inc: { points:  CALLING_POINTS_PER_STUDENT } }, { upsert: true });
+    // }
 
     pointsDelta = 0;
   } else {
@@ -312,10 +312,10 @@ const updateStudent = async (req, res) => {
     }
 
     // Calling status remark points — sirf ek baar per student, flat 5 pts
-    if (updates.status === 'Calling' && updates.remarks && updates.remarks.trim() && !student.callingPointsAwarded) {
-      pointsDelta += CALLING_POINTS_PER_STUDENT;
-      await Student.findByIdAndUpdate(req.params.id, { callingPointsAwarded: true });
-    }
+    // if (updates.status === 'Calling' && updates.remarks && updates.remarks.trim() && !student.callingPointsAwarded) {
+    //   pointsDelta += CALLING_POINTS_PER_STUDENT;
+    //   await Student.findByIdAndUpdate(req.params.id, { callingPointsAwarded: true });
+    // }
 
     const trackForPoints = newTrack || prevMainTrack;
     if (pointsDelta !== 0 && trackForPoints) {
@@ -974,11 +974,9 @@ const getTrackStats = async (req, res) => {
       { $group: { _id: '$status', count: { $sum: 1 } } },
     ]);
 
-    // Funnel-wise breakdown with points earned
+    // Funnel-wise breakdown — sirf Admission Closed ke points active hain
     const FUNNEL_POINTS_MAP = {
-      'Call Completed': 5, 'Lead Interested': 10,
       'Admission Closed': 100,
-      'Call Not Received': 5, 'Wrong Number': 5, 'Switch Off': 5,
     };
     const funnelBreakdown = await Student.aggregate([
       { $match: { track, funnelStage: { $ne: '' }, funnelStage: { $exists: true } } },

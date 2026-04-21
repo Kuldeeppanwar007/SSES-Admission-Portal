@@ -72,60 +72,35 @@ router.post('/weekly-bonus-manual', protect, authorizeRoles('admin'), async (req
 // Admin — TrackPoints recalculate from scratch
 router.post('/recalculate-points', protect, authorizeRoles('admin'), async (req, res) => {
   try {
-    const Student = require('../models/Student');
+    const Student     = require('../models/Student');
     const TrackPoints = require('../models/TrackPoints');
+    const Target      = require('../models/Target');
 
-    const TRACK_GROUP = {
-      'Harda': 1, 'Satwas & Kannod': 1, 'Rehti': 1,
-      'Khategaon': 2,
-    };
-    const SUBJECT_POINTS_BY_GROUP = {
-      'B.Tech': [180, 198, 225], 'BCA': [120, 132, 150],
-      'BBA': [130, 143, 163], 'Bcom': [130, 143, 163],
-      'Bio': [120, 132, 150], 'Micro': [120, 132, 150],
-    };
-    const FUNNEL_POINTS = {
-      'Call Completed': 5, 'Lead Interested': 10,
-      'Call Not Received': 5, 'Wrong Number': 5, 'Switch Off': 5,
-      'Admission Closed': 100,
-    };
-    const TOWN_TO_MAIN_TRACK = {
-      'Harda': 'Harda', 'Timarni': 'Harda', 'Seoni Malwa': 'Harda',
-      'Khategaon': 'Khategaon', 'Nemawar': 'Khategaon', 'Sandalpur': 'Khategaon',
-      'Rehti': 'Rehti', 'Gopalpur': 'Rehti', 'Bherunda': 'Rehti', 'Narmadapuram': 'Rehti',
-      'Satwas': 'Satwas & Kannod', 'Kannod': 'Satwas & Kannod',
-    };
-    const getSubjectPoints = (track, subject) => {
-      const g = (TRACK_GROUP[track] || 1) - 1;
-      return (SUBJECT_POINTS_BY_GROUP[subject] || [0, 0, 0])[g];
-    };
+    const BTECH_SUBJECTS = ['B.Tech(CS)', 'B.Tech(IT)', 'B.Tech(ECE)', 'B.Tech(AI/ML)'];
+
+    // Target model se points fetch karo (same as getStats + weeklyBonus)
+    const targets = await Target.find({});
+    const pointsPerSubject = {}; // { track: { subject: pts } }
+    targets.forEach(({ track, subject, points }) => {
+      if (!pointsPerSubject[track]) pointsPerSubject[track] = {};
+      pointsPerSubject[track][subject] = points || 0;
+    });
 
     // Reset all track points to 0
     await TrackPoints.updateMany({}, { points: 0 });
 
-    // Admission points recalculate
-    const admitted = await Student.find({ status: 'Admitted', isDisabled: { $ne: true } });
+    // Admission points recalculate — Target model se
+    const admittedStudents = await Student.find({ status: 'Admitted', isDisabled: { $ne: true } });
     const pointsMap = {};
-    admitted.forEach(({ track, subject }) => {
+    admittedStudents.forEach(({ track, subject }) => {
       if (!track || !subject) return;
-      pointsMap[track] = (pointsMap[track] || 0) + getSubjectPoints(track, subject);
+      const subjectKey = BTECH_SUBJECTS.includes(subject) ? 'B.Tech' : subject;
+      const pts = pointsPerSubject[track]?.[subjectKey] || 0;
+      pointsMap[track] = (pointsMap[track] || 0) + pts;
     });
 
-    // Funnel points recalculate — sirf current active funnelStage ke points
-    const funnelStudents = await Student.find({ funnelStage: { $nin: ['', null] }, isDisabled: { $ne: true } });
-    funnelStudents.forEach(({ track, funnelStage }) => {
-      if (!track || !funnelStage) return;
-      const mainTrack = TOWN_TO_MAIN_TRACK[track] || track;
-      const pts = FUNNEL_POINTS[funnelStage] || (funnelStage === 'Admission Closed' ? 100 : 0);
-      pointsMap[mainTrack] = (pointsMap[mainTrack] || 0) + pts;
-    });
-
-    // Calling points recalculate
-    const callingStudents = await Student.find({ callingPointsAwarded: true, isDisabled: { $ne: true } });
-    callingStudents.forEach(({ track }) => {
-      if (!track) return;
-      pointsMap[track] = (pointsMap[track] || 0) + 5;
-    });
+    // Weekly bonus points preserve karo (TrackPoints mein jo extra points hain wo bonus se aaye hain)
+    // Note: recalculate sirf admission points reset karta hai, bonus history WeeklyBonus model mein safe hai
 
     // Save
     await Promise.all(Object.entries(pointsMap).map(([track, points]) =>
