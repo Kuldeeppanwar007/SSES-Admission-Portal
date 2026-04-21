@@ -693,30 +693,18 @@ export default function Students() {
             </select>
             <select value={filters.interviewFilter} onChange={(e) => { 
               const val = e.target.value;
-              const newFilters = { ...filters, interviewFilter: val };
-              setFilters(newFilters); 
-              setInterviewRound('');
+              setFilters({ ...filters, interviewFilter: val }); 
+              setInterviewRound(val?.startsWith('round_') ? val.split('_')[1] : '');
               setPage(1); 
             }}
               className="flex-1 min-w-32 border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none">
               <option value="">All Interviews</option>
-              <option value="hasAttempts">Has Attempts</option>
+              <option value="hasAttempts">Has Attempts (All Rounds)</option>
+              {Array.from({ length: maxInterviewRound }, (_, i) => i + 1).map(r => (
+                <option key={r} value={`round_${r}`}>Round {r}</option>
+              ))}
               <option value="finalCleared">Final Cleared</option>
             </select>
-            {filters.interviewFilter === 'hasAttempts' && (
-              <select value={interviewRound} onChange={(e) => {
-                const round = e.target.value;
-                setInterviewRound(round);
-                setFilters(prev => ({ ...prev, interviewFilter: round ? `round_${round}` : 'hasAttempts' }));
-                setPage(1);
-              }}
-                className="flex-1 min-w-28 border border-primary/40 rounded-lg px-3 py-2 text-sm outline-none bg-orange-50">
-                <option value="">All Rounds</option>
-                {Array.from({ length: maxInterviewRound }, (_, i) => i + 1).map(r => (
-                  <option key={r} value={r}>Round {r}</option>
-                ))}
-              </select>
-            )}
             <select value={filters.funnelStage} onChange={(e) => { 
               const newFilters = { ...filters, funnelStage: e.target.value };
               setFilters(newFilters); 
