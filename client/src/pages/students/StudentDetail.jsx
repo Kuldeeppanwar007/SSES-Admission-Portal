@@ -238,7 +238,7 @@ const handleViewHistory = async () => {
         </div>
 
         {/* Flags — Topper & Priority */}
-        {(user?.role === 'admin' || user?.role === 'manager') && (
+        {(user?.role === 'admin' || user?.role === 'manager' || user?.role === 'track_incharge') && (
           <div className="flex gap-4 mb-5 pb-5 border-b border-gray-100">
             <label className={`flex items-center gap-2 cursor-pointer select-none px-4 py-2 rounded-xl border-2 transition-all ${
               student.isTopper ? 'border-yellow-400 bg-yellow-50' : 'border-gray-200 bg-gray-50'
