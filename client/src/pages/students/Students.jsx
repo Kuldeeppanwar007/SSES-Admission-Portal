@@ -248,6 +248,7 @@ export default function Students() {
             interviewFilter: parsed.filters?.interviewFilter || '',
             funnelStage: parsed.filters?.funnelStage || '',
             admissionType: parsed.filters?.admissionType || '',
+            branch: parsed.filters?.branch || '',
           },
           showFilters: parsed.showFilters || !!(urlTrack || urlStatus)
         };
@@ -268,6 +269,7 @@ export default function Students() {
         interviewFilter: '',
         funnelStage: '',
         admissionType: '',
+        branch: '',
       },
       showFilters: !!(urlTrack || urlStatus)
     };
@@ -293,6 +295,7 @@ export default function Students() {
   const [maxInterviewRound, setMaxInterviewRound] = useState(3);
   const [mobileActionsOpen, setMobileActionsOpen] = useState(false);
   const mobileActionsRef = useRef(null);
+  const [branches, setBranches] = useState([]);
 
   useEffect(() => {
     const handler = (e) => { if (mobileActionsRef.current && !mobileActionsRef.current.contains(e.target)) setMobileActionsOpen(false); };
@@ -371,6 +374,7 @@ export default function Students() {
         funnelStage: filters.funnelStage,
         admissionType: filters.admissionType,
         interviewFilter: filters.interviewFilter,
+        branch: filters.branch,
         search: debouncedSearch,
         ...(tab === 'disabled' ? { status: 'Disabled' } : {}) 
       };
@@ -405,6 +409,9 @@ export default function Students() {
     api.get('/students/max-interview-round')
       .then(r => setMaxInterviewRound(r.data.maxRound || 1))
       .catch(() => {});
+    api.get('/students/distinct-branches')
+      .then(r => setBranches(r.data || []))
+      .catch(() => {});
   }, []);
   
   // Restore scroll position when returning to the page
@@ -428,7 +435,7 @@ export default function Students() {
   const switchTab = (t) => { 
     setTab(t); 
     setPage(1); 
-    setFilters({ track: '', status: '', town: '', search: '', formSource: '', interviewFilter: '', funnelStage: '', admissionType: '' }); 
+    setFilters({ track: '', status: '', town: '', search: '', formSource: '', interviewFilter: '', funnelStage: '', admissionType: '', branch: '' }); 
     setSelected([]);
     setHasMore(false);
     setInterviewRound('');
@@ -721,6 +728,13 @@ export default function Students() {
                 className="flex-1 min-w-32 border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none">
                 <option value="">All Admission Types</option>
                 {['SNS', 'SVS', 'Shri Ram', 'Full Fees'].map((t) => <option key={t} value={t}>{t}</option>)}
+              </select>
+            )}
+            {branches.length > 0 && (
+              <select value={filters.branch} onChange={(e) => { setFilters({ ...filters, branch: e.target.value }); setPage(1); }}
+                className="flex-1 min-w-32 border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none">
+                <option value="">All Branches</option>
+                {branches.map((b) => <option key={b} value={b}>{b}</option>)}
               </select>
             )}
           </div>

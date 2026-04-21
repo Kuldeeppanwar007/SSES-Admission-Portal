@@ -3,6 +3,33 @@ const User = require('../models/User');
 const xlsx = require('xlsx');
 const { sendPriorityAlert } = require('../utils/mailer');
 
+// Branch normalization map — duplicate/alias values ko ek canonical name pe map karo
+const BRANCH_NORMALIZE = {
+  'ai/ml':         'B.Tech(AIML)',
+  'b.tech(ai/ml)': 'B.Tech(AIML)',
+  'aiml':          'B.Tech(AIML)',
+  'b.tech(aiml)':  'B.Tech(AIML)',
+  'cs':            'B.Tech(CS)',
+  'b.tech(cs)':    'B.Tech(CS)',
+  'it':            'B.Tech(IT)',
+  'b.tech(it)':    'B.Tech(IT)',
+  'b.tech(ece)':   'B.Tech(ECE)',
+  'ece':           'B.Tech(ECE)',
+  'bca(iteg)':     'BCA',
+  'bca':           'BCA',
+  'bsc(micro)':    'BSC(MICRO)',
+  'bsc(bt)':       'BSC(BT)',
+  'b.com(ca)':     'B.com(CA)',
+  'bba':           'BBA',
+  'iteg diploma':  'ITEG Diploma',
+};
+
+const normalizeBranch = (val) => {
+  if (!val) return null;
+  const key = val.trim().toLowerCase();
+  return BRANCH_NORMALIZE[key] || val.trim();
+};
+
 // Get all students (admin/manager = all, track_incharge = own track)
 const getStudents = async (req, res) => {
   try {
@@ -35,6 +62,38 @@ const getStudents = async (req, res) => {
     }
 
     if (formSource) filter.formSource = formSource;
+
+    // Branch filter — normalized values ke saath branch ya priority1 dono check karo
+    if (req.query.branch) {
+      // Sab aliases jo is normalized value se map hote hain
+      const selectedNorm = req.query.branch.trim().toLowerCase();
+      const aliases = Object.entries(BRANCH_NORMALIZE)
+        .filter(([, v]) => v.toLowerCase() === selectedNorm || v === req.query.branch)
+        .map(([k]) => k);
+      // Original raw values jo is normalized value se match karti hain
+      const rawMatches = [...new Set([
+        req.query.branch,
+        ...aliases,
+        ...Object.entries(BRANCH_NORMALIZE)
+          .filter(([, v]) => v === req.query.branch)
+          .map(([k]) => k),
+      ])];
+      const branchOr = rawMatches.map(v => ({
+        $or: [
+          { branch: { $regex: `^${v.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, $options: 'i' } },
+          { priority1: { $regex: `^${v.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, $options: 'i' } },
+        ]
+      }));
+      const branchCondition = { $or: branchOr.flatMap(x => x.$or) };
+      if (filter.$or) {
+        filter.$and = [...(filter.$and || []), { $or: filter.$or }, branchCondition];
+        delete filter.$or;
+      } else if (filter.$and) {
+        filter.$and.push(branchCondition);
+      } else {
+        Object.assign(filter, branchCondition);
+      }
+    }
 
     // Funnel stage filter
     if (req.query.funnelStage) filter.funnelStage = req.query.funnelStage;
@@ -71,15 +130,14 @@ const getStudents = async (req, res) => {
         { fatherName: { $regex: safeSearch, $options: 'i' } },
         { mobileNo: { $regex: safeSearch, $options: 'i' } },
         { track: { $regex: safeSearch, $options: 'i' } },
+        { remarks: { $regex: safeSearch, $options: 'i' } },
       ];
       
       if (filter.$or) {
-        // If town filter exists, combine with search using $and
-        filter.$and = [
-          { $or: filter.$or }, // town filter
-          { $or: searchConditions } // search filter
-        ];
+        filter.$and = [...(filter.$and || []), { $or: filter.$or }, { $or: searchConditions }];
         delete filter.$or;
+      } else if (filter.$and) {
+        filter.$and.push({ $or: searchConditions });
       } else {
         filter.$or = searchConditions;
       }
@@ -89,7 +147,7 @@ const getStudents = async (req, res) => {
     const [total, students] = await Promise.all([
       Student.countDocuments(filter),
       Student.find(filter)
-        .select('name fatherName track trackName village mobileNo formSource status finalInterview createdAt isTopper isPriority') // Select only needed fields
+        .select('name fatherName track trackName village mobileNo formSource status finalInterview createdAt isTopper isPriority branch remarks') // Select only needed fields
         .populate('addedBy', 'name')
         .sort({ createdAt: -1 })
         .skip((_page - 1) * _limit)
@@ -1287,4 +1345,16 @@ const selfRegister = async (req, res) => {
   }
 };
 
-module.exports = { getStudents, getStudent, addStudent, updateStudent, deleteStudent, updateStatus, getStatusHistory, getActivityLog, bulkUpload, downloadTemplate, downloadCSVTemplate, exportStudents, getStats, getTrackStats, selfRegister };
+// Distinct branch values
+const getDistinctBranches = async (req, res) => {
+  try {
+    const branches = await Student.distinct('branch', { branch: { $nin: [null, ''] } });
+    const priority1s = await Student.distinct('priority1', { priority1: { $nin: [null, ''] } });
+    const normalized = [...new Set([...branches, ...priority1s].map(normalizeBranch).filter(Boolean))];
+    res.json(normalized.sort());
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+module.exports = { getStudents, getStudent, addStudent, updateStudent, deleteStudent, updateStatus, getStatusHistory, getActivityLog, bulkUpload, downloadTemplate, downloadCSVTemplate, exportStudents, getStats, getTrackStats, selfRegister, getDistinctBranches };
