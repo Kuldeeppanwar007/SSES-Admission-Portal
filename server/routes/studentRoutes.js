@@ -43,6 +43,15 @@ router.patch('/external-update/:id', async (req, res) => {
   }
 });
 
+router.get('/max-interview-round', protect, async (req, res) => {
+  try {
+    const Interview = require('../models/Interview');
+    const result = await Interview.aggregate([{ $group: { _id: null, max: { $max: '$round' } } }]);
+    res.json({ maxRound: result[0]?.max || 1 });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
 router.get('/stats', protect, getStats);
 router.get('/track-stats', protect, async (req, res, next) => {
   if (req.user.role === 'admin') {

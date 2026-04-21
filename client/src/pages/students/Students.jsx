@@ -289,6 +289,8 @@ export default function Students() {
   const [exporting, setExporting] = useState(false);
   const [interviewStudent, setInterviewStudent] = useState(null);
   const [searchTimeout, setSearchTimeout] = useState(null);
+  const [interviewRound, setInterviewRound] = useState('');
+  const [maxInterviewRound, setMaxInterviewRound] = useState(3);
   const [mobileActionsOpen, setMobileActionsOpen] = useState(false);
   const mobileActionsRef = useRef(null);
 
@@ -398,6 +400,12 @@ export default function Students() {
   };
 
   useEffect(() => { fetchStudents(); }, [page, filters, tab, debouncedSearch]);
+
+  useEffect(() => {
+    api.get('/students/max-interview-round')
+      .then(r => setMaxInterviewRound(r.data.maxRound || 1))
+      .catch(() => {});
+  }, []);
   
   // Restore scroll position when returning to the page
   useEffect(() => {
@@ -423,7 +431,7 @@ export default function Students() {
     setFilters({ track: '', status: '', town: '', search: '', formSource: '', interviewFilter: '', funnelStage: '', admissionType: '' }); 
     setSelected([]);
     setHasMore(false);
-    // Clear saved state when switching tabs
+    setInterviewRound('');
     localStorage.removeItem('studentsPageState');
   };
 
@@ -684,8 +692,10 @@ export default function Students() {
               <option value="manual">Manual</option>
             </select>
             <select value={filters.interviewFilter} onChange={(e) => { 
-              const newFilters = { ...filters, interviewFilter: e.target.value };
+              const val = e.target.value;
+              const newFilters = { ...filters, interviewFilter: val };
               setFilters(newFilters); 
+              setInterviewRound('');
               setPage(1); 
             }}
               className="flex-1 min-w-32 border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none">
@@ -693,6 +703,20 @@ export default function Students() {
               <option value="hasAttempts">Has Attempts</option>
               <option value="finalCleared">Final Cleared</option>
             </select>
+            {filters.interviewFilter === 'hasAttempts' && (
+              <select value={interviewRound} onChange={(e) => {
+                const round = e.target.value;
+                setInterviewRound(round);
+                setFilters(prev => ({ ...prev, interviewFilter: round ? `round_${round}` : 'hasAttempts' }));
+                setPage(1);
+              }}
+                className="flex-1 min-w-28 border border-primary/40 rounded-lg px-3 py-2 text-sm outline-none bg-orange-50">
+                <option value="">All Rounds</option>
+                {Array.from({ length: maxInterviewRound }, (_, i) => i + 1).map(r => (
+                  <option key={r} value={r}>Round {r}</option>
+                ))}
+              </select>
+            )}
             <select value={filters.funnelStage} onChange={(e) => { 
               const newFilters = { ...filters, funnelStage: e.target.value };
               setFilters(newFilters); 

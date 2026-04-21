@@ -50,6 +50,17 @@ const getStudents = async (req, res) => {
       const studentIdsWithInterviews = await Interview.distinct('student');
       filter._id = { $in: studentIdsWithInterviews };
       filter['finalInterview.result'] = { $ne: 'Pass' };
+    } else if (interviewFilter?.startsWith('round_')) {
+      const round = Number(interviewFilter.split('_')[1]);
+      const Interview = require('../models/Interview');
+      // Sirf wahi students jinka last (max) round = N ho
+      const lastRoundAgg = await Interview.aggregate([
+        { $group: { _id: '$student', lastRound: { $max: '$round' } } },
+        { $match: { lastRound: round } },
+      ]);
+      const studentIds = lastRoundAgg.map(x => x._id);
+      filter._id = { $in: studentIds };
+      filter['finalInterview.result'] = { $ne: 'Pass' };
     }
 
     // Optimize search with text index
