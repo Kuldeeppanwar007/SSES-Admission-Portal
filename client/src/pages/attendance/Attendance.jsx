@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import { FiMapPin, FiCalendar, FiClock, FiFilter, FiBarChart2, FiNavigation, FiRefreshCw } from 'react-icons/fi';
 import DatePicker from '../../components/DatePicker';
 import TrackingMap from '../../components/TrackingMap';
+import CampusMap from '../../components/CampusMap';
 
 const today = new Date().toISOString().slice(0, 10);
 const thisMonth = today.slice(0, 7);
@@ -19,7 +20,15 @@ const formatTime = (ts) => {
 
 const formatDate = (ts) => new Date(ts).toLocaleDateString('en-IN');
 
+const haversineKm = (lat1, lng1, lat2, lng2) => {
+  const R = 6371, toRad = d => d * Math.PI / 180;
+  const dLat = toRad(lat2 - lat1), dLng = toRad(lng2 - lng1);
+  const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng/2)**2;
+  return (R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a))).toFixed(2);
+};
+
 export default function Attendance() {
+  const COLLEGE = { lat: 22.563246, lng: 76.961334 };
   const [tab, setTab] = useState('records');
 
   // Day View modal
@@ -39,6 +48,10 @@ export default function Attendance() {
   const [loadingMonth, setLoadingMonth] = useState(false);
   const [month, setMonth] = useState(thisMonth);
   const [monthTrack, setMonthTrack] = useState('');
+
+  // Campus Map tab
+  const [liveLocations, setLiveLocations] = useState([]);
+  const [loadingLive, setLoadingLive] = useState(false);
 
   // Live Tracking tab
   const [trackUsers, setTrackUsers] = useState([]);
@@ -141,6 +154,21 @@ export default function Attendance() {
       .finally(() => setLoadingTl(false));
   }, [selectedUser, trackDate]);
 
+  const fetchLiveLocations = useCallback(() => {
+    setLoadingLive(true);
+    api.get('/attendance/live-locations')
+      .then(r => setLiveLocations(r.data))
+      .catch(() => toast.error('Failed to load live locations'))
+      .finally(() => setLoadingLive(false));
+  }, []);
+
+  useEffect(() => {
+    if (tab !== 'campus') return;
+    fetchLiveLocations();
+    const id = setInterval(fetchLiveLocations, 2 * 60 * 1000);
+    return () => clearInterval(id);
+  }, [tab, fetchLiveLocations]);
+
   useEffect(() => { if (tab === 'records') fetchRecords(); }, [tab, fetchRecords]);
   useEffect(() => { if (tab === 'monthly') fetchMonthly(); }, [tab, fetchMonthly]);
   useEffect(() => {
@@ -174,6 +202,7 @@ export default function Attendance() {
           { key: 'records', label: 'Records', icon: FiFilter },
           { key: 'monthly', label: 'Monthly %', icon: FiBarChart2 },
           { key: 'tracking', label: 'Live Tracking', icon: FiNavigation },
+          { key: 'campus', label: 'Campus Map', icon: FiMapPin },
         ].map(({ key, label, icon: Icon }) => (
           <button key={key} onClick={() => setTab(key)}
             className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold transition-colors
@@ -516,6 +545,61 @@ export default function Attendance() {
           )}
         </>
       )}
+      {/* ── CAMPUS MAP TAB ── */}
+      {tab === 'campus' && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-gray-500">Aaj ke saare track incharge ki current location — college ke relative</p>
+            <button onClick={fetchLiveLocations}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-primary text-white text-sm font-semibold rounded-lg hover:opacity-90">
+              <FiRefreshCw size={13} /> Refresh
+            </button>
+          </div>
+
+          {loadingLive ? (
+            <div className="flex justify-center items-center h-40">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+            </div>
+          ) : (
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+              {/* Map */}
+              <CampusMap users={liveLocations} />
+
+              {/* User list below map */}
+              <div className="divide-y divide-gray-50">
+                {liveLocations.map((u, i) => {
+                  const colors = ['#6366f1','#22c55e','#ef4444','#f59e0b','#3b82f6','#ec4899','#14b8a6','#a855f7'];
+                  const color = colors[i % colors.length];
+                  const dist = u.lat && u.lng ? haversineKm(22.563246, 76.961334, u.lat, u.lng) : null;
+                  const time = u.timestamp ? new Date(u.timestamp).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }) : null;
+                  return (
+                    <div key={u.userId} className="flex items-center gap-3 px-4 py-3">
+                      <div style={{ background: color }} className="w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-sm shrink-0">
+                        {u.name.split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase()}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-gray-800">{u.name}</p>
+                        <p className="text-xs text-gray-400">{u.track}</p>
+                      </div>
+                      <div className="text-right shrink-0">
+                        {dist ? (
+                          <>
+                            <p className="text-sm font-bold text-primary">{dist} km</p>
+                            <p className="text-[10px] text-gray-400">{time}</p>
+                          </>
+                        ) : (
+                          <span className="text-xs text-gray-400">No data today</span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* ── DAY VIEW MODAL ── */}
       {dvModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4" onClick={() => setDvModal(null)}>

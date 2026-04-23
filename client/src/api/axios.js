@@ -1,4 +1,5 @@
 import axios from 'axios';
+import useAuthStore from '../store/authStore';
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || 'https://sses-admission-portal-1.onrender.com/api',
@@ -49,8 +50,7 @@ api.interceptors.response.use(
         return api(original);
       } catch (refreshErr) {
         processQueue(refreshErr, null);
-        localStorage.removeItem('sses_user');
-        window.location.href = '/login';
+        useAuthStore.getState().logout();
         return Promise.reject(refreshErr);
       } finally {
         isRefreshing = false;

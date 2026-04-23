@@ -4,6 +4,9 @@ import logo from '../../assets/web/icon-512.png';
 import NotificationBell from './NotificationBell';
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Capacitor } from '@capacitor/core';
+
+const isMobile = Capacitor.isNativePlatform();
 
 export default function Navbar({ onMenuClick }) {
   const { user, logout } = useAuthStore();
@@ -62,10 +65,12 @@ export default function Navbar({ onMenuClick }) {
                   className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-orange-50 hover:text-primary transition-colors">
                   <FiUser size={15} /> View Profile
                 </button>
-                <button onClick={() => { setShowLogoutModal(true); setMenuOpen(false); }}
-                  className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-orange-50 hover:text-primary transition-colors">
-                  <FiLogOut size={15} /> Logout
-                </button>
+                {!isMobile && (
+                  <button onClick={() => { setShowLogoutModal(true); setMenuOpen(false); }}
+                    className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-orange-50 hover:text-primary transition-colors">
+                    <FiLogOut size={15} /> Logout
+                  </button>
+                )}
               </div>
             )}
           </div>

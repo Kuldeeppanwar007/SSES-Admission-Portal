@@ -68,9 +68,6 @@ const saveLocation = async (req, res) => {
   if (lastLog) {
     const dist = haversine(lastLog.lat, lastLog.lng, lat, lng);
     if (dist < 150) {
-      await LocationLog.findByIdAndUpdate(lastLog._id, {
-        timestamp: timestamp ? new Date(Number(timestamp)) : new Date()
-      });
       return res.status(201).json({ ok: true, skipped: true });
     }
   }
@@ -307,4 +304,25 @@ const geocodePoints = async (req, res) => {
   res.json(results);
 };
 
-module.exports = { markAttendance, getMyAttendance, getAllAttendance, getMonthlyStats, saveLocation, getLocationLogs, getDayView, getTimeline, geocodePoints };
+// GET /api/attendance/live-locations  (admin) — sabki latest location aaj ki
+const getLiveLocations = async (req, res) => {
+  try {
+    const todayStr = getISTDateString();
+    const { start, end } = getISTDayRange(todayStr);
+    const users = await User.find({ role: 'track_incharge', isActive: true }).select('name track');
+    const results = await Promise.all(users.map(async (u) => {
+      const latest = await LocationLog.findOne({
+        user: u._id, status: 'ok', lat: { $ne: null },
+        timestamp: { $gte: start, $lte: end },
+      }).sort({ timestamp: -1 });
+      return {
+        userId: u._id, name: u.name, track: u.track,
+        lat: latest?.lat ?? null, lng: latest?.lng ?? null,
+        timestamp: latest?.timestamp ?? null,
+      };
+    }));
+    res.json(results);
+  } catch (err) { res.status(500).json({ message: err.message }); }
+};
+
+module.exports = { markAttendance, getMyAttendance, getAllAttendance, getMonthlyStats, saveLocation, getLocationLogs, getDayView, getTimeline, geocodePoints, getLiveLocations };

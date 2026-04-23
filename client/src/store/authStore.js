@@ -26,6 +26,7 @@ const useAuthStore = create((set) => ({
     await api.post('/auth/logout').catch(() => {});
     localStorage.removeItem('sses_user');
     set({ user: null });
+    window.location.href = '/login';
   },
 }));
 

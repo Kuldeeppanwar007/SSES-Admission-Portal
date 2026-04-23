@@ -32,10 +32,12 @@ public class LocationWorker extends Worker {
     @NonNull
     @Override
     public Result doWork() {
-        // IST time check: only 7AM - 6PM
+        // IST time check: only 7AM - 7PM, Sunday off
         Calendar cal = Calendar.getInstance(TimeZone.getTimeZone("Asia/Kolkata"));
         int hour = cal.get(Calendar.HOUR_OF_DAY);
-        if (hour < 7 || hour >= 21) return Result.success();
+        int dayOfWeek = cal.get(Calendar.DAY_OF_WEEK);
+        boolean isSunday = (dayOfWeek == Calendar.SUNDAY);
+        if (isSunday || hour < 7 || hour >= 19) return Result.success();
 
         SharedPreferences prefs = getApplicationContext()
             .getSharedPreferences(PREFS, Context.MODE_PRIVATE);

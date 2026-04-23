@@ -111,7 +111,9 @@ public class LocationService extends Service {
             java.util.Calendar cal = java.util.Calendar.getInstance(ist);
             int hour = cal.get(java.util.Calendar.HOUR_OF_DAY);
 
-            if (hour >= 7 && hour < 21) {
+            int dayOfWeek = cal.get(java.util.Calendar.DAY_OF_WEEK);
+            boolean isSunday = (dayOfWeek == java.util.Calendar.SUNDAY);
+            if (!isSunday && hour >= 7 && hour < 19) {
                 fetchAndSendLocation(token, apiUrl, startTime);
             } else {
                 // Off-hours: next schedule exactly at INTERVAL_MS
