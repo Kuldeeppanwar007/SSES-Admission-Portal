@@ -20,7 +20,7 @@ export default function CampusMap({ users }) {
     if (!mapRef.current) return;
 
     if (!mapObj.current) {
-      mapObj.current = L.map(mapRef.current, { zoomControl: true, scrollWheelZoom: true });
+      mapObj.current = L.map(mapRef.current, { zoomControl: true, scrollWheelZoom: false });
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© OpenStreetMap', maxZoom: 19,
       }).addTo(mapObj.current);
@@ -81,5 +81,5 @@ export default function CampusMap({ users }) {
     };
   }, []);
 
-  return <div ref={mapRef} style={{ height: '480px', width: '100%', borderRadius: '12px', zIndex: 0 }} />;
+  return <div ref={mapRef} style={{ height: 'clamp(300px, 50vw, 480px)', width: '100%', borderRadius: '12px', zIndex: 0 }} />;
 }
