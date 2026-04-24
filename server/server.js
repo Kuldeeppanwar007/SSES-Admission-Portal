@@ -95,6 +95,10 @@ app.use('/api/track-config', require('./routes/trackConfigRoutes'));
 
 app.get('/', (req, res) => res.send('SSES Admission Portal API Running'));
 
+app.get('/api/app-version', (req, res) => {
+  res.json({ minVersion: parseInt(process.env.MIN_APP_VERSION || '1') });
+});
+
 app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).json({ message: err.message || 'Server Error' });

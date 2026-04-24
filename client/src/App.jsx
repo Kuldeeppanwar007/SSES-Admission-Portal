@@ -1,7 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import toast from 'react-hot-toast';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { App as CapApp } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core';
 import { setupOfflineSync } from './utils/offlineQueue';
@@ -23,6 +23,9 @@ import EditRequests from './pages/students/EditRequests';
 import TrackManager from './pages/settings/TrackManager';
 import ActivityLog from './pages/activity/ActivityLog';
 import Profile from './pages/profile/Profile';
+
+const CURRENT_APP_VERSION = 2; // Har naye build pe yeh badhao
+const API_BASE = import.meta.env.VITE_API_URL || 'https://mkt.central.ssism.org';
 
 // Android back button handler
 function BackButtonHandler() {
@@ -73,11 +76,39 @@ function BackButtonHandler() {
 }
 
 export default function App() {
+  const [updateRequired, setUpdateRequired] = useState(false);
+
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+    fetch(`${API_BASE.replace(/\/api$/, '')}/api/app-version`)
+      .then(r => r.json())
+      .then(({ minVersion }) => {
+        if (CURRENT_APP_VERSION < minVersion) setUpdateRequired(true);
+      })
+      .catch(() => {});
+  }, []);
+
   useEffect(() => {
     setupOfflineSync(({ synced }) => {
       toast.success(`${synced} pending action${synced > 1 ? 's' : ''} sync ho gaye!`);
     });
   }, []);
+
+  if (updateRequired) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', padding: '2rem', textAlign: 'center', background: '#f9fafb' }}>
+        <img src="/icon-512.png" alt="logo" style={{ width: 80, marginBottom: 24 }} />
+        <h2 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: 12 }}>Update Required</h2>
+        <p style={{ color: '#6b7280', marginBottom: 24 }}>Naya version available hai. App use karne ke liye please update karein.</p>
+        <a
+          href="https://drive.google.com/uc?export=download&id=19IeqlkRhfwpsEcopCdqKr6jUs-U1Bdbs"
+          style={{ background: '#2563eb', color: '#fff', padding: '12px 32px', borderRadius: 8, textDecoration: 'none', fontWeight: 600 }}
+        >
+          Update Karein
+        </a>
+      </div>
+    );
+  }
   return (
     <PermissionGate>
     <BrowserRouter>
