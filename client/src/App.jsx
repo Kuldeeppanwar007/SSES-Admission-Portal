@@ -101,7 +101,7 @@ export default function App() {
         <h2 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: 12 }}>Update Required</h2>
         <p style={{ color: '#6b7280', marginBottom: 24 }}>Naya version available hai. App use karne ke liye please update karein.</p>
         <a
-          href="https://drive.google.com/uc?export=download&id=19IeqlkRhfwpsEcopCdqKr6jUs-U1Bdbs"
+          href="https://drive.google.com/uc?export=download&id=16xtbAlrf_n4rwsRYg0ga4rDQuZxYuIEq"
           style={{ background: '#2563eb', color: '#fff', padding: '12px 32px', borderRadius: 8, textDecoration: 'none', fontWeight: 600 }}
         >
           Update Karein
