@@ -4,7 +4,7 @@ import api from '../../api/axios';
 import { TRACKS, STATUSES, STATUS_COLORS, TRACK_TOWNS, TOWN_TO_MAIN_TRACK } from '../../utils/constants';
 import useAuthStore from '../../store/authStore';
 import toast from 'react-hot-toast';
-import { FiPlus, FiUpload, FiSearch, FiEdit2, FiDownload, FiFilter, FiSlash, FiClipboard, FiExternalLink, FiChevronDown } from 'react-icons/fi';
+import { FiPlus, FiUpload, FiSearch, FiEdit2, FiDownload, FiFilter, FiSlash, FiClipboard, FiExternalLink, FiChevronDown, FiSend } from 'react-icons/fi';
 import DatePicker from '../../components/DatePicker';
 import { isOnline, cacheStudents, getCachedStudents } from '../../utils/offlineQueue';
 import { usePerformanceMonitor, useDebounce } from '../../hooks/usePerformance';
@@ -218,6 +218,53 @@ function InterviewModal({ student, user, onClose, onSaved }) {
   );
 }
 
+function SearchableSelect({ value, onChange, options, placeholder }) {
+  const [query, setQuery] = useState('');
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  const filtered = options.filter(o => o.toLowerCase().includes(query.toLowerCase()));
+
+  useEffect(() => {
+    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  return (
+    <div className="relative flex-1 min-w-32" ref={ref}>
+      <button type="button" onClick={() => { setOpen(o => !o); setQuery(''); }}
+        className={`w-full flex items-center justify-between border rounded-lg px-3 py-2 text-sm outline-none bg-white text-left ${
+          value ? 'border-primary text-gray-800' : 'border-gray-300 text-gray-500'
+        }`}>
+        <span className="truncate">{value || placeholder}</span>
+        <FiChevronDown size={13} className={`shrink-0 ml-1 text-gray-400 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && (
+        <div className="absolute z-50 mt-1 right-0 w-64 max-w-[calc(100vw-2rem)] bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden">
+          <div className="p-2 border-b border-gray-100">
+            <input autoFocus value={query} onChange={e => setQuery(e.target.value)}
+              placeholder="Search..."
+              className="w-full text-sm px-2 py-1.5 border border-gray-200 rounded-lg outline-none focus:border-primary" />
+          </div>
+          <div className="max-h-48 overflow-y-auto">
+            <button type="button" onClick={() => { onChange(''); setOpen(false); }}
+              className={`w-full text-left px-3 py-2 text-sm hover:bg-orange-50 hover:text-primary ${
+                !value ? 'text-primary font-semibold' : 'text-gray-500'
+              }`}>{placeholder}</button>
+            {filtered.length === 0 && <p className="px-3 py-2 text-xs text-gray-400">No results</p>}
+            {filtered.map(o => (
+              <button key={o} type="button" onClick={() => { onChange(o); setOpen(false); }}
+                className={`w-full text-left px-3 py-2 text-sm hover:bg-orange-50 hover:text-primary ${
+                  value === o ? 'text-primary font-semibold bg-orange-50/50' : 'text-gray-700'
+                }`}>{o}</button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 const ACTIVE_STATUSES = STATUSES.filter((s) => s !== 'Disabled');
 
 export default function Students() {
@@ -250,6 +297,7 @@ export default function Students() {
             admissionType: parsed.filters?.admissionType || '',
             branch: parsed.filters?.branch || '',
             village: parsed.filters?.village || '',
+            schoolName: parsed.filters?.schoolName || '',
           },
           showFilters: parsed.showFilters || !!(urlTrack || urlStatus)
         };
@@ -272,6 +320,7 @@ export default function Students() {
         admissionType: '',
         branch: '',
         village: '',
+        schoolName: '',
       },
       showFilters: !!(urlTrack || urlStatus)
     };
@@ -299,6 +348,7 @@ export default function Students() {
   const mobileActionsRef = useRef(null);
   const [branches, setBranches] = useState([]);
   const [villages, setVillages] = useState([]);
+  const [schools, setSchools] = useState([]);
 
   useEffect(() => {
     const handler = (e) => { if (mobileActionsRef.current && !mobileActionsRef.current.contains(e.target)) setMobileActionsOpen(false); };
@@ -351,6 +401,16 @@ export default function Students() {
   
   const availableTowns = getAvailableTowns();
   
+  const filtersRef = useRef(filters);
+  const pageRef = useRef(page);
+  const tabRef = useRef(tab);
+  const debouncedSearchRef = useRef(debouncedSearch);
+
+  useEffect(() => { filtersRef.current = filters; }, [filters]);
+  useEffect(() => { pageRef.current = page; }, [page]);
+  useEffect(() => { tabRef.current = tab; }, [tab]);
+  useEffect(() => { debouncedSearchRef.current = debouncedSearch; }, [debouncedSearch]);
+
   const fetchStudents = async (loadMore = false) => {
     setLoading(true);
     try {
@@ -379,6 +439,7 @@ export default function Students() {
         interviewFilter: filters.interviewFilter,
         branch: filters.branch,
         village: filters.village,
+        schoolName: filters.schoolName,
         search: debouncedSearch,
         ...(tab === 'disabled' ? { status: 'Disabled' } : {}) 
       };
@@ -407,7 +468,16 @@ export default function Students() {
     }
   };
 
-  useEffect(() => { fetchStudents(); }, [page, filters, tab, debouncedSearch]);
+  useEffect(() => { fetchStudents(); }, [page, filters, tab, debouncedSearch]); // eslint-disable-line
+
+  // Mobile pe page visible hone par re-fetch karo (tab switch ke baad)
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') fetchStudents();
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => document.removeEventListener('visibilitychange', handleVisibility);
+  }, []); // eslint-disable-line
 
   useEffect(() => {
     api.get('/students/max-interview-round')
@@ -418,6 +488,9 @@ export default function Students() {
       .catch(() => {});
     api.get('/students/distinct-villages')
       .then(r => setVillages(r.data || []))
+      .catch(() => {});
+    api.get('/students/distinct-schools')
+      .then(r => setSchools(r.data || []))
       .catch(() => {});
   }, []);
   
@@ -442,7 +515,7 @@ export default function Students() {
   const switchTab = (t) => { 
     setTab(t); 
     setPage(1); 
-    setFilters({ track: '', status: '', town: '', search: '', formSource: '', interviewFilter: '', funnelStage: '', admissionType: '', branch: '', village: '' }); 
+    setFilters({ track: '', status: '', town: '', search: '', formSource: '', interviewFilter: '', funnelStage: '', admissionType: '', branch: '', village: '', schoolName: '' }); 
     setSelected([]);
     setHasMore(false);
     setInterviewRound('');
@@ -779,6 +852,14 @@ export default function Students() {
                 <option value="">All Branches</option>
                 {branches.map((b) => <option key={b} value={b}>{b}</option>)}
               </select>
+            )}
+            {schools.length > 0 && user?.role === 'track_incharge' && (
+              <SearchableSelect
+                value={filters.schoolName}
+                onChange={(v) => { setFilters({ ...filters, schoolName: v }); setPage(1); }}
+                options={schools}
+                placeholder="All Schools"
+              />
             )}
           </div>
         )}

@@ -104,6 +104,9 @@ const getStudents = async (req, res) => {
     // Admission type filter
     if (req.query.admissionType) filter.admissionType = req.query.admissionType;
 
+    // School filter
+    if (req.query.schoolName) filter.schoolName = { $regex: `^${req.query.schoolName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, $options: 'i' };
+
     // Optimize interview filter
     if (interviewFilter === 'finalCleared') {
       filter['finalInterview.result'] = 'Pass';
@@ -134,6 +137,7 @@ const getStudents = async (req, res) => {
         { mobileNo: { $regex: safeSearch, $options: 'i' } },
         { track: { $regex: safeSearch, $options: 'i' } },
         { remarks: { $regex: safeSearch, $options: 'i' } },
+        { receiptNo: { $regex: safeSearch, $options: 'i' } },
       ];
       
       if (filter.$or) {
@@ -291,6 +295,7 @@ const updateStudent = async (req, res) => {
     'persentage11', 'branch', 'year', 'joinBatch', 'feesScheme', 'category', 'gender',
     'school12Sub', 'dob', 'aadharNo', 'fatherOccupation', 'fatherIncome',
     'fatherContactNumber', 'pincode', 'tehsil', 'trackName', 'isTopper', 'isPriority',
+    'bookNo', 'receiptNo',
   ];
   const updates = {};
   ALLOWED_FIELDS.forEach((f) => { if (req.body[f] !== undefined) updates[f] = req.body[f]; });
@@ -1372,4 +1377,16 @@ const getDistinctBranches = async (req, res) => {
   }
 };
 
-module.exports = { getStudents, getStudent, addStudent, updateStudent, deleteStudent, updateStatus, getStatusHistory, getActivityLog, bulkUpload, downloadTemplate, downloadCSVTemplate, exportStudents, getStats, getTrackStats, selfRegister, getDistinctBranches, getDistinctVillages };
+// Distinct school values
+const getDistinctSchools = async (req, res) => {
+  try {
+    const filter = { schoolName: { $nin: [null, ''] } };
+    if (req.user.role === 'track_incharge') filter.track = req.user.track;
+    const schools = await Student.distinct('schoolName', filter);
+    res.json(schools.filter(Boolean).sort());
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+module.exports = { getStudents, getStudent, addStudent, updateStudent, deleteStudent, updateStatus, getStatusHistory, getActivityLog, bulkUpload, downloadTemplate, downloadCSVTemplate, exportStudents, getStats, getTrackStats, selfRegister, getDistinctBranches, getDistinctVillages, getDistinctSchools };

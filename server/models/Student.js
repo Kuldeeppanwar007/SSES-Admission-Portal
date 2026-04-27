@@ -83,6 +83,10 @@ const studentSchema = new mongoose.Schema({
   regFeeReceiptNo:      { type: String, default: null },
   receiptS3Url:         { type: String, default: null },
   externalId:           { type: String, default: null }, // id from external SQL DB
+  shiftedToCentral:     { type: Boolean, default: false },
+  shiftedAt:            { type: Date, default: null },
+  bookNo:               { type: String, default: null },
+  receiptNo:            { type: String, default: null },
   formSource:           { type: String, enum: ['btech', 'ssism', 'manual', null], default: null },
   admissionType: {
     type: String,

@@ -6,7 +6,7 @@ const { protect, authorizeRoles } = require('../middleware/authMiddleware');
 const { validate, schemas } = require('../middleware/validate');
 const {
   getStudents, getStudent, addStudent, updateStudent,
-  deleteStudent, updateStatus, getStatusHistory, getActivityLog, bulkUpload, downloadTemplate, downloadCSVTemplate, exportStudents, getStats, getTrackStats, selfRegister, getDistinctBranches, getDistinctVillages,
+  deleteStudent, updateStatus, getStatusHistory, getActivityLog, bulkUpload, downloadTemplate, downloadCSVTemplate, exportStudents, getStats, getTrackStats, selfRegister, getDistinctBranches, getDistinctVillages, getDistinctSchools,
 } = require('../controllers/studentController');
 
 const memStorage = multer({ storage: multer.memoryStorage() });
@@ -125,6 +125,7 @@ router.get('/download-template', protect, downloadTemplate);
 router.get('/download-csv-template', protect, downloadCSVTemplate);
 router.get('/distinct-branches', protect, getDistinctBranches);
 router.get('/distinct-villages', protect, getDistinctVillages);
+router.get('/distinct-schools', protect, getDistinctSchools);
 
 // Admin — Data cleanup for wrong mappings
 router.post('/cleanup-data', protect, authorizeRoles('admin'), async (req, res) => {

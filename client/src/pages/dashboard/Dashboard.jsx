@@ -335,6 +335,7 @@ export default function Dashboard() {
   const [stats, setStats] = useState(null);
   const [bonusHistory, setBonusHistory] = useState([]);
   const [distributing, setDistributing] = useState(false);
+  const [bonusOpen, setBonusOpen] = useState(false);
 
   const fetchStats = () =>
     api.get('/students/stats').then((r) => setStats(r.data)).catch(() => toast.error('Failed to load stats'));
@@ -443,32 +444,36 @@ export default function Dashboard() {
         const alreadyDone = bonusHistory.some((w) => new Date(w.weekStart).toDateString() === thisWeekStart);
         return (
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-            <div className="px-5 py-4 border-b border-gray-50 flex items-center justify-between flex-wrap gap-3">
+            <button onClick={() => setBonusOpen(o => !o)}
+              className="w-full px-5 py-4 border-b border-gray-50 flex items-center justify-between flex-wrap gap-3 hover:bg-gray-50/60 transition-colors">
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 bg-orange-50 rounded-lg flex items-center justify-center">
                   <FiGift size={15} className="text-primary" />
                 </div>
-                <div>
+                <div className="text-left">
                   <p className="text-sm font-bold text-gray-800">Weekly Bonus Distribution</p>
                   <p className="text-xs text-gray-400">Top 3 tracks — 🥇 +200 &nbsp;🥈 +150 &nbsp;🥉 +100 pts</p>
                 </div>
               </div>
-              <button onClick={handleManualBonus} disabled={distributing || alreadyDone}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-colors shadow-sm shrink-0 ${
-                  alreadyDone
-                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed shadow-none'
-                    : 'bg-primary text-white hover:bg-primary-dark shadow-orange-200 disabled:opacity-60'
-                }`}>
-                <FiGift size={14} />
-                <span className="hidden sm:inline">{alreadyDone ? 'Already Distributed This Week' : distributing ? 'Distributing...' : 'Distribute Now'}</span>
-                <span className="sm:hidden">{alreadyDone ? 'Done' : distributing ? '...' : 'Distribute'}</span>
-              </button>
-            </div>
+              <div className="flex items-center gap-2">
+                <button onClick={(e) => { e.stopPropagation(); handleManualBonus(); }} disabled={distributing || alreadyDone}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-colors shadow-sm shrink-0 ${
+                    alreadyDone
+                      ? 'bg-gray-100 text-gray-400 cursor-not-allowed shadow-none'
+                      : 'bg-primary text-white hover:bg-primary-dark shadow-orange-200 disabled:opacity-60'
+                  }`}>
+                  <FiGift size={14} />
+                  <span className="hidden sm:inline">{alreadyDone ? 'Already Distributed This Week' : distributing ? 'Distributing...' : 'Distribute Now'}</span>
+                  <span className="sm:hidden">{alreadyDone ? 'Done' : distributing ? '...' : 'Distribute'}</span>
+                </button>
+                <FiChevronDown size={16} className={`text-gray-400 transition-transform duration-300 ${bonusOpen ? 'rotate-180' : ''}`} />
+              </div>
+            </button>
 
-            {/* Bonus History */}
-            {bonusHistory.length > 0 && (
+            {/* Bonus History — last 3 only */}
+            {bonusOpen && bonusHistory.length > 0 && (
               <div className="divide-y divide-gray-50">
-                {bonusHistory.map((week) => (
+                {bonusHistory.slice(0, 3).map((week) => (
                   <div key={week._id} className="px-5 py-3 flex items-center justify-between flex-wrap gap-2">
                     <div className="flex items-center gap-2 text-xs text-gray-400">
                       <FiClock size={12} />

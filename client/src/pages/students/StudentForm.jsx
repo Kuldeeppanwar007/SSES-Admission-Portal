@@ -26,6 +26,7 @@ const initialForm = {
   status: 'Applied', remarks: '', funnelStage: '', subject: '', admissionType: '', village: '',
   name: '', fatherName: '', mobileNo: '', whatsappNo: '', trackName: '',
   formSource: '',
+  bookNo: '', receiptNo: '',
   // B.Tech fields
   email: '', schoolName: '', district: '', whatsappNumber: '',
   persentage12: '', jeeScore: '', fullAddress: '',
@@ -179,6 +180,7 @@ export default function StudentForm() {
           linkSource: data.linkSource || '', sRank: data.sRank || '',
           regFees: data.regFees ?? '', isTop20: data.isTop20 || false,
           fatherIncome: data.fatherIncome ?? '',
+          bookNo: data.bookNo || '', receiptNo: data.receiptNo || '',
         });
         const existing = {};
         DOC_FIELDS.forEach(({ key }) => { if (data[key]) existing[key] = data[key]; });
@@ -189,6 +191,10 @@ export default function StudentForm() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (form.status === 'Admitted' && (!form.bookNo?.trim() || !form.receiptNo?.trim())) {
+      toast.error('Admitted karne ke liye Book No. aur Receipt No. required hain');
+      return;
+    }
     setLoading(true);
     try {
       const formData = new FormData();
@@ -198,6 +204,8 @@ export default function StudentForm() {
       formData.append('funnelStage', form.funnelStage);
       formData.append('subject', form.subject);
       formData.append('admissionType', form.admissionType);
+      formData.append('bookNo', form.bookNo || '');
+      formData.append('receiptNo', form.receiptNo || '');
       if (form.village !== undefined) formData.append('village', form.village);
       formData.append('name', form.name);
       formData.append('fatherName', form.fatherName);
@@ -386,6 +394,30 @@ export default function StudentForm() {
                 </select>
               </div>
             )}
+            {form.status === 'Admitted' && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Book No. <span className="text-rose-500">*</span>
+                </label>
+                <input value={form.bookNo} onChange={(e) => setForm({ ...form, bookNo: e.target.value })}
+                  placeholder="Enter Book No."
+                  className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary ${
+                    !form.bookNo?.trim() ? 'border-rose-300 bg-rose-50/30' : 'border-gray-300'
+                  }`} />
+              </div>
+            )}
+            {form.status === 'Admitted' && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Receipt No. <span className="text-rose-500">*</span>
+                </label>
+                <input value={form.receiptNo} onChange={(e) => setForm({ ...form, receiptNo: e.target.value })}
+                  placeholder="Enter Receipt No."
+                  className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary ${
+                    !form.receiptNo?.trim() ? 'border-rose-300 bg-rose-50/30' : 'border-gray-300'
+                  }`} />
+              </div>
+            )}
             <div className={form.status === 'Admitted' ? 'md:col-span-2' : ''}>
               <label className="block text-sm font-medium text-gray-700 mb-1">Remarks</label>
               <input value={form.remarks} onChange={(e) => setForm({ ...form, remarks: e.target.value })}
@@ -402,7 +434,7 @@ export default function StudentForm() {
                 <p className="text-xs text-gray-400 mt-1">No funnel stages for this status</p>
               )}
             </div>
-            {(isAdmin || isManager) && (
+            {(isAdmin || isManager || user?.role === 'track_incharge') && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Admission Type</label>
                 <select value={form.admissionType} onChange={(e) => setForm({ ...form, admissionType: e.target.value })}

@@ -169,19 +169,30 @@ export default function Attendance() {
     return () => clearInterval(id);
   }, [tab, fetchLiveLocations]);
 
-  useEffect(() => { if (tab === 'records') fetchRecords(); }, [tab, fetchRecords]);
-  useEffect(() => { if (tab === 'monthly') fetchMonthly(); }, [tab, fetchMonthly]);
+  useEffect(() => { if (tab === 'records') fetchRecords(); }, [tab, from, to, filterTrack]);
+  useEffect(() => { if (tab === 'monthly') fetchMonthly(); }, [tab, month, monthTrack]);
   useEffect(() => {
     if (tab === 'tracking') {
       fetchTrackUsers();
       fetchLocationLogs();
-      if (selectedUser) fetchTimeline();
     }
-  }, [tab, fetchTrackUsers, fetchLocationLogs, fetchTimeline, selectedUser]);
+  }, [tab]); // eslint-disable-line
 
   useEffect(() => {
     if (tab === 'tracking' && selectedUser) fetchTimeline();
-  }, [selectedUser, trackDate, fetchTimeline, tab]);
+  }, [selectedUser, trackDate, tab]); // eslint-disable-line
+
+  // Mobile pe page visible hone par re-fetch karo
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState !== 'visible') return;
+      if (tab === 'records') fetchRecords();
+      else if (tab === 'monthly') fetchMonthly();
+      else if (tab === 'campus') fetchLiveLocations();
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => document.removeEventListener('visibilitychange', handleVisibility);
+  }, [tab]); // eslint-disable-line
 
   // Auto-refresh every 2 min when enabled
   useEffect(() => {
@@ -197,7 +208,7 @@ export default function Attendance() {
       <h2 className="text-2xl font-bold text-gray-900">Track Incharge Attendance</h2>
 
       {/* Tabs */}
-      <div className="flex gap-1 bg-gray-100 p-1 rounded-xl w-fit">
+      <div className="flex flex-wrap gap-1 bg-gray-100 p-1 rounded-xl">
         {[
           { key: 'records', label: 'Records', icon: FiFilter },
           { key: 'monthly', label: 'Monthly %', icon: FiBarChart2 },
@@ -205,7 +216,7 @@ export default function Attendance() {
           { key: 'campus', label: 'Campus Map', icon: FiMapPin },
         ].map(({ key, label, icon: Icon }) => (
           <button key={key} onClick={() => setTab(key)}
-            className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold transition-colors
+            className={`flex-1 flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold transition-colors
               ${tab === key ? 'bg-white text-primary shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
             <Icon size={14} /> {label}
           </button>
