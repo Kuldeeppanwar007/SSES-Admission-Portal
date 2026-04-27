@@ -6,7 +6,7 @@ const { protect, authorizeRoles } = require('../middleware/authMiddleware');
 const { validate, schemas } = require('../middleware/validate');
 const {
   getStudents, getStudent, addStudent, updateStudent,
-  deleteStudent, updateStatus, getStatusHistory, getActivityLog, bulkUpload, downloadTemplate, downloadCSVTemplate, exportStudents, getStats, getTrackStats, selfRegister, getDistinctBranches, getDistinctVillages,
+  deleteStudent, updateStatus, getStatusHistory, getActivityLog, bulkUpload, downloadTemplate, downloadCSVTemplate, exportStudents, getStats, getTrackStats, selfRegister, getDistinctBranches, getDistinctVillages, shiftToCentral,
 } = require('../controllers/studentController');
 
 const memStorage = multer({ storage: multer.memoryStorage() });
@@ -206,5 +206,6 @@ router.put('/:id', protect, upload.fields([
 router.delete('/:id', protect, authorizeRoles('admin', 'manager'), deleteStudent);
 router.get('/:id/status-history', protect, getStatusHistory);
 router.patch('/:id/status', protect, authorizeRoles('admin', 'manager', 'track_incharge'), validate(schemas.updateStatus), updateStatus);
+router.post('/:id/shift-central', protect, authorizeRoles('admin', 'manager'), shiftToCentral);
 
 module.exports = router;

@@ -4,7 +4,7 @@ import api from '../../api/axios';
 import { TRACKS, STATUSES, STATUS_COLORS, TRACK_TOWNS, TOWN_TO_MAIN_TRACK } from '../../utils/constants';
 import useAuthStore from '../../store/authStore';
 import toast from 'react-hot-toast';
-import { FiPlus, FiUpload, FiSearch, FiEdit2, FiDownload, FiFilter, FiSlash, FiClipboard, FiExternalLink, FiChevronDown } from 'react-icons/fi';
+import { FiPlus, FiUpload, FiSearch, FiEdit2, FiDownload, FiFilter, FiSlash, FiClipboard, FiExternalLink, FiChevronDown, FiSend } from 'react-icons/fi';
 import DatePicker from '../../components/DatePicker';
 import { isOnline, cacheStudents, getCachedStudents } from '../../utils/offlineQueue';
 import { usePerformanceMonitor, useDebounce } from '../../hooks/usePerformance';
@@ -299,6 +299,9 @@ export default function Students() {
   const mobileActionsRef = useRef(null);
   const [branches, setBranches] = useState([]);
   const [villages, setVillages] = useState([]);
+  const [shiftingId, setShiftingId] = useState(null);
+  const [shiftConfirm, setShiftConfirm] = useState(null); // { ids: [], names: [] }
+  const [bulkShifting, setBulkShifting] = useState(false);
 
   useEffect(() => {
     const handler = (e) => { if (mobileActionsRef.current && !mobileActionsRef.current.contains(e.target)) setMobileActionsOpen(false); };
@@ -380,7 +383,9 @@ export default function Students() {
         branch: filters.branch,
         village: filters.village,
         search: debouncedSearch,
-        ...(tab === 'disabled' ? { status: 'Disabled' } : {}) 
+        ...(tab === 'disabled' ? { status: 'Disabled' } : {}),
+        ...(tab === 'shift-central' ? { formSource: 'btech,ssism', shiftedToCentral: false, status: 'Admitted', interviewFilter: 'finalCleared' } : {}),
+        ...(tab === 'shifted-students' ? { shiftedToCentral: true } : {})
       };
       
       const { data } = await api.get('/students', { params });
@@ -447,6 +452,47 @@ export default function Students() {
     setHasMore(false);
     setInterviewRound('');
     localStorage.removeItem('studentsPageState');
+  };
+
+  const handleShift = (student, e) => {
+    e.stopPropagation();
+    if (student.shiftedToCentral) return toast('Already shifted to Central', { icon: 'ℹ️' });
+    setShiftConfirm({ ids: [student._id], names: [student.name] });
+  };
+
+  const handleBulkShift = () => {
+    const selectedStudents = students.filter(s => selected.includes(s._id) && !s.shiftedToCentral);
+    if (selectedStudents.length === 0) return toast('Koi eligible student select nahi hai', { icon: '⚠️' });
+    setShiftConfirm({ ids: selectedStudents.map(s => s._id), names: selectedStudents.map(s => s.name) });
+  };
+
+  const confirmShift = async () => {
+    if (!shiftConfirm) return;
+    const { ids } = shiftConfirm;
+    setShiftConfirm(null);
+    if (ids.length === 1) {
+      setShiftingId(ids[0]);
+      try {
+        await api.post(`/students/${ids[0]}/shift-central`);
+        toast.success('Student shifted to Central!');
+        fetchStudents();
+      } catch (err) {
+        toast.error(err.response?.data?.message || 'Shift failed');
+      } finally { setShiftingId(null); }
+    } else {
+      setBulkShifting(true);
+      let success = 0, failed = 0;
+      for (const id of ids) {
+        try {
+          await api.post(`/students/${id}/shift-central`);
+          success++;
+        } catch { failed++; }
+      }
+      setBulkShifting(false);
+      toast.success(`${success} shifted${failed ? `, ${failed} failed` : ''}`);
+      setSelected([]);
+      fetchStudents();
+    }
   };
 
   const toggleSelect = (id) => setSelected((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
@@ -516,6 +562,8 @@ export default function Students() {
   };
 
   const isDisabledTab = tab === 'disabled';
+  const isShiftTab = tab === 'shift-central';
+  const isShiftedTab = tab === 'shifted-students';
   const allSelected = students.length > 0 && selected.length === students.length;
 
   // Memoize filtered students for better performance
@@ -540,6 +588,42 @@ export default function Students() {
           onClose={() => setInterviewStudent(null)}
           onSaved={fetchStudents}
         />
+      )}
+
+      {/* Shift Confirmation Modal */}
+      {shiftConfirm && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShiftConfirm(null)}>
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center shrink-0">
+                <FiSend size={18} className="text-primary" />
+              </div>
+              <div>
+                <h3 className="font-bold text-gray-800">Shift to Central?</h3>
+                <p className="text-xs text-gray-500">{shiftConfirm.ids.length} student{shiftConfirm.ids.length > 1 ? 's' : ''} shift honge</p>
+              </div>
+            </div>
+            {shiftConfirm.names.length <= 5 && (
+              <ul className="mb-4 space-y-1">
+                {shiftConfirm.names.map((name, i) => (
+                  <li key={i} className="text-sm text-gray-700 flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0"></span>{name}
+                  </li>
+                ))}
+              </ul>
+            )}
+            <div className="flex gap-2">
+              <button onClick={() => setShiftConfirm(null)}
+                className="flex-1 py-2 rounded-lg border border-gray-200 text-sm text-gray-600 hover:bg-gray-50">
+                Cancel
+              </button>
+              <button onClick={confirmShift}
+                className="flex-1 py-2 rounded-lg bg-primary hover:bg-primary-dark text-white text-sm font-semibold">
+                Shift
+              </button>
+            </div>
+          </div>
+        </div>
       )}
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
@@ -641,11 +725,19 @@ export default function Students() {
         <div className="hidden md:flex items-center justify-between gap-2">
           <div className="flex gap-1 bg-gray-100 p-1 rounded-xl">
             <button onClick={() => switchTab('active')}
-              className={`flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${!isDisabledTab ? 'bg-white shadow text-gray-800' : 'text-gray-500 hover:text-gray-700'}`}>
+              className={`flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${tab === 'active' ? 'bg-white shadow text-gray-800' : 'text-gray-500 hover:text-gray-700'}`}>
               <FiSearch size={14} /> Active Profiles
             </button>
+            <button onClick={() => switchTab('shift-central')}
+              className={`flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${tab === 'shift-central' ? 'bg-white shadow text-gray-800' : 'text-gray-500 hover:text-gray-700'}`}>
+              <FiSend size={14} /> Shift Central
+            </button>
+            <button onClick={() => switchTab('shifted-students')}
+              className={`flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${tab === 'shifted-students' ? 'bg-white shadow text-gray-800' : 'text-gray-500 hover:text-gray-700'}`}>
+              <FiSend size={14} /> Shifted Students
+            </button>
             <button onClick={() => switchTab('disabled')}
-              className={`flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${isDisabledTab ? 'bg-white shadow text-gray-800' : 'text-gray-500 hover:text-gray-700'}`}>
+              className={`flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${tab === 'disabled' ? 'bg-white shadow text-gray-800' : 'text-gray-500 hover:text-gray-700'}`}>
               <FiSlash size={14} /> Disabled Profiles
             </button>
           </div>
@@ -675,12 +767,20 @@ export default function Students() {
         <div className="md:hidden">
           <div className="flex gap-1 bg-gray-100 p-1 rounded-xl w-full mb-2">
             <button onClick={() => switchTab('active')}
-              className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${!isDisabledTab ? 'bg-white shadow text-gray-800' : 'text-gray-500 hover:text-gray-700'}`}>
-              <FiSearch size={14} /> Active Profiles
+              className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold transition-all ${tab === 'active' ? 'bg-white shadow text-gray-800' : 'text-gray-500 hover:text-gray-700'}`}>
+              <FiSearch size={14} /> Active
+            </button>
+            <button onClick={() => switchTab('shift-central')}
+              className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold transition-all ${tab === 'shift-central' ? 'bg-white shadow text-gray-800' : 'text-gray-500 hover:text-gray-700'}`}>
+              <FiSend size={14} /> Shift
+            </button>
+            <button onClick={() => switchTab('shifted-students')}
+              className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold transition-all ${tab === 'shifted-students' ? 'bg-white shadow text-gray-800' : 'text-gray-500 hover:text-gray-700'}`}>
+              <FiSend size={14} /> Shifted
             </button>
             <button onClick={() => switchTab('disabled')}
-              className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${isDisabledTab ? 'bg-white shadow text-gray-800' : 'text-gray-500 hover:text-gray-700'}`}>
-              <FiSlash size={14} /> Disabled Profiles
+              className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold transition-all ${tab === 'disabled' ? 'bg-white shadow text-gray-800' : 'text-gray-500 hover:text-gray-700'}`}>
+              <FiSlash size={14} /> Disabled
             </button>
           </div>
           <div className="flex gap-2 overflow-x-auto pb-1">
@@ -790,10 +890,18 @@ export default function Students() {
           <span className="text-sm font-semibold text-primary">{selected.length} student{selected.length > 1 ? 's' : ''} selected</span>
           <div className="flex gap-2">
             <button onClick={() => setSelected([])} className="text-xs text-gray-500 hover:text-gray-700 px-2 py-1 rounded border border-gray-200 bg-white">Clear</button>
-            <button onClick={() => handleExport(selected)} disabled={exporting}
-              className="text-xs text-white bg-primary hover:bg-primary-dark px-3 py-1 rounded font-semibold disabled:opacity-60 flex items-center gap-1">
-              <FiDownload size={12} /> Export Selected
-            </button>
+            {isShiftTab && (
+              <button onClick={handleBulkShift} disabled={bulkShifting}
+                className="text-xs text-white bg-primary hover:bg-primary-dark px-3 py-1 rounded font-semibold disabled:opacity-60 flex items-center gap-1">
+                <FiSend size={12} /> {bulkShifting ? 'Shifting...' : `Shift (${selected.length})`}
+              </button>
+            )}
+            {!isShiftTab && (
+              <button onClick={() => handleExport(selected)} disabled={exporting}
+                className="text-xs text-white bg-primary hover:bg-primary-dark px-3 py-1 rounded font-semibold disabled:opacity-60 flex items-center gap-1">
+                <FiDownload size={12} /> Export Selected
+              </button>
+            )}
           </div>
         </div>
       )}
@@ -829,7 +937,11 @@ export default function Students() {
                     <input type="checkbox" checked={allSelected} onChange={toggleAll}
                       className="rounded border-gray-300 text-primary focus:ring-primary cursor-pointer" />
                   </th>
-                  {['S.N.', 'Name', 'Father Name', 'Track', 'Town', 'Mobile', 'Form', 'Status', 'Attempt', 'Interview', 'Actions'].map((h) => (
+                  {['S.N.', 'Name', 'Father Name', 'Track', 'Town', 'Mobile', 'Form', 'Status',
+                    ...(isShiftTab || isShiftedTab ? [] : ['Attempt', 'Interview', 'Actions']),
+                    ...(isShiftTab ? ['Shift'] : []),
+                    ...(isShiftedTab ? ['Shifted On'] : []),
+                  ].map((h) => (
                     <th key={h} className={`px-4 py-3 text-xs font-semibold uppercase text-gray-500 ${h === 'Attempt' ? 'text-center' : 'text-left'}`}>{h}</th>
                   ))}
                 </tr>
@@ -884,36 +996,62 @@ export default function Students() {
                     <td className="px-4 py-3">
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${STATUS_COLORS[s.status]}`}>{s.status}</span>
                     </td>
-                    <td className="px-4 py-3 text-center">
-                      {s.finalInterview?.result === 'Pass' ? (
-                        <span className="text-xs font-bold px-2 py-1 rounded-full bg-emerald-100 text-emerald-700">✓ Cleared</span>
-                      ) : s.finalInterview?.result === 'Fail' ? (
-                        <span className="text-xs font-bold px-2 py-1 rounded-full bg-rose-100 text-rose-600">✗ Final Failed</span>
-                      ) : s.finalInterview?.result === 'Pending' ? (
-                        <span className="text-xs font-bold px-2 py-1 rounded-full bg-amber-100 text-amber-700">⏳ Final Pending</span>
-                      ) : s.interviewCount > 0 ? (
-                        <span className="text-xs font-bold px-2 py-1 rounded-full bg-orange-50 text-primary border border-orange-200">Round {s.interviewCount}</span>
-                      ) : (
-                        <span className="text-xs text-gray-300">—</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
-                      <button onClick={(e) => { e.stopPropagation(); setInterviewStudent(s); }}
-                        className="flex items-center gap-1 text-xs text-white font-medium px-2.5 py-1.5 bg-primary hover:bg-primary-dark rounded-lg transition-colors">
-                        <FiClipboard size={12} /> Interview
-                      </button>
-                    </td>
-                    <td className="px-4 py-3">
-                      <button onClick={(e) => { 
-                        e.stopPropagation(); 
-                        const scrollPosition = window.pageYOffset;
-                        localStorage.setItem('studentsScrollPosition', scrollPosition.toString());
-                        navigate(`/students/${s._id}/edit`); 
-                      }}
-                        className="flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 bg-primary hover:bg-primary-dark text-white rounded-lg transition-colors">
-                        <FiEdit2 size={11} /> Edit
-                      </button>
-                    </td>
+                    {!isShiftTab && !isShiftedTab && (
+                      <td className="px-4 py-3 text-center">
+                        {s.finalInterview?.result === 'Pass' ? (
+                          <span className="text-xs font-bold px-2 py-1 rounded-full bg-emerald-100 text-emerald-700">✓ Cleared</span>
+                        ) : s.finalInterview?.result === 'Fail' ? (
+                          <span className="text-xs font-bold px-2 py-1 rounded-full bg-rose-100 text-rose-600">✗ Final Failed</span>
+                        ) : s.finalInterview?.result === 'Pending' ? (
+                          <span className="text-xs font-bold px-2 py-1 rounded-full bg-amber-100 text-amber-700">⏳ Final Pending</span>
+                        ) : s.interviewCount > 0 ? (
+                          <span className="text-xs font-bold px-2 py-1 rounded-full bg-orange-50 text-primary border border-orange-200">Round {s.interviewCount}</span>
+                        ) : (
+                          <span className="text-xs text-gray-300">—</span>
+                        )}
+                      </td>
+                    )}
+                    {!isShiftTab && !isShiftedTab && (
+                      <>
+                        <td className="px-4 py-3">
+                          <button onClick={(e) => { e.stopPropagation(); setInterviewStudent(s); }}
+                            className="flex items-center gap-1 text-xs text-white font-medium px-2.5 py-1.5 bg-primary hover:bg-primary-dark rounded-lg transition-colors">
+                            <FiClipboard size={12} /> Interview
+                          </button>
+                        </td>
+                        <td className="px-4 py-3">
+                          <button onClick={(e) => { 
+                            e.stopPropagation(); 
+                            const scrollPosition = window.pageYOffset;
+                            localStorage.setItem('studentsScrollPosition', scrollPosition.toString());
+                            navigate(`/students/${s._id}/edit`); 
+                          }}
+                            className="flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 bg-primary hover:bg-primary-dark text-white rounded-lg transition-colors">
+                            <FiEdit2 size={11} /> Edit
+                          </button>
+                        </td>
+                      </>
+                    )}
+                    {isShiftedTab && (
+                      <td className="px-4 py-3 text-xs text-gray-500">
+                        {s.shiftedAt ? new Date(s.shiftedAt).toLocaleDateString('en-IN') : '—'}
+                      </td>
+                    )}
+                    {tab === 'shift-central' && (
+                      <td className="px-4 py-3">
+                        <button
+                          onClick={(e) => handleShift(s, e)}
+                          disabled={shiftingId === s._id || s.shiftedToCentral}
+                          className={`flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 rounded-lg transition-colors ${
+                            s.shiftedToCentral
+                              ? 'bg-emerald-100 text-emerald-700 cursor-default'
+                              : 'bg-primary hover:bg-primary-dark text-white disabled:opacity-60'
+                          }`}>
+                          <FiSend size={11} />
+                          {s.shiftedToCentral ? 'Shifted' : shiftingId === s._id ? 'Shifting...' : 'Shift'}
+                        </button>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
@@ -993,7 +1131,12 @@ export default function Students() {
                   s.formSource === 'ssism' ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-600'
                 }`}>{s.formSource === 'btech' ? 'B.Tech' : s.formSource === 'ssism' ? 'SSISM' : 'Manual'}</span>
               )}
-              {s.finalInterview?.result === 'Pass' ? (
+              {isShiftedTab && s.shiftedAt && (
+                <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700">
+                  ✓ {new Date(s.shiftedAt).toLocaleDateString('en-IN')}
+                </span>
+              )}
+              {!isShiftedTab && (s.finalInterview?.result === 'Pass' ? (
                 <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700">✓ Cleared</span>
               ) : s.finalInterview?.result === 'Fail' ? (
                 <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-rose-100 text-rose-600">✗ Final Failed</span>
@@ -1001,24 +1144,41 @@ export default function Students() {
                 <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-700">⏳ Pending</span>
               ) : s.interviewCount > 0 ? (
                 <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-orange-50 text-primary border border-orange-200">Round {s.interviewCount}</span>
-              ) : null}
+              ) : null)}
             </div>
 
             {/* Row 4: Buttons */}
             <div className="flex gap-2 pt-3 border-t border-gray-100">
-              <button onClick={(e) => { 
-                e.stopPropagation(); 
-                const scrollPosition = window.pageYOffset;
-                localStorage.setItem('studentsScrollPosition', scrollPosition.toString());
-                navigate(`/students/${s._id}/edit`); 
-              }}
-                className="flex-1 flex items-center justify-center gap-1.5 text-sm text-white font-semibold py-2 bg-primary hover:bg-primary-dark rounded-lg transition-colors">
-                <FiEdit2 size={14} /> Edit
-              </button>
-              <button onClick={(e) => { e.stopPropagation(); setInterviewStudent(s); }}
-                className="flex-1 flex items-center justify-center gap-1.5 text-sm text-white font-semibold py-2 bg-primary hover:bg-primary-dark rounded-lg transition-colors">
-                <FiClipboard size={14} /> Interview
-              </button>
+              {!isShiftTab && !isShiftedTab && (
+                <button onClick={(e) => { 
+                  e.stopPropagation(); 
+                  const scrollPosition = window.pageYOffset;
+                  localStorage.setItem('studentsScrollPosition', scrollPosition.toString());
+                  navigate(`/students/${s._id}/edit`); 
+                }}
+                  className="flex-1 flex items-center justify-center gap-1.5 text-sm text-white font-semibold py-2 bg-primary hover:bg-primary-dark rounded-lg transition-colors">
+                  <FiEdit2 size={14} /> Edit
+                </button>
+              )}
+              {!isShiftTab && !isShiftedTab && (
+                <button onClick={(e) => { e.stopPropagation(); setInterviewStudent(s); }}
+                  className="flex-1 flex items-center justify-center gap-1.5 text-sm text-white font-semibold py-2 bg-primary hover:bg-primary-dark rounded-lg transition-colors">
+                  <FiClipboard size={14} /> Interview
+                </button>
+              )}
+              {tab === 'shift-central' && (
+                <button
+                  onClick={(e) => handleShift(s, e)}
+                  disabled={shiftingId === s._id || s.shiftedToCentral}
+                  className={`flex-1 flex items-center justify-center gap-1.5 text-sm font-semibold py-2 rounded-lg transition-colors ${
+                    s.shiftedToCentral
+                      ? 'bg-emerald-100 text-emerald-700'
+                      : 'bg-primary hover:bg-primary-dark text-white disabled:opacity-60'
+                  }`}>
+                  <FiSend size={14} />
+                  {s.shiftedToCentral ? 'Shifted' : shiftingId === s._id ? '...' : 'Shift'}
+                </button>
+              )}
             </div>
           </div>
         ))}

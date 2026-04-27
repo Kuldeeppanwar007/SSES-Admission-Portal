@@ -61,7 +61,17 @@ const getStudents = async (req, res) => {
       if (status) filter.status = status;
     }
 
-    if (formSource) filter.formSource = formSource;
+    if (formSource) {
+      if (formSource.includes(',')) {
+        filter.formSource = { $in: formSource.split(',') };
+      } else {
+        filter.formSource = formSource;
+      }
+    }
+
+    // shiftedToCentral filter
+    if (req.query.shiftedToCentral === 'true') filter.shiftedToCentral = true;
+    else if (req.query.shiftedToCentral === 'false') filter.shiftedToCentral = { $ne: true };
 
     // Village filter
     if (req.query.village) filter.village = { $regex: `^${req.query.village.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, $options: 'i' };
@@ -150,7 +160,7 @@ const getStudents = async (req, res) => {
     const [total, students] = await Promise.all([
       Student.countDocuments(filter),
       Student.find(filter)
-        .select('name fatherName track trackName village mobileNo formSource status finalInterview createdAt isTopper isPriority branch remarks') // Select only needed fields
+        .select('name fatherName track trackName village mobileNo formSource status finalInterview createdAt isTopper isPriority branch remarks shiftedToCentral shiftedAt') // Select only needed fields
         .populate('addedBy', 'name')
         .sort({ createdAt: -1 })
         .skip((_page - 1) * _limit)
@@ -1372,4 +1382,117 @@ const getDistinctBranches = async (req, res) => {
   }
 };
 
-module.exports = { getStudents, getStudent, addStudent, updateStudent, deleteStudent, updateStatus, getStatusHistory, getActivityLog, bulkUpload, downloadTemplate, downloadCSVTemplate, exportStudents, getStats, getTrackStats, selfRegister, getDistinctBranches, getDistinctVillages };
+// Shift student to Central website DB (new_student_reg or btech_student_reg)
+const shiftToCentral = async (req, res) => {
+  try {
+    const student = await Student.findById(req.params.id).lean();
+    if (!student) return res.status(404).json({ message: 'Student not found' });
+
+    const axios = require('axios');
+    const centralUrl = process.env.CENTRAL_API_URL;
+    const centralSecret = process.env.CENTRAL_API_SECRET;
+    const mockMode = process.env.CENTRAL_MOCK_MODE === 'true';
+
+    if (!mockMode && !centralUrl)
+      return res.status(500).json({ message: 'CENTRAL_API_URL not configured' });
+
+    // formSource se decide karo kaunsi table mein jayega
+    const isBtech = student.formSource === 'btech';
+
+    // Common fields mapping (apne portal ke fields -> central DB fields)
+    const nameParts = (student.name || '').trim().split(' ');
+    const firstName = nameParts[0] || '';
+    const lastName  = nameParts.slice(1).join(' ') || '';
+
+    const payload = {
+      firstName,
+      lastName,
+      fathersName:         student.fatherName        || '',
+      mobile:              student.mobileNo           || '',
+      whatsappNumber:      student.whatsappNo         || student.whatsappNumber || '',
+      email:               student.email              || '',
+      schoolName:          student.schoolName         || '',
+      persentage12:        student.persentage12       ?? null,
+      persentage10:        student.persentage10       ?? null,
+      persentage11:        student.persentage11       ?? null,
+      rollNumber12:        student.rollNumber12       ?? null,
+      rollNumber10:        student.rollNumber10       ?? null,
+      district:            student.district           || '',
+      village:             student.village            || '',
+      tehsil:              student.tehsil             || '',
+      pincode:             student.pincode            ?? null,
+      address:             student.fullAddress        || '',
+      trackName:           student.trackName          || '',
+      branch:              student.branch             || '',
+      year:                student.year               || '',
+      joinBatch:           student.joinBatch          ?? null,
+      feesScheme:          student.feesScheme         || '',
+      category:            student.category           || '',
+      gender:              student.gender             || '',
+      dob:                 student.dob                || '',
+      aadharNo:            student.aadharNo           || '',
+      fatherOccupation:    student.fatherOccupation   || '',
+      fatherIncome:        student.fatherIncome       ?? null,
+      fatherContactNumber: student.fatherContactNumber|| '',
+      school12Sub:         student.school12Sub        || '',
+      linkSource:          student.linkSource         || '',
+      sRank:               student.sRank              || '',
+      payMode:             student.payMode            || '',
+      paymentStatus:       student.paymentStatus      || '',
+      transactionId:       student.transactionId      || '',
+      merchantTransactionId: student.merchantTransactionId || '',
+      regFees:             student.regFees            ?? null,
+      regFeesStatus:       student.regFeesStatus      || 'Unpaid',
+      regFeeDate:          student.regFeeDate         || null,
+      regFeeReceiptNo:     student.regFeeReceiptNo    || '',
+      receiptS3Url:        student.receiptS3Url       || '',
+      applicationType:     student.applicationType    || '',
+      accRegFeesStatus:    student.accRegFeesStatus   || 'Unpaid',
+      isTop20:             student.isTop20            ? 1 : 0,
+      passout12:           student.passout12          || '',
+      photo:               student.photo              || '',
+      // Source portal ka MongoDB _id reference ke liye
+      portalId:            String(student._id),
+    };
+
+    // B.Tech specific fields
+    if (isBtech) {
+      payload.jeeScore   = student.jeeScore   ?? null;
+      payload.priority1  = student.priority1  || '';
+      payload.priority2  = student.priority2  || '';
+      payload.priority3  = student.priority3  || '';
+      payload.semester   = student.semester   || '';
+    }
+
+    const endpoint = isBtech
+      ? `${centralUrl}/students/btech-register`
+      : `${centralUrl}/students/ssism-register`;
+
+    let data;
+    if (mockMode) {
+      // Mock mode — real API call nahi hogi, sirf payload log hoga
+      console.log('[MOCK] shiftToCentral payload:', JSON.stringify(payload, null, 2));
+      console.log('[MOCK] Would POST to:', isBtech ? 'btech-register' : 'ssism-register');
+      data = { message: 'Mock success', mockId: `MOCK_${Date.now()}` };
+    } else {
+      const response = await axios.post(endpoint, payload, {
+        headers: {
+          'x-webhook-secret': centralSecret,
+          'Content-Type': 'application/json',
+        },
+        timeout: 10000,
+      });
+      data = response.data;
+    }
+
+    // Mark student as shifted
+    await Student.findByIdAndUpdate(req.params.id, { shiftedToCentral: true, shiftedAt: new Date() });
+
+    res.json({ message: 'Student shifted to Central successfully', mockMode: !!mockMode, payload, centralResponse: data });
+  } catch (err) {
+    const msg = err.response?.data?.message || err.message;
+    res.status(err.response?.status || 500).json({ message: `Shift failed: ${msg}` });
+  }
+};
+
+module.exports = { getStudents, getStudent, addStudent, updateStudent, deleteStudent, updateStatus, getStatusHistory, getActivityLog, bulkUpload, downloadTemplate, downloadCSVTemplate, exportStudents, getStats, getTrackStats, selfRegister, getDistinctBranches, getDistinctVillages, shiftToCentral };
