@@ -279,16 +279,20 @@ export default function Students() {
     const urlTab = searchParams.get('tab');
     const urlTrack = searchParams.get('track');
     const urlStatus = searchParams.get('status');
+    const urlSubject = searchParams.get('subjectFilter');
+    const urlAdmissionType = searchParams.get('admissionType');
+    const urlInterviewFilter = searchParams.get('interviewFilter');
+    const hasUrlOverride = !!(urlTab || urlTrack || urlStatus || urlSubject || urlAdmissionType || urlInterviewFilter);
     
-    if (savedState) {
+    if (savedState && !hasUrlOverride) {
       try {
         const parsed = JSON.parse(savedState);
         return {
-          tab: urlTab || parsed.tab || 'active',
+          tab: parsed.tab || 'active',
           page: parsed.page || 1,
           filters: {
-            track: urlTrack || parsed.filters?.track || '',
-            status: urlStatus || parsed.filters?.status || '',
+            track: parsed.filters?.track || '',
+            status: parsed.filters?.status || '',
             town: parsed.filters?.town || '',
             search: parsed.filters?.search || '',
             formSource: parsed.filters?.formSource || '',
@@ -296,10 +300,11 @@ export default function Students() {
             funnelStage: parsed.filters?.funnelStage || '',
             admissionType: parsed.filters?.admissionType || '',
             branch: parsed.filters?.branch || '',
+            subjectFilter: parsed.filters?.subjectFilter || '',
             village: parsed.filters?.village || '',
             schoolName: parsed.filters?.schoolName || '',
           },
-          showFilters: parsed.showFilters || !!(urlTrack || urlStatus)
+          showFilters: parsed.showFilters || false
         };
       } catch {
         // If parsing fails, use defaults
@@ -315,14 +320,15 @@ export default function Students() {
         town: '',
         search: '',
         formSource: '',
-        interviewFilter: '',
+        interviewFilter: urlInterviewFilter || '',
         funnelStage: '',
-        admissionType: '',
+        admissionType: urlAdmissionType || '',
         branch: '',
+        subjectFilter: urlSubject || '',
         village: '',
         schoolName: '',
       },
-      showFilters: !!(urlTrack || urlStatus)
+      showFilters: !!(urlTrack || urlStatus || urlSubject || urlAdmissionType || urlInterviewFilter)
     };
   };
   
@@ -438,6 +444,7 @@ export default function Students() {
         admissionType: filters.admissionType,
         interviewFilter: filters.interviewFilter,
         branch: filters.branch,
+        subjectFilter: filters.subjectFilter,
         village: filters.village,
         schoolName: filters.schoolName,
         search: debouncedSearch,
@@ -515,7 +522,7 @@ export default function Students() {
   const switchTab = (t) => { 
     setTab(t); 
     setPage(1); 
-    setFilters({ track: '', status: '', town: '', search: '', formSource: '', interviewFilter: '', funnelStage: '', admissionType: '', branch: '', village: '', schoolName: '' }); 
+    setFilters({ track: '', status: '', town: '', search: '', formSource: '', interviewFilter: '', funnelStage: '', admissionType: '', branch: '', subjectFilter: '', village: '', schoolName: '' }); 
     setSelected([]);
     setHasMore(false);
     setInterviewRound('');

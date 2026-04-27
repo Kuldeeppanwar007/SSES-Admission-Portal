@@ -16,12 +16,13 @@ const SSISM_BRANCHES = [
   { label: 'ITEG DIPLOMA',  subject: 'ITEG Diploma', limit: null,color: 'text-blue-600',   bg: 'bg-blue-50',   border: 'border-blue-200',   bar: 'bg-blue-500'   },
 ];
 
-function CapacityCard({ label, admitted, limit, color, bg, border, bar }) {
+function CapacityCard({ label, admitted, finalCleared, limit, color, bg, border, bar, onClick, onPendingClick }) {
   const remaining = limit !== null ? Math.max(0, limit - admitted) : null;
   const pct       = limit ? Math.min(Math.round((admitted / limit) * 100), 100) : null;
   const isFull    = limit !== null && remaining === 0;
+  const pendingAdmission = finalCleared > admitted ? finalCleared - admitted : 0;
   return (
-    <div className={`bg-white rounded-2xl border ${border} shadow-sm p-4 flex flex-col gap-2`}>
+    <div onClick={onClick} className={`bg-white rounded-2xl border ${border} shadow-sm p-4 flex flex-col gap-2 ${onClick ? 'cursor-pointer hover:shadow-md hover:border-orange-200 transition-shadow' : ''}`}>
       <p className={`text-xs font-bold uppercase tracking-wide ${color}`}>{label}</p>
       <div className="flex items-end justify-between">
         <div>
@@ -33,6 +34,17 @@ function CapacityCard({ label, admitted, limit, color, bg, border, bar }) {
             {isFull ? 'Full' : `${remaining} left`}
           </p>
         )}
+      </div>
+      {/* Final Cleared breakdown */}
+      <div className="grid grid-cols-2 gap-1.5">
+        <span className="text-[11px] text-emerald-600 font-semibold bg-emerald-50 px-1.5 py-0.5 rounded-md text-center">✓ {finalCleared} cleared</span>
+        {pendingAdmission > 0 ? (
+          <span
+            onClick={(e) => { e.stopPropagation(); onPendingClick?.(); }}
+            className="text-[11px] text-amber-600 font-semibold bg-amber-50 px-1.5 py-0.5 rounded-md text-center cursor-pointer hover:bg-amber-100 transition-colors">
+            ⏳ {pendingAdmission} pending
+          </span>
+        ) : <span />}
       </div>
       {pct !== null && (
         <div>
@@ -47,7 +59,7 @@ function CapacityCard({ label, admitted, limit, color, bg, border, bar }) {
   );
 }
 
-function SSISMCapacityCards({ trackWise }) {
+function SSISMCapacityCards({ trackWise, finalClearedBySubject, navigate }) {
   const admittedBySubject = {};
   (trackWise || []).forEach(({ subjects }) => {
     (subjects || []).forEach(({ subject, admitted }) => {
@@ -63,7 +75,11 @@ function SSISMCapacityCards({ trackWise }) {
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         {SSISM_BRANCHES.map((b) => (
-          <CapacityCard key={b.label} {...b} admitted={admittedBySubject[b.subject] || 0} />
+          <CapacityCard key={b.label} {...b}
+            admitted={admittedBySubject[b.subject] || 0}
+            finalCleared={finalClearedBySubject?.[b.subject] || 0}
+            onClick={() => navigate(`/students?subjectFilter=${encodeURIComponent(b.subject)}&status=Admitted`)}
+            onPendingClick={() => navigate(`/students?subjectFilter=${encodeURIComponent(b.subject)}&interviewFilter=finalCleared`)} />
         ))}
       </div>
     </div>
@@ -77,7 +93,7 @@ const BTECH_BRANCHES = [
   { label: 'B.Tech (AI/ML)', subject: 'B.Tech(AI/ML)', limit: 60, color: 'text-purple-600', bg: 'bg-purple-50', border: 'border-purple-200', bar: 'bg-purple-500' },
 ];
 
-function BTechCapacityCards({ btechByBranch }) {
+function BTechCapacityCards({ btechByBranch, finalClearedBySubject, navigate }) {
   return (
     <div>
       <div className="flex items-center gap-2 mb-3">
@@ -86,7 +102,11 @@ function BTechCapacityCards({ btechByBranch }) {
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {BTECH_BRANCHES.map((b) => (
-          <CapacityCard key={b.label} {...b} admitted={btechByBranch?.[b.subject] || 0} />
+          <CapacityCard key={b.label} {...b}
+            admitted={btechByBranch?.[b.subject] || 0}
+            finalCleared={finalClearedBySubject?.[b.subject] || 0}
+            onClick={() => navigate(`/students?subjectFilter=${encodeURIComponent(b.subject)}&status=Admitted`)}
+            onPendingClick={() => navigate(`/students?subjectFilter=${encodeURIComponent(b.subject)}&interviewFilter=finalCleared`)} />
         ))}
       </div>
     </div>
@@ -100,7 +120,7 @@ const ADMISSION_TYPES = [
   { key: 'Full Fees',color: 'text-emerald-600',bg: 'bg-emerald-50', border: 'border-emerald-200' },
 ];
 
-function AdmissionTypeCards({ admissionTypeBreakdown }) {
+function AdmissionTypeCards({ admissionTypeBreakdown, navigate }) {
   return (
     <div>
       <div className="flex items-center gap-2 mb-3">
@@ -109,7 +129,9 @@ function AdmissionTypeCards({ admissionTypeBreakdown }) {
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {ADMISSION_TYPES.map(({ key, color, bg, border }) => (
-          <div key={key} className={`bg-white rounded-2xl border ${border} shadow-sm p-4`}>
+          <div key={key}
+            onClick={() => navigate(`/students?admissionType=${encodeURIComponent(key)}`)}
+            className={`bg-white rounded-2xl border ${border} shadow-sm p-4 cursor-pointer hover:shadow-md hover:border-orange-200 transition-shadow`}>
             <p className={`text-xs font-bold uppercase tracking-wide ${color}`}>{key}</p>
             <p className="text-2xl font-bold text-gray-800 mt-1">{admissionTypeBreakdown?.[key] || 0}</p>
             <p className="text-xs text-gray-400">admitted</p>
@@ -392,7 +414,6 @@ export default function Dashboard() {
       {/* Stat Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
         {STAT_META.map(({ key, label, icon: Icon, iconBg, iconColor, text }) => {
-          const isClickable = user?.role === 'admin';
           const href = key === 'disabled'
             ? '/students?tab=disabled'
             : key === 'total'
@@ -402,10 +423,8 @@ export default function Dashboard() {
             : `/students?status=${key.charAt(0).toUpperCase() + key.slice(1)}`;
           return (
             <div key={key}
-              onClick={() => isClickable && navigate(href)}
-              className={`bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex flex-col gap-3 hover:shadow-md transition-shadow ${
-                isClickable ? 'cursor-pointer hover:border-orange-200' : ''
-              }`}>
+              onClick={() => navigate(href)}
+              className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex flex-col gap-3 hover:shadow-md hover:border-orange-200 transition-shadow cursor-pointer">
               <div className={`w-10 h-10 rounded-xl ${iconBg} flex items-center justify-center`}>
                 <Icon size={18} className={iconColor} />
               </div>
@@ -419,13 +438,13 @@ export default function Dashboard() {
       </div>
 
       {/* SSISM Branch Capacity */}
-      <SSISMCapacityCards trackWise={stats.trackWise || []} />
+      <SSISMCapacityCards trackWise={stats.trackWise || []} finalClearedBySubject={stats.finalClearedBySubject || {}} navigate={navigate} />
 
       {/* B.Tech Branch Capacity */}
-      <BTechCapacityCards btechByBranch={stats.btechByBranch || {}} />
+      <BTechCapacityCards btechByBranch={stats.btechByBranch || {}} finalClearedBySubject={stats.finalClearedBySubject || {}} navigate={navigate} />
 
       {/* Admission Type Breakdown */}
-      <AdmissionTypeCards admissionTypeBreakdown={stats.admissionTypeBreakdown || {}} />
+      <AdmissionTypeCards admissionTypeBreakdown={stats.admissionTypeBreakdown || {}} navigate={navigate} />
 
       {/* Points Table */}
       {(stats.trackWise || []).length > 0 && (
@@ -521,14 +540,10 @@ export default function Dashboard() {
               const totalAdmitted = subjects.reduce((s, x) => s + x.admitted, 0);
               const pct = totalTarget > 0 ? Math.round((totalAdmitted / totalTarget) * 100) : 0;
               const pctColor = pct >= 75 ? 'bg-emerald-500' : pct >= 40 ? 'bg-amber-500' : 'bg-rose-500';
-              const isClickable = user?.role === 'admin';
-
               return (
                 <div key={track}
-                  onClick={() => isClickable && navigate(`/admin-track/${track}`)}
-                  className={`bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden hover:shadow-md transition-shadow ${
-                    isClickable ? 'cursor-pointer hover:border-orange-200' : ''
-                  }`}>
+                  onClick={() => navigate(`/admin-track/${track}`)}
+                  className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden hover:shadow-md hover:border-orange-200 transition-shadow cursor-pointer">
                   {/* Card Header */}
                   <div className="px-4 py-3 bg-gradient-to-r from-gray-50 to-white border-b border-gray-100">
                     <div className="flex items-center justify-between mb-1">

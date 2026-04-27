@@ -104,12 +104,16 @@ const getStudents = async (req, res) => {
     // Admission type filter
     if (req.query.admissionType) filter.admissionType = req.query.admissionType;
 
+    // Subject filter (dashboard capacity cards se)
+    if (req.query.subjectFilter) filter.subject = req.query.subjectFilter;
+
     // School filter
     if (req.query.schoolName) filter.schoolName = { $regex: `^${req.query.schoolName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, $options: 'i' };
 
     // Optimize interview filter
     if (interviewFilter === 'finalCleared') {
       filter['finalInterview.result'] = 'Pass';
+      filter.status = { $ne: 'Admitted' };
     } else if (interviewFilter === 'hasAttempts') {
       const Interview = require('../models/Interview');
       const studentIdsWithInterviews = await Interview.distinct('student');
@@ -1189,6 +1193,15 @@ const getStats = async (req, res) => {
     const btechByBranch = {};
     btechBranches.forEach(({ _id, admitted }) => { btechByBranch[_id] = admitted; });
 
+    // Final Cleared (interview pass) — subject-wise
+    const Interview = require('../models/Interview');
+    const finalClearedAgg = await Student.aggregate([
+      { $match: { 'finalInterview.result': 'Pass' } },
+      { $group: { _id: '$subject', count: { $sum: 1 } } },
+    ]);
+    const finalClearedBySubject = {};
+    finalClearedAgg.forEach(({ _id, count }) => { if (_id) finalClearedBySubject[_id] = count; });
+
     // AdmissionType breakdown
     const admissionTypeData = await Student.aggregate([
       { $match: { status: 'Admitted', admissionType: { $nin: [null, ''] } } },
@@ -1197,7 +1210,7 @@ const getStats = async (req, res) => {
     const admissionTypeBreakdown = {};
     admissionTypeData.forEach(({ _id, count }) => { admissionTypeBreakdown[_id] = count; });
 
-    res.json({ total, applied, calling, admitted, rejected, disabled, unassigned, trackWise, btechByBranch, admissionTypeBreakdown });
+    res.json({ total, applied, calling, admitted, rejected, disabled, unassigned, trackWise, btechByBranch, finalClearedBySubject, admissionTypeBreakdown });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
