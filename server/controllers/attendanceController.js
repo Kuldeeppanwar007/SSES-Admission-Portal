@@ -201,6 +201,16 @@ const markAttendance = async (req, res) => {
     user: req.user._id, date, time, latitude, longitude,
     locationSource: locationSource || 'Browser',
   });
+
+  // Attendance mark hone par LocationLog bhi create karo — Live Tracking mein dikhne ke liye
+  await LocationLog.create({
+    user: req.user._id,
+    lat: latitude, lng: longitude,
+    accuracy: accuracy ?? -1,
+    status: 'ok',
+    timestamp: new Date(),
+  });
+
     res.status(201).json(record);
   } catch (err) {
     res.status(500).json({ message: err.message });
