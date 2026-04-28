@@ -448,7 +448,9 @@ export default function Students() {
         village: filters.village,
         schoolName: filters.schoolName,
         search: debouncedSearch,
-        ...(tab === 'disabled' ? { status: 'Disabled' } : {}) 
+        ...(tab === 'disabled' ? { status: 'Disabled' } : {}),
+        ...(tab === 'shiftCentral' ? { shiftCentral: true } : {}),
+        ...(tab === 'shiftedStudents' ? { shiftedStudents: true } : {}),
       };
       
       const { data } = await api.get('/students', { params });
@@ -596,6 +598,9 @@ export default function Students() {
   };
 
   const isDisabledTab = tab === 'disabled';
+  const isShiftCentralTab = tab === 'shiftCentral';
+  const isShiftedStudentsTab = tab === 'shiftedStudents';
+  const isSpecialTab = isDisabledTab || isShiftCentralTab || isShiftedStudentsTab;
   const allSelected = students.length > 0 && selected.length === students.length;
 
   // Memoize filtered students for better performance
@@ -639,7 +644,7 @@ export default function Students() {
               <FiDownload size={13} /> {exporting ? 'Exporting...' : 'Export All'}
             </button>
           )}
-          {!isDisabledTab && (
+          {!isSpecialTab && (
             <>
               <button onClick={handleDownloadTemplate}
                 className="flex items-center gap-1 border border-primary text-primary px-3 py-1.5 rounded-lg text-sm hover:bg-orange-50">
@@ -679,7 +684,7 @@ export default function Students() {
             <FiDownload size={13} /> {exporting ? 'Exporting...' : 'Export'}
           </button>
         )}
-        {!isDisabledTab && (
+        {!isSpecialTab && (
           <div className="relative flex-1" ref={mobileActionsRef}>
             <button onClick={() => setMobileActionsOpen(o => !o)}
               className="w-full flex items-center justify-center gap-1 border border-primary text-primary px-4 py-2 rounded-lg text-sm font-medium hover:bg-orange-50">
@@ -721,8 +726,16 @@ export default function Students() {
         <div className="hidden md:flex items-center justify-between gap-2">
           <div className="flex gap-1 bg-gray-100 p-1 rounded-xl">
             <button onClick={() => switchTab('active')}
-              className={`flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${!isDisabledTab ? 'bg-white shadow text-gray-800' : 'text-gray-500 hover:text-gray-700'}`}>
+              className={`flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${tab === 'active' ? 'bg-white shadow text-gray-800' : 'text-gray-500 hover:text-gray-700'}`}>
               <FiSearch size={14} /> Active Profiles
+            </button>
+            <button onClick={() => switchTab('shiftCentral')}
+              className={`flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${isShiftCentralTab ? 'bg-white shadow text-gray-800' : 'text-gray-500 hover:text-gray-700'}`}>
+              <FiSend size={14} /> Shift Central
+            </button>
+            <button onClick={() => switchTab('shiftedStudents')}
+              className={`flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${isShiftedStudentsTab ? 'bg-white shadow text-gray-800' : 'text-gray-500 hover:text-gray-700'}`}>
+              <FiSend size={14} /> Shifted Students
             </button>
             <button onClick={() => switchTab('disabled')}
               className={`flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${isDisabledTab ? 'bg-white shadow text-gray-800' : 'text-gray-500 hover:text-gray-700'}`}>
@@ -753,13 +766,21 @@ export default function Students() {
         </div>
         {/* Mobile: tabs full width, filters scrollable below */}
         <div className="md:hidden">
-          <div className="flex gap-1 bg-gray-100 p-1 rounded-xl w-full mb-2">
+          <div className="flex gap-1 bg-gray-100 p-1 rounded-xl w-full mb-2 overflow-x-auto">
             <button onClick={() => switchTab('active')}
-              className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${!isDisabledTab ? 'bg-white shadow text-gray-800' : 'text-gray-500 hover:text-gray-700'}`}>
+              className={`flex-1 shrink-0 flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${tab === 'active' ? 'bg-white shadow text-gray-800' : 'text-gray-500 hover:text-gray-700'}`}>
               <FiSearch size={14} /> Active Profiles
             </button>
+            <button onClick={() => switchTab('shiftCentral')}
+              className={`flex-1 shrink-0 flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${isShiftCentralTab ? 'bg-white shadow text-gray-800' : 'text-gray-500 hover:text-gray-700'}`}>
+              <FiSend size={14} /> Shift Central
+            </button>
+            <button onClick={() => switchTab('shiftedStudents')}
+              className={`flex-1 shrink-0 flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${isShiftedStudentsTab ? 'bg-white shadow text-gray-800' : 'text-gray-500 hover:text-gray-700'}`}>
+              <FiSend size={14} /> Shifted Students
+            </button>
             <button onClick={() => switchTab('disabled')}
-              className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${isDisabledTab ? 'bg-white shadow text-gray-800' : 'text-gray-500 hover:text-gray-700'}`}>
+              className={`flex-1 shrink-0 flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${isDisabledTab ? 'bg-white shadow text-gray-800' : 'text-gray-500 hover:text-gray-700'}`}>
               <FiSlash size={14} /> Disabled Profiles
             </button>
           </div>
@@ -796,14 +817,14 @@ export default function Students() {
               onChange={handleSearchChange}
               className="flex-1 py-2 outline-none text-sm" />
           </div>
-          {!isDisabledTab && (
+          {!isSpecialTab && (
             <button onClick={() => setShowFilters(!showFilters)}
               className={`flex items-center gap-1 px-3 py-2 rounded-lg border text-sm transition-colors ${showFilters ? 'bg-primary text-white border-primary' : 'border-gray-300 text-gray-600'}`}>
               <FiFilter size={14} /> <span className="hidden sm:inline">Filter</span>
             </button>
           )}
         </div>
-        {showFilters && !isDisabledTab && (
+        {showFilters && !isSpecialTab && (
           <div className="flex flex-wrap gap-2 pt-1">
             <select value={filters.status} onChange={(e) => { setFilters({ ...filters, status: e.target.value }); setPage(1); }}
               className="flex-1 min-w-32 border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none">

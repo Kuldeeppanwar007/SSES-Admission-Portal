@@ -54,7 +54,14 @@ const getStudents = async (req, res) => {
     }
 
     // Optimize status filter
-    if (status === 'Disabled') {
+    if (req.query.shiftCentral === 'true') {
+      filter.isDisabled = { $ne: true };
+      filter['finalInterview.result'] = 'Pass';
+      filter.status = 'Admitted';
+    } else if (req.query.shiftedStudents === 'true') {
+      filter.isDisabled = { $ne: true };
+      filter.shiftedToCentral = true;
+    } else if (status === 'Disabled') {
       filter.isDisabled = true;
     } else {
       filter.isDisabled = { $ne: true };
