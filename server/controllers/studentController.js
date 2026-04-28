@@ -114,6 +114,28 @@ const getStudents = async (req, res) => {
     if (interviewFilter === 'finalCleared') {
       filter['finalInterview.result'] = 'Pass';
       filter.status = { $ne: 'Admitted' };
+      if (req.query.subjectFilter) {
+        const sf = req.query.subjectFilter;
+        const SUBJECT_TO_BRANCHES = {
+          'BCA':           ['BCA', 'BCA(ITEG)'],
+          'BBA':           ['BBA'],
+          'Bio':           ['Bio', 'BSC(BT)', 'BSC(Bt)', 'Biology'],
+          'Micro':         ['Micro', 'BSC(MICRO)'],
+          'Bcom':          ['Bcom', 'B.com(CA)', 'B.COM(CA)'],
+          'ITEG Diploma':  ['ITEG Diploma'],
+          'B.Tech(CS)':    ['B.Tech(CS)', 'CS'],
+          'B.Tech(IT)':    ['B.Tech(IT)', 'IT'],
+          'B.Tech(ECE)':   ['B.Tech(ECE)', 'ECE'],
+          'B.Tech(AI/ML)': ['B.Tech(AI/ML)', 'AI/ML', 'AIML'],
+        };
+        const aliases = SUBJECT_TO_BRANCHES[sf] || [sf];
+        // Sirf branch se filter karo — subject ignore
+        filter.branch = { $in: aliases };
+        delete filter.subject;
+        if (filter.$and) {
+          filter.$and = filter.$and.filter(c => !c.$or || !c.$or.some(x => x.subject));
+        }
+      }
     } else if (interviewFilter === 'hasAttempts') {
       const Interview = require('../models/Interview');
       const studentIdsWithInterviews = await Interview.distinct('student');
@@ -1030,6 +1052,7 @@ const getTrackStats = async (req, res) => {
 
     const disabled = await Student.countDocuments({ track, isDisabled: true });
 
+    const BTECH_SUBJECTS_TRACK = ['B.Tech(CS)', 'B.Tech(IT)', 'B.Tech(ECE)', 'B.Tech(AI/ML)'];
     const subjectAdmitted = await Student.aggregate([
       { $match: { track, status: 'Admitted' } },
       { $group: { _id: '$subject', admitted: { $sum: 1 } } },
@@ -1041,8 +1064,9 @@ const getTrackStats = async (req, res) => {
       subjectMap[subject] = { target, admitted: 0 };
     });
     subjectAdmitted.forEach(({ _id, admitted }) => {
-      if (!subjectMap[_id]) subjectMap[_id] = { target: 0, admitted: 0 };
-      subjectMap[_id].admitted = admitted;
+      const mapped = BTECH_SUBJECTS_TRACK.includes(_id) ? 'B.Tech' : _id;
+      if (!subjectMap[mapped]) subjectMap[mapped] = { target: 0, admitted: 0 };
+      subjectMap[mapped].admitted += admitted;
     });
 
     const subjects = Object.entries(subjectMap).map(([subject, data]) => ({ subject, ...data }));
@@ -1103,9 +1127,39 @@ const getStats = async (req, res) => {
     const BTECH_SUBJECTS = ['B.Tech(CS)', 'B.Tech(IT)', 'B.Tech(ECE)', 'B.Tech(AI/ML)'];
 
     const trackSubjectAdmitted = await Student.aggregate([
+      { $match: { status: 'Admitted', admissionType: 'Full Fees' } },
+      { $group: { _id: { track: '$track', subject: '$subject' }, admitted: { $sum: 1 } } },
+    ]);
+
+    // Capacity cards ke liye — sabhi admitted (all admission types)
+    const allAdmittedBySubject = await Student.aggregate([
+      { $match: { status: 'Admitted' } },
+      { $group: { _id: '$subject', admitted: { $sum: 1 } } },
+    ]);
+    const admittedBySubjectMap = {};
+    allAdmittedBySubject.forEach(({ _id, admitted }) => { if (_id) admittedBySubjectMap[_id] = admitted; });
+
+    // B.Tech branch-wise admitted count — sabhi admitted
+    const btechBranches = await Student.aggregate([
+      { $match: { status: 'Admitted', subject: { $in: BTECH_SUBJECTS } } },
+      { $group: { _id: '$subject', admitted: { $sum: 1 } } },
+    ]);
+    const btechByBranch = {};
+    btechBranches.forEach(({ _id, admitted }) => { btechByBranch[_id] = admitted; });
+
+    // SSISM capacity — trackWise subjects mein bhi sab admitted chahiye (capacity display ke liye)
+    // trackWise subjects admitted count ko allAdmittedBySubject se override karo
+    const allTrackSubjectAdmitted = await Student.aggregate([
       { $match: { status: 'Admitted' } },
       { $group: { _id: { track: '$track', subject: '$subject' }, admitted: { $sum: 1 } } },
     ]);
+    const allTrackSubjectMap = {};
+    allTrackSubjectAdmitted.forEach(({ _id, admitted }) => {
+      const { track, subject } = _id;
+      const mappedSubject = BTECH_SUBJECTS.includes(subject) ? 'B.Tech' : subject;
+      if (!allTrackSubjectMap[track]) allTrackSubjectMap[track] = {};
+      allTrackSubjectMap[track][mappedSubject] = (allTrackSubjectMap[track][mappedSubject] || 0) + admitted;
+    });
 
     const targets = await Target.find({});
 
@@ -1166,15 +1220,28 @@ const getStats = async (req, res) => {
 
     const trackWise = Object.entries(trackMap).map(([track, { subjects }]) => {
       const admissionPoints = Object.entries(subjects).reduce((sum, [subject, { admitted }]) => {
-        // B.Tech ke 4 subjects ke liye 'B.Tech' target ke points use karo
         const pointsKey = BTECH_SUBJECTS.includes(subject) ? 'B.Tech' : subject;
         return sum + (admitted || 0) * (pointsPerSubject[track]?.[pointsKey] || 0);
       }, 0);
       const callingPoints = (callingMap[track]?.calledCount || 0) * 5;
       const funnelPoints  = funnelPointsMap[track] || 0;
+
+      // fullFeesSubjects — Points Table ke liye sirf Full Fees admitted
+      const fullFeesSubjects = Object.entries(subjects).map(([subject, data]) => ({
+        subject,
+        target: data.target,
+        admitted: data.admitted || 0, // Full Fees only (trackSubjectAdmitted se)
+      }));
+
       return ({
         track,
-        subjects: Object.entries(subjects).map(([subject, data]) => ({ subject, ...data })),
+        // subjects mein all-admitted count use karo (capacity display ke liye)
+        subjects: Object.entries(subjects).map(([subject, data]) => ({
+          subject,
+          target: data.target,
+          admitted: allTrackSubjectMap[track]?.[subject] || 0,
+        })),
+        fullFeesSubjects,
         points: pointsMap[track] || 0,
         admissionPoints,
         callingPoints,
@@ -1186,21 +1253,33 @@ const getStats = async (req, res) => {
     });
 
     // B.Tech branch-wise admitted count (subject field se)
-    const btechBranches = await Student.aggregate([
-      { $match: { status: 'Admitted', subject: { $in: BTECH_SUBJECTS } } },
-      { $group: { _id: '$subject', admitted: { $sum: 1 } } },
-    ]);
-    const btechByBranch = {};
-    btechBranches.forEach(({ _id, admitted }) => { btechByBranch[_id] = admitted; });
+    // (already computed above in btechByBranch)
 
     // Final Cleared (interview pass) — subject-wise
-    const Interview = require('../models/Interview');
-    const finalClearedAgg = await Student.aggregate([
-      { $match: { 'finalInterview.result': 'Pass' } },
-      { $group: { _id: '$subject', count: { $sum: 1 } } },
-    ]);
+    // branch field bhi check karo (SSISM students mein branch se normalize karo)
+    const finalClearedRaw = await Student.find(
+      { 'finalInterview.result': 'Pass', status: { $ne: 'Admitted' } },
+      { subject: 1, branch: 1 }
+    ).lean();
     const finalClearedBySubject = {};
-    finalClearedAgg.forEach(({ _id, count }) => { if (_id) finalClearedBySubject[_id] = count; });
+    finalClearedRaw.forEach(({ subject, branch }) => {
+      // Branch se resolve karo (primary), subject fallback
+      const BRANCH_TO_CANONICAL = {
+        'BCA': 'BCA', 'BCA(ITEG)': 'BCA',
+        'BBA': 'BBA',
+        'BSC(BT)': 'Bio', 'BSC(Bt)': 'Bio', 'Biology': 'Bio', 'Bio': 'Bio',
+        'BSC(MICRO)': 'Micro', 'Micro': 'Micro',
+        'B.com(CA)': 'Bcom', 'B.COM(CA)': 'Bcom', 'Bcom': 'Bcom',
+        'ITEG Diploma': 'ITEG Diploma',
+        'B.Tech(CS)': 'B.Tech(CS)', 'CS': 'B.Tech(CS)',
+        'B.Tech(IT)': 'B.Tech(IT)', 'IT': 'B.Tech(IT)',
+        'B.Tech(ECE)': 'B.Tech(ECE)', 'ECE': 'B.Tech(ECE)',
+        'B.Tech(AI/ML)': 'B.Tech(AI/ML)', 'AI/ML': 'B.Tech(AI/ML)', 'AIML': 'B.Tech(AI/ML)',
+      };
+      // Branch se pehle resolve karo, warna subject se
+      const resolved = (branch && BRANCH_TO_CANONICAL[branch]) || BRANCH_TO_CANONICAL[subject] || null;
+      if (resolved) finalClearedBySubject[resolved] = (finalClearedBySubject[resolved] || 0) + 1;
+    });
 
     // AdmissionType breakdown
     const admissionTypeData = await Student.aggregate([
@@ -1210,7 +1289,21 @@ const getStats = async (req, res) => {
     const admissionTypeBreakdown = {};
     admissionTypeData.forEach(({ _id, count }) => { admissionTypeBreakdown[_id] = count; });
 
-    res.json({ total, applied, calling, admitted, rejected, disabled, unassigned, trackWise, btechByBranch, finalClearedBySubject, admissionTypeBreakdown });
+    // Track-wise admission type breakdown (subject-wise)
+    const trackAdmissionTypeData = await Student.aggregate([
+      { $match: { status: 'Admitted', admissionType: { $in: ['SNS', 'SVS', 'Shri Ram'] } } },
+      { $group: { _id: { track: '$track', admissionType: '$admissionType', subject: '$subject' }, count: { $sum: 1 } } },
+    ]);
+    // { track -> { admissionType -> { subject -> count } } }
+    const trackAdmissionTypeBreakdown = {};
+    trackAdmissionTypeData.forEach(({ _id: { track, admissionType, subject }, count }) => {
+      if (!track) return;
+      if (!trackAdmissionTypeBreakdown[track]) trackAdmissionTypeBreakdown[track] = {};
+      if (!trackAdmissionTypeBreakdown[track][admissionType]) trackAdmissionTypeBreakdown[track][admissionType] = {};
+      trackAdmissionTypeBreakdown[track][admissionType][subject || 'Unknown'] = count;
+    });
+
+    res.json({ total, applied, calling, admitted, rejected, disabled, unassigned, trackWise, btechByBranch, finalClearedBySubject, admissionTypeBreakdown, trackAdmissionTypeBreakdown });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

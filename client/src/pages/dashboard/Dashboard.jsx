@@ -20,7 +20,6 @@ function CapacityCard({ label, admitted, finalCleared, limit, color, bg, border,
   const remaining = limit !== null ? Math.max(0, limit - admitted) : null;
   const pct       = limit ? Math.min(Math.round((admitted / limit) * 100), 100) : null;
   const isFull    = limit !== null && remaining === 0;
-  const pendingAdmission = finalCleared > admitted ? finalCleared - admitted : 0;
   return (
     <div onClick={onClick} className={`bg-white rounded-2xl border ${border} shadow-sm p-4 flex flex-col gap-2 ${onClick ? 'cursor-pointer hover:shadow-md hover:border-orange-200 transition-shadow' : ''}`}>
       <p className={`text-xs font-bold uppercase tracking-wide ${color}`}>{label}</p>
@@ -37,12 +36,12 @@ function CapacityCard({ label, admitted, finalCleared, limit, color, bg, border,
       </div>
       {/* Final Cleared breakdown */}
       <div className="grid grid-cols-2 gap-1.5">
-        <span className="text-[11px] text-emerald-600 font-semibold bg-emerald-50 px-1.5 py-0.5 rounded-md text-center">✓ {finalCleared} cleared</span>
-        {pendingAdmission > 0 ? (
+        <span className="text-[11px] text-emerald-600 font-semibold bg-emerald-50 px-1.5 py-0.5 rounded-md text-center">✓ {admitted} admitted</span>
+        {finalCleared > 0 ? (
           <span
             onClick={(e) => { e.stopPropagation(); onPendingClick?.(); }}
             className="text-[11px] text-amber-600 font-semibold bg-amber-50 px-1.5 py-0.5 rounded-md text-center cursor-pointer hover:bg-amber-100 transition-colors">
-            ⏳ {pendingAdmission} pending
+            ⏳ {finalCleared} pending
           </span>
         ) : <span />}
       </div>
@@ -142,8 +141,73 @@ function AdmissionTypeCards({ admissionTypeBreakdown, navigate }) {
   );
 }
 
+const SCHOLARSHIP_TYPES = ['SNS', 'SVS', 'Shri Ram'];
+const SCHOLARSHIP_COLORS = {
+  'SNS':      { text: 'text-blue-600',   bg: 'bg-blue-50',   border: 'border-blue-200',   badge: 'bg-blue-100 text-blue-700' },
+  'SVS':      { text: 'text-violet-600', bg: 'bg-violet-50', border: 'border-violet-200', badge: 'bg-violet-100 text-violet-700' },
+  'Shri Ram': { text: 'text-amber-600',  bg: 'bg-amber-50',  border: 'border-amber-200',  badge: 'bg-amber-100 text-amber-700' },
+};
+
+function TrackScholarshipBreakdown({ trackAdmissionTypeBreakdown, navigate }) {
+  const tracks = Object.keys(trackAdmissionTypeBreakdown || {}).sort();
+  if (tracks.length === 0) return null;
+
+  return (
+    <div>
+      <div className="flex items-center gap-2 mb-3">
+        <span className="text-sm font-bold text-gray-700 uppercase tracking-wide">Track-wise Scholarship Breakdown</span>
+        <div className="flex-1 h-px bg-gray-200" />
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        {tracks.map(track => {
+          const typeData = trackAdmissionTypeBreakdown[track];
+          const totalScholarship = SCHOLARSHIP_TYPES.reduce((sum, t) =>
+            sum + Object.values(typeData[t] || {}).reduce((s, c) => s + c, 0), 0);
+          if (totalScholarship === 0) return null;
+          return (
+            <div key={track} className="bg-white rounded-2xl border border-orange-100 shadow-sm overflow-hidden hover:shadow-md hover:border-orange-200 transition-shadow">
+              {/* Header */}
+              <div className="px-4 py-3 bg-gradient-to-r from-gray-50 to-white border-b border-gray-100 flex items-center justify-between">
+                <p className="font-bold text-gray-800 text-sm">{track}</p>
+                <span className="text-xs bg-orange-50 text-primary font-bold px-2 py-0.5 rounded-full border border-orange-100">{totalScholarship} total</span>
+              </div>
+              {/* Scholarship type rows */}
+              <div className="divide-y divide-gray-50">
+                {SCHOLARSHIP_TYPES.map(type => {
+                  const subjects = typeData[type] || {};
+                  const total = Object.values(subjects).reduce((s, c) => s + c, 0);
+                  if (total === 0) return null;
+                  const { text, badge } = SCHOLARSHIP_COLORS[type];
+                  return (
+                    <div key={type}
+                      onClick={() => navigate(`/students?admissionType=${encodeURIComponent(type)}&status=Admitted&track=${encodeURIComponent(track)}`)}
+                      className="px-4 py-3 hover:bg-gray-50/60 transition-colors cursor-pointer">
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className={`text-xs font-bold uppercase tracking-wide ${text}`}>{type}</span>
+                        <span className={`text-xs font-bold px-1.5 py-0.5 rounded-md ${badge}`}>{total}</span>
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        {Object.entries(subjects).map(([subject, count]) => (
+                          <span key={subject}
+                            onClick={(e) => { e.stopPropagation(); navigate(`/students?subjectFilter=${encodeURIComponent(subject)}&admissionType=${encodeURIComponent(type)}&status=Admitted&track=${encodeURIComponent(track)}`); }}
+                            className={`text-[11px] font-semibold px-2 py-0.5 rounded-full cursor-pointer hover:opacity-80 transition-opacity ${badge}`}>
+                            {subject}: {count}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 const SUBJECT_COLORS = {
-  'B.Tech(CS)': 'bg-blue-100 text-blue-700',
   'B.Tech(IT)': 'bg-indigo-100 text-indigo-700',
   'B.Tech(ECE)':'bg-teal-100 text-teal-700',
   'B.Tech(AI/ML)': 'bg-purple-100 text-purple-700',
@@ -219,9 +283,9 @@ function PointsTable({ trackWise }) {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {tracks.map(({ track, subjects, admissionPoints }, i) => {
+              {tracks.map(({ track, fullFeesSubjects, admissionPoints }, i) => {
                 const subjectMap = {};
-                (subjects || []).forEach(({ subject, admitted }) => {
+                (fullFeesSubjects || []).forEach(({ subject, admitted }) => {
                   if (BTECH_SUBJECTS.includes(subject)) {
                     subjectMap['B.Tech'] = (subjectMap['B.Tech'] || 0) + (admitted || 0);
                   } else {
@@ -445,6 +509,9 @@ export default function Dashboard() {
 
       {/* Admission Type Breakdown */}
       <AdmissionTypeCards admissionTypeBreakdown={stats.admissionTypeBreakdown || {}} navigate={navigate} />
+
+      {/* Track-wise Scholarship Breakdown */}
+      <TrackScholarshipBreakdown trackAdmissionTypeBreakdown={stats.trackAdmissionTypeBreakdown || {}} navigate={navigate} />
 
       {/* Points Table */}
       {(stats.trackWise || []).length > 0 && (
