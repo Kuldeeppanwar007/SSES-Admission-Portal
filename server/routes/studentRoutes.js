@@ -180,6 +180,109 @@ router.post('/cleanup-data', protect, authorizeRoles('admin'), async (req, res) 
     res.status(500).json({ message: err.message });
   }
 });
+// Shift student to central portal
+router.patch('/:id/shift-to-central', protect, authorizeRoles('admin', 'manager', 'track_incharge'), async (req, res) => {
+  try {
+    const Student = require('../models/Student');
+
+    const student = await Student.findById(req.params.id);
+    if (!student) return res.status(404).json({ message: 'Student not found' });
+    if (student.shiftedToCentral) return res.status(400).json({ message: 'Student already shifted to central' });
+
+    const centralUrl = 'https://central.ssism.org/api/students/self-register';
+    const [firstName, ...rest] = (student.name || '').trim().split(' ');
+    const lastName = rest.join(' ');
+
+    // trackName apne system mein town store karta hai (e.g. 'Timarni', 'Nemawar')
+    // central ko wahi original town bhejni hai jaise form se aayi thi
+    const trackNameForCentral = student.trackName || student.track || '';
+
+    const isBtech = student.formSource === 'btech';
+
+    const payload = {
+      webhookSecret:    process.env.WEBHOOK_SECRET,
+      formSource:       isBtech ? 'btech' : 'ssism',
+      // Name
+      firstName,
+      lastName,
+      // Father
+      fathersName:      student.fatherName          || '',
+      // Contact
+      mobile:           student.mobileNo             || '',
+      email:            student.email                || '',
+      whatsappNumber:   student.whatsappNo           || '',
+      // Address
+      address:          student.fullAddress          || '',
+      village:          student.village              || '',
+      district:         student.district             || '',
+      tehsil:           student.tehsil               || '',
+      pincode:          student.pincode              || '',
+      // Track — town name bhejo (central wahi resolve karega)
+      trackName:        trackNameForCentral,
+      track:            trackNameForCentral,
+      // Personal
+      dob:              student.dob                  || '',
+      gender:           student.gender               || '',
+      category:         student.category             || '',
+      aadharNo:         student.aadharNo             || '',
+      // Academic
+      schoolName:       student.schoolName           || '',
+      school12Sub:      student.school12Sub          || '',
+      persentage10:     student.persentage10         || '',
+      persentage12:     student.persentage12         || '',
+      persentage11:     student.persentage11         || '',
+      rollNumber10:     student.rollNumber10         || '',
+      rollNumber12:     student.rollNumber12         || '',
+      // btech specific
+      ...(isBtech && {
+        jeeScore:       student.jeeScore             || '',
+        priority1:      student.priority1            || '',
+        priority2:      student.priority2            || '',
+        priority3:      student.priority3            || '',
+        course:         student.branch               || '',
+      }),
+      // ssism specific
+      ...(!isBtech && {
+        branch:         student.branch               || '',
+        feesScheme:     student.feesScheme           || '',
+        joinBatch:      student.joinBatch            || '',
+        year:           student.year                 || '',
+      }),
+      // Father info
+      fatherContactNumber: student.fatherContactNumber || '',
+      fatherIncome:     student.fatherIncome         || '',
+      // Other
+      linkSource:       student.linkSource           || '',
+      applicationType:  student.applicationType      || '',
+      accRegFeesStatus: student.accRegFeesStatus     || '',
+      locationURL:      student.locationURL          || '',
+      payMode:          student.payMode              || '',
+      sRank:            student.sRank                || '',
+    };
+
+    try {
+      const centralRes = await fetch(centralUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(10000),
+      });
+      // 409 = already registered on central — still mark as shifted
+      if (!centralRes.ok && centralRes.status !== 409) {
+        const errData = await centralRes.json().catch(() => ({}));
+        return res.status(502).json({ message: 'Central portal pe bhejne mein error: ' + (errData.message || centralRes.statusText) });
+      }
+    } catch (fetchErr) {
+      return res.status(502).json({ message: 'Central portal se connect nahi ho paya: ' + fetchErr.message });
+    }
+
+    await Student.findByIdAndUpdate(req.params.id, { shiftedToCentral: true, shiftedAt: new Date() });
+    res.json({ message: 'Student successfully shifted to central' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 router.get('/activity-log', protect, authorizeRoles('admin', 'track_incharge'), getActivityLog);
 router.get('/', protect, getStudents);
 router.get('/:id', protect, getStudent);

@@ -58,6 +58,7 @@ const getStudents = async (req, res) => {
       filter.isDisabled = { $ne: true };
       filter['finalInterview.result'] = 'Pass';
       filter.status = 'Admitted';
+      filter.shiftedToCentral = { $ne: true };
     } else if (req.query.shiftedStudents === 'true') {
       filter.isDisabled = { $ne: true };
       filter.shiftedToCentral = true;
@@ -120,7 +121,6 @@ const getStudents = async (req, res) => {
     // Optimize interview filter
     if (interviewFilter === 'finalCleared') {
       filter['finalInterview.result'] = 'Pass';
-      filter.status = { $ne: 'Admitted' };
       if (req.query.subjectFilter) {
         const sf = req.query.subjectFilter;
         const SUBJECT_TO_BRANCHES = {
@@ -187,7 +187,7 @@ const getStudents = async (req, res) => {
     const [total, students] = await Promise.all([
       Student.countDocuments(filter),
       Student.find(filter)
-        .select('name fatherName track trackName village mobileNo formSource status finalInterview createdAt isTopper isPriority branch remarks') // Select only needed fields
+        .select('name fatherName track trackName village mobileNo formSource status finalInterview createdAt isTopper isPriority branch remarks shiftedAt') // Select only needed fields
         .populate('addedBy', 'name')
         .sort({ createdAt: -1 })
         .skip((_page - 1) * _limit)

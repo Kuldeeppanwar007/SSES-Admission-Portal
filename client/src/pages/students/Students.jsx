@@ -4,7 +4,7 @@ import api from '../../api/axios';
 import { TRACKS, STATUSES, STATUS_COLORS, TRACK_TOWNS, TOWN_TO_MAIN_TRACK } from '../../utils/constants';
 import useAuthStore from '../../store/authStore';
 import toast from 'react-hot-toast';
-import { FiPlus, FiUpload, FiSearch, FiEdit2, FiDownload, FiFilter, FiSlash, FiClipboard, FiExternalLink, FiChevronDown, FiSend } from 'react-icons/fi';
+import { FiPlus, FiUpload, FiSearch, FiEdit2, FiDownload, FiFilter, FiSlash, FiClipboard, FiExternalLink, FiChevronDown, FiSend, FiArrowRight } from 'react-icons/fi';
 import DatePicker from '../../components/DatePicker';
 import { isOnline, cacheStudents, getCachedStudents } from '../../utils/offlineQueue';
 import { usePerformanceMonitor, useDebounce } from '../../hooks/usePerformance';
@@ -355,6 +355,8 @@ export default function Students() {
   const [branches, setBranches] = useState([]);
   const [villages, setVillages] = useState([]);
   const [schools, setSchools] = useState([]);
+  const [shiftingId, setShiftingId] = useState(null);
+  const [shiftConfirmStudent, setShiftConfirmStudent] = useState(null);
 
   useEffect(() => {
     const handler = (e) => { if (mobileActionsRef.current && !mobileActionsRef.current.contains(e.target)) setMobileActionsOpen(false); };
@@ -597,6 +599,20 @@ export default function Students() {
     e.target.value = '';
   };
 
+  const handleShiftToCentral = async (student) => {
+    setShiftingId(student._id);
+    setShiftConfirmStudent(null);
+    try {
+      await api.patch(`/students/${student._id}/shift-to-central`);
+      toast.success(`${student.name} successfully shifted to central!`);
+      fetchStudents();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Shift failed');
+    } finally {
+      setShiftingId(null);
+    }
+  };
+
   const isDisabledTab = tab === 'disabled';
   const isShiftCentralTab = tab === 'shiftCentral';
   const isShiftedStudentsTab = tab === 'shiftedStudents';
@@ -625,6 +641,35 @@ export default function Students() {
           onClose={() => setInterviewStudent(null)}
           onSaved={fetchStudents}
         />
+      )}
+
+      {/* Shift Confirmation Modal */}
+      {shiftConfirmStudent && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShiftConfirmStudent(null)}>
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-center w-12 h-12 bg-orange-100 rounded-full mx-auto mb-4">
+              <FiArrowRight size={22} className="text-primary" />
+            </div>
+            <h3 className="text-lg font-bold text-gray-800 text-center mb-1">Shift to Central?</h3>
+            <p className="text-sm text-gray-500 text-center mb-1">
+              <span className="font-semibold text-gray-700">{shiftConfirmStudent.name}</span> ko central portal pe shift karna chahte hain?
+            </p>
+            <p className="text-xs text-gray-400 text-center mb-6">Yeh student Shifted Students tab mein chala jayega.</p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShiftConfirmStudent(null)}
+                className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors">
+                Cancel
+              </button>
+              <button
+                onClick={() => handleShiftToCentral(shiftConfirmStudent)}
+                disabled={shiftingId === shiftConfirmStudent._id}
+                className="flex-1 py-2.5 rounded-xl bg-primary hover:bg-primary-dark text-white text-sm font-semibold disabled:opacity-60 transition-colors">
+                {shiftingId === shiftConfirmStudent._id ? 'Shifting...' : 'Yes, Shift'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
@@ -938,7 +983,7 @@ export default function Students() {
                     <input type="checkbox" checked={allSelected} onChange={toggleAll}
                       className="rounded border-gray-300 text-primary focus:ring-primary cursor-pointer" />
                   </th>
-                  {['S.N.', 'Name', 'Father Name', 'Track', 'Town', 'Mobile', 'Form', 'Status', 'Attempt', 'Interview', 'Actions'].map((h) => (
+                  {['S.N.', 'Name', 'Father Name', 'Track', 'Town', 'Mobile', 'Form', 'Status', ...(isShiftCentralTab ? ['Type', 'Action'] : isShiftedStudentsTab ? ['Shifted On'] : ['Attempt', 'Interview', 'Actions'])].map((h) => (
                     <th key={h} className={`px-4 py-3 text-xs font-semibold uppercase text-gray-500 ${h === 'Attempt' ? 'text-center' : 'text-left'}`}>{h}</th>
                   ))}
                 </tr>
@@ -993,36 +1038,64 @@ export default function Students() {
                     <td className="px-4 py-3">
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${STATUS_COLORS[s.status]}`}>{s.status}</span>
                     </td>
-                    <td className="px-4 py-3 text-center">
-                      {s.finalInterview?.result === 'Pass' ? (
-                        <span className="text-xs font-bold px-2 py-1 rounded-full bg-emerald-100 text-emerald-700">✓ Cleared</span>
-                      ) : s.finalInterview?.result === 'Fail' ? (
-                        <span className="text-xs font-bold px-2 py-1 rounded-full bg-rose-100 text-rose-600">✗ Final Failed</span>
-                      ) : s.finalInterview?.result === 'Pending' ? (
-                        <span className="text-xs font-bold px-2 py-1 rounded-full bg-amber-100 text-amber-700">⏳ Final Pending</span>
-                      ) : s.interviewCount > 0 ? (
-                        <span className="text-xs font-bold px-2 py-1 rounded-full bg-orange-50 text-primary border border-orange-200">Round {s.interviewCount}</span>
-                      ) : (
-                        <span className="text-xs text-gray-300">—</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
-                      <button onClick={(e) => { e.stopPropagation(); setInterviewStudent(s); }}
-                        className="flex items-center gap-1 text-xs text-white font-medium px-2.5 py-1.5 bg-primary hover:bg-primary-dark rounded-lg transition-colors">
-                        <FiClipboard size={12} /> Interview
-                      </button>
-                    </td>
-                    <td className="px-4 py-3">
-                      <button onClick={(e) => { 
-                        e.stopPropagation(); 
-                        const scrollPosition = window.pageYOffset;
-                        localStorage.setItem('studentsScrollPosition', scrollPosition.toString());
-                        navigate(`/students/${s._id}/edit`); 
-                      }}
-                        className="flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 bg-primary hover:bg-primary-dark text-white rounded-lg transition-colors">
-                        <FiEdit2 size={11} /> Edit
-                      </button>
-                    </td>
+                    {isShiftCentralTab ? (
+                      <>
+                        <td className="px-4 py-3">
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            s.formSource === 'btech' ? 'bg-blue-100 text-blue-700' :
+                            s.formSource === 'ssism' ? 'bg-purple-100 text-purple-700' :
+                            'bg-gray-100 text-gray-600'
+                          }`}>
+                            {s.formSource === 'btech' ? '🎓 B.Tech' : s.formSource === 'ssism' ? '🏫 SSISM' : '📝 Manual'}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setShiftConfirmStudent(s); }}
+                            disabled={shiftingId === s._id}
+                            className="flex items-center gap-1 text-xs text-white font-medium px-2.5 py-1.5 bg-primary hover:bg-primary-dark disabled:opacity-60 rounded-lg transition-colors">
+                            <FiArrowRight size={12} /> {shiftingId === s._id ? 'Shifting...' : 'Shift'}
+                          </button>
+                        </td>
+                      </>
+                    ) : isShiftedStudentsTab ? (
+                      <td className="px-4 py-3 text-sm text-gray-500">
+                        {s.shiftedAt ? new Date(s.shiftedAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}
+                      </td>
+                    ) : (
+                      <>
+                        <td className="px-4 py-3 text-center">
+                          {s.finalInterview?.result === 'Pass' ? (
+                            <span className="text-xs font-bold px-2 py-1 rounded-full bg-emerald-100 text-emerald-700">✓ Cleared</span>
+                          ) : s.finalInterview?.result === 'Fail' ? (
+                            <span className="text-xs font-bold px-2 py-1 rounded-full bg-rose-100 text-rose-600">✗ Final Failed</span>
+                          ) : s.finalInterview?.result === 'Pending' ? (
+                            <span className="text-xs font-bold px-2 py-1 rounded-full bg-amber-100 text-amber-700">⏳ Final Pending</span>
+                          ) : s.interviewCount > 0 ? (
+                            <span className="text-xs font-bold px-2 py-1 rounded-full bg-orange-50 text-primary border border-orange-200">Round {s.interviewCount}</span>
+                          ) : (
+                            <span className="text-xs text-gray-300">—</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3">
+                          <button onClick={(e) => { e.stopPropagation(); setInterviewStudent(s); }}
+                            className="flex items-center gap-1 text-xs text-white font-medium px-2.5 py-1.5 bg-primary hover:bg-primary-dark rounded-lg transition-colors">
+                            <FiClipboard size={12} /> Interview
+                          </button>
+                        </td>
+                        <td className="px-4 py-3">
+                          <button onClick={(e) => { 
+                            e.stopPropagation(); 
+                            const scrollPosition = window.pageYOffset;
+                            localStorage.setItem('studentsScrollPosition', scrollPosition.toString());
+                            navigate(`/students/${s._id}/edit`); 
+                          }}
+                            className="flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 bg-primary hover:bg-primary-dark text-white rounded-lg transition-colors">
+                            <FiEdit2 size={11} /> Edit
+                          </button>
+                        </td>
+                      </>
+                    )}
                   </tr>
                 ))}
               </tbody>
@@ -1115,19 +1188,34 @@ export default function Students() {
 
             {/* Row 4: Buttons */}
             <div className="flex gap-2 pt-3 border-t border-gray-100">
-              <button onClick={(e) => { 
-                e.stopPropagation(); 
-                const scrollPosition = window.pageYOffset;
-                localStorage.setItem('studentsScrollPosition', scrollPosition.toString());
-                navigate(`/students/${s._id}/edit`); 
-              }}
-                className="flex-1 flex items-center justify-center gap-1.5 text-sm text-white font-semibold py-2 bg-primary hover:bg-primary-dark rounded-lg transition-colors">
-                <FiEdit2 size={14} /> Edit
-              </button>
-              <button onClick={(e) => { e.stopPropagation(); setInterviewStudent(s); }}
-                className="flex-1 flex items-center justify-center gap-1.5 text-sm text-white font-semibold py-2 bg-primary hover:bg-primary-dark rounded-lg transition-colors">
-                <FiClipboard size={14} /> Interview
-              </button>
+              {isShiftCentralTab ? (
+                <button
+                  onClick={(e) => { e.stopPropagation(); setShiftConfirmStudent(s); }}
+                  disabled={shiftingId === s._id}
+                  className="flex-1 flex items-center justify-center gap-1.5 text-sm text-white font-semibold py-2 bg-primary hover:bg-primary-dark disabled:opacity-60 rounded-lg transition-colors">
+                  <FiArrowRight size={14} /> {shiftingId === s._id ? 'Shifting...' : 'Shift to Central'}
+                </button>
+              ) : isShiftedStudentsTab ? (
+                <div className="flex-1 text-center text-sm text-gray-500 py-2">
+                  📅 Shifted on: <span className="font-semibold text-gray-700">{s.shiftedAt ? new Date(s.shiftedAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}</span>
+                </div>
+              ) : (
+                <>
+                  <button onClick={(e) => { 
+                    e.stopPropagation(); 
+                    const scrollPosition = window.pageYOffset;
+                    localStorage.setItem('studentsScrollPosition', scrollPosition.toString());
+                    navigate(`/students/${s._id}/edit`); 
+                  }}
+                    className="flex-1 flex items-center justify-center gap-1.5 text-sm text-white font-semibold py-2 bg-primary hover:bg-primary-dark rounded-lg transition-colors">
+                    <FiEdit2 size={14} /> Edit
+                  </button>
+                  <button onClick={(e) => { e.stopPropagation(); setInterviewStudent(s); }}
+                    className="flex-1 flex items-center justify-center gap-1.5 text-sm text-white font-semibold py-2 bg-primary hover:bg-primary-dark rounded-lg transition-colors">
+                    <FiClipboard size={14} /> Interview
+                  </button>
+                </>
+              )}
             </div>
           </div>
         ))}
