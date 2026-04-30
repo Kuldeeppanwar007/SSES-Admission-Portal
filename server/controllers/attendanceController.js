@@ -193,7 +193,7 @@ const markAttendance = async (req, res) => {
     const mockCount = todayLogs.filter(l => l.isMock).length;
     if (mockCount > 0)
       return res.status(400).json({ message: 'Attendance blocked: Fake location detected. Admin se contact karein.' });
-    if (unavailableCount > okCount)
+    if (okCount === 0 && unavailableCount > 0)
       return res.status(400).json({ message: 'Attendance blocked: Location was disabled for most of today. Please contact admin.' });
   }
 
