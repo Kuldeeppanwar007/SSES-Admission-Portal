@@ -1281,6 +1281,40 @@ const getStats = async (req, res) => {
       if (resolved) finalClearedBySubject[resolved] = (finalClearedBySubject[resolved] || 0) + 1;
     });
 
+    // Funnel stage counts — dashboard ke liye (overall)
+    const funnelStageCounts = await Student.aggregate([
+      { $match: { funnelStage: { $exists: true, $ne: '' }, isDisabled: { $ne: true } } },
+      { $group: { _id: '$funnelStage', count: { $sum: 1 } } },
+    ]);
+    const funnelStageBreakdown = {};
+    funnelStageCounts.forEach(({ _id, count }) => { funnelStageBreakdown[_id] = count; });
+    funnelStageBreakdown['No Stage'] = await Student.countDocuments({
+      status: 'Calling', isDisabled: { $ne: true },
+      $or: [{ funnelStage: '' }, { funnelStage: null }, { funnelStage: { $exists: false } }],
+    });
+
+    // Track-wise funnel breakdown
+    const trackFunnelAgg = await Student.aggregate([
+      { $match: { funnelStage: { $exists: true, $ne: '' }, isDisabled: { $ne: true } } },
+      { $group: { _id: { track: '$track', funnelStage: '$funnelStage' }, count: { $sum: 1 } } },
+    ]);
+    const trackFunnelBreakdown = {};
+    trackFunnelAgg.forEach(({ _id: { track, funnelStage }, count }) => {
+      if (!track) return;
+      if (!trackFunnelBreakdown[track]) trackFunnelBreakdown[track] = {};
+      trackFunnelBreakdown[track][funnelStage] = (trackFunnelBreakdown[track][funnelStage] || 0) + count;
+    });
+    // Track-wise No Stage (Calling + no funnelStage)
+    const trackNoStageAgg = await Student.aggregate([
+      { $match: { status: 'Calling', isDisabled: { $ne: true }, $or: [{ funnelStage: '' }, { funnelStage: null }, { funnelStage: { $exists: false } }] } },
+      { $group: { _id: '$track', count: { $sum: 1 } } },
+    ]);
+    trackNoStageAgg.forEach(({ _id: track, count }) => {
+      if (!track) return;
+      if (!trackFunnelBreakdown[track]) trackFunnelBreakdown[track] = {};
+      trackFunnelBreakdown[track]['No Stage'] = count;
+    });
+
     // AdmissionType breakdown
     const admissionTypeData = await Student.aggregate([
       { $match: { status: 'Admitted', admissionType: { $nin: [null, ''] } } },
@@ -1303,7 +1337,7 @@ const getStats = async (req, res) => {
       trackAdmissionTypeBreakdown[track][admissionType][subject || 'Unknown'] = count;
     });
 
-    res.json({ total, applied, calling, admitted, rejected, disabled, unassigned, trackWise, btechByBranch, finalClearedBySubject, admissionTypeBreakdown, trackAdmissionTypeBreakdown });
+    res.json({ total, applied, calling, admitted, rejected, disabled, unassigned, trackWise, btechByBranch, finalClearedBySubject, admissionTypeBreakdown, trackAdmissionTypeBreakdown, funnelStageBreakdown, trackFunnelBreakdown });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

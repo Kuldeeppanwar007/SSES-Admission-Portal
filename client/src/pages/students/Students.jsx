@@ -282,7 +282,8 @@ export default function Students() {
     const urlSubject = searchParams.get('subjectFilter');
     const urlAdmissionType = searchParams.get('admissionType');
     const urlInterviewFilter = searchParams.get('interviewFilter');
-    const hasUrlOverride = !!(urlTab || urlTrack || urlStatus || urlSubject || urlAdmissionType || urlInterviewFilter);
+    const urlFunnelStage = searchParams.get('funnelStage');
+    const hasUrlOverride = !!(urlTab || urlTrack || urlStatus || urlSubject || urlAdmissionType || urlInterviewFilter || urlFunnelStage);
     
     if (savedState && !hasUrlOverride) {
       try {
@@ -297,7 +298,7 @@ export default function Students() {
             search: parsed.filters?.search || '',
             formSource: parsed.filters?.formSource || '',
             interviewFilter: parsed.filters?.interviewFilter || '',
-            funnelStage: parsed.filters?.funnelStage || '',
+            funnelStage: parsed.filters?.funnelStage || urlFunnelStage || '',
             admissionType: parsed.filters?.admissionType || '',
             branch: parsed.filters?.branch || '',
             subjectFilter: parsed.filters?.subjectFilter || '',
@@ -321,14 +322,14 @@ export default function Students() {
         search: '',
         formSource: '',
         interviewFilter: urlInterviewFilter || '',
-        funnelStage: '',
+        funnelStage: urlFunnelStage || '',
         admissionType: urlAdmissionType || '',
         branch: '',
         subjectFilter: urlSubject || '',
         village: '',
         schoolName: '',
       },
-      showFilters: !!(urlTrack || urlStatus || urlSubject || urlAdmissionType || urlInterviewFilter)
+      showFilters: !!(urlTrack || urlStatus || urlSubject || urlAdmissionType || urlInterviewFilter || urlFunnelStage)
     };
   };
   
