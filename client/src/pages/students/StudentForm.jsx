@@ -191,8 +191,20 @@ export default function StudentForm() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (form.status === 'Admitted' && (!form.bookNo?.trim() || !form.receiptNo?.trim())) {
-      toast.error('Admitted karne ke liye Book No. aur Receipt No. required hain');
+    if (form.status === 'Admitted') {
+      const missing = [];
+      if (!form.subject?.trim())       missing.push('Admission Subject');
+      if (!form.bookNo?.trim())        missing.push('Book No.');
+      if (!form.receiptNo?.trim())     missing.push('Receipt No.');
+      if (!form.funnelStage?.trim())   missing.push('Funnel Stage');
+      if (!form.admissionType?.trim()) missing.push('Admission Type');
+      if (missing.length > 0) {
+        toast.error(`Ye fields required hain: ${missing.join(', ')}`);
+        return;
+      }
+    }
+    if (form.status === 'Calling' && !form.funnelStage?.trim()) {
+      toast.error('Calling status ke liye Funnel Stage required hai');
       return;
     }
     setLoading(true);
@@ -386,9 +398,11 @@ export default function StudentForm() {
             </div>
             {form.status === 'Admitted' && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Admission Subject</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Admission Subject <span className="text-rose-500">*</span></label>
                 <select value={form.subject} onChange={(e) => setForm({ ...form, subject: e.target.value })}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary">
+                  className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary ${
+                    !form.subject?.trim() ? 'border-rose-300 bg-rose-50/30' : 'border-gray-300'
+                  }`}>
                   <option value="">Select Subject</option>
                   {SUBJECTS.map((s) => <option key={s}>{s}</option>)}
                 </select>
@@ -424,9 +438,11 @@ export default function StudentForm() {
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Funnel Stage</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Funnel Stage {(form.status === 'Admitted' || form.status === 'Calling') && <span className="text-rose-500">*</span>}</label>
               <select value={form.funnelStage} onChange={(e) => setForm({ ...form, funnelStage: e.target.value })}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary">
+                className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary ${
+                  (form.status === 'Admitted' || form.status === 'Calling') && !form.funnelStage?.trim() ? 'border-rose-300 bg-rose-50/30' : 'border-gray-300'
+                }`}>
                 <option value="">Select Stage</option>
                 {(ALLOWED_FUNNEL[form.status] || []).map((s) => <option key={s} value={s}>{s}</option>)}
               </select>
@@ -434,11 +450,13 @@ export default function StudentForm() {
                 <p className="text-xs text-gray-400 mt-1">No funnel stages for this status</p>
               )}
             </div>
-            {(isAdmin || isManager || user?.role === 'track_incharge') && (
+            {(isAdmin || isManager || user?.role === 'track_incharge') && form.status === 'Admitted' && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Admission Type</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Admission Type {form.status === 'Admitted' && <span className="text-rose-500">*</span>}</label>
                 <select value={form.admissionType} onChange={(e) => setForm({ ...form, admissionType: e.target.value })}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary">
+                  className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary ${
+                    form.status === 'Admitted' && !form.admissionType?.trim() ? 'border-rose-300 bg-rose-50/30' : 'border-gray-300'
+                  }`}>
                   <option value="">Select Type</option>
                   {ADMISSION_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
                 </select>
