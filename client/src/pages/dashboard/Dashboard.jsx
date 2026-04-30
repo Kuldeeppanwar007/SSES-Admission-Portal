@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import api from '../../api/axios';
 import toast from 'react-hot-toast';
 import useAuthStore from '../../store/authStore';
-import { FiUsers, FiFileText, FiAward, FiXCircle, FiTarget, FiSlash, FiChevronDown, FiGift, FiClock, FiPhone } from 'react-icons/fi';
+import { FiUsers, FiFileText, FiAward, FiXCircle, FiTarget, FiSlash, FiChevronDown, FiGift, FiClock, FiPhone, FiPhoneMissed, FiPhoneOff, FiAlertCircle, FiCheckCircle, FiTrendingUp, FiLock } from 'react-icons/fi';
 import { TRACK_TOWNS } from '../../utils/constants';
 
 // SSISM branch capacity limits
@@ -226,6 +226,70 @@ const STAT_META = [
   { key: 'rejected', label: 'Rejected',        icon: FiXCircle,     iconBg: 'bg-rose-100',    iconColor: 'text-rose-500',   text: 'text-rose-600' },
   { key: 'disabled', label: 'Disabled',        icon: FiSlash,       iconBg: 'bg-gray-100',    iconColor: 'text-gray-400',   text: 'text-gray-500' },
 ];
+
+const FUNNEL_STAGE_META = [
+  { key: 'Call Not Received', label: 'Call Not Received', icon: FiPhoneMissed, iconBg: 'bg-rose-100',    iconColor: 'text-rose-500',    text: 'text-rose-600',    border: 'border-rose-100' },
+  { key: 'Call Completed',    label: 'Call Completed',    icon: FiCheckCircle, iconBg: 'bg-emerald-100', iconColor: 'text-emerald-500', text: 'text-emerald-600', border: 'border-emerald-100' },
+  { key: 'Lead Interested',   label: 'Lead Interested',   icon: FiTrendingUp,  iconBg: 'bg-blue-100',    iconColor: 'text-blue-500',    text: 'text-blue-600',    border: 'border-blue-100' },
+  { key: 'Wrong Number',      label: 'Wrong Number',      icon: FiAlertCircle, iconBg: 'bg-amber-100',   iconColor: 'text-amber-500',   text: 'text-amber-600',   border: 'border-amber-100' },
+  { key: 'Switch Off',        label: 'Switch Off',        icon: FiPhoneOff,    iconBg: 'bg-gray-100',    iconColor: 'text-gray-400',    text: 'text-gray-500',    border: 'border-gray-100' },
+  { key: 'Admission Closed',  label: 'Admission Closed',  icon: FiLock,        iconBg: 'bg-violet-100',  iconColor: 'text-violet-500',  text: 'text-violet-600',  border: 'border-violet-100' },
+  { key: 'No Stage',          label: 'No Stage Set',      icon: FiSlash,       iconBg: 'bg-gray-100',    iconColor: 'text-gray-400',    text: 'text-gray-500',    border: 'border-gray-100' },
+];
+
+function FunnelStageCards({ funnelStageBreakdown, trackFunnelBreakdown, navigate, user }) {
+  const isTrackIncharge = user?.role === 'track_incharge';
+  const [selectedTrack, setSelectedTrack] = useState(isTrackIncharge ? (user?.track || '') : '');
+  const tracks = Object.keys(trackFunnelBreakdown || {}).sort();
+
+  const activeBreakdown = selectedTrack
+    ? (trackFunnelBreakdown[selectedTrack] || {})
+    : funnelStageBreakdown;
+
+  const hasAny = FUNNEL_STAGE_META.some(({ key }) => (activeBreakdown[key] || 0) > 0);
+  if (!hasAny && !selectedTrack) return null;
+  return (
+    <div>
+      <div className="flex items-center gap-2 mb-3 flex-wrap">
+        <span className="text-sm font-bold text-gray-700 uppercase tracking-wide">Funnel Stage Breakdown</span>
+        <div className="flex-1 h-px bg-gray-200" />
+        {user?.role === 'admin' && tracks.length > 0 && (
+          <select
+            value={selectedTrack}
+            onChange={(e) => setSelectedTrack(e.target.value)}
+            className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm outline-none bg-white">
+            <option value="">All Tracks</option>
+            {tracks.map((t) => <option key={t} value={t}>{t}</option>)}
+          </select>
+        )}
+        {isTrackIncharge && selectedTrack && (
+          <span className="text-xs bg-orange-50 text-primary font-bold px-2 py-1 rounded-full border border-orange-100">
+            {selectedTrack}
+          </span>
+        )}
+      </div>
+      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-4">
+        {FUNNEL_STAGE_META.map(({ key, label, icon: Icon, iconBg, iconColor, text, border }) => (
+          <div key={key}
+            onClick={() => navigate(
+              key === 'No Stage'
+                ? `/students?status=Calling${selectedTrack ? `&track=${encodeURIComponent(selectedTrack)}` : ''}`
+                : `/students?funnelStage=${encodeURIComponent(key)}${selectedTrack ? `&track=${encodeURIComponent(selectedTrack)}` : ''}`
+            )}
+            className={`bg-white rounded-2xl border ${border} shadow-sm p-4 flex flex-col gap-3 hover:shadow-md hover:border-orange-200 transition-shadow cursor-pointer`}>
+            <div className={`w-10 h-10 rounded-xl ${iconBg} flex items-center justify-center`}>
+              <Icon size={18} className={iconColor} />
+            </div>
+            <div>
+              <p className="text-xs text-gray-400 font-medium uppercase tracking-wide leading-tight">{label}</p>
+              <p className={`text-3xl font-bold mt-0.5 ${text}`}>{activeBreakdown[key] || 0}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 const BTECH_SUBJECTS = ['B.Tech(CS)', 'B.Tech(IT)', 'B.Tech(ECE)', 'B.Tech(AI/ML)'];
 const SUBJECTS = ['B.Tech', 'BCA', 'BBA', 'Bcom', 'Bio', 'Micro'];
@@ -500,6 +564,9 @@ export default function Dashboard() {
           );
         })}
       </div>
+
+      {/* Funnel Stage Cards */}
+      <FunnelStageCards funnelStageBreakdown={stats.funnelStageBreakdown || {}} trackFunnelBreakdown={stats.trackFunnelBreakdown || {}} navigate={navigate} user={user} />
 
       {/* SSISM Branch Capacity */}
       <SSISMCapacityCards trackWise={stats.trackWise || []} finalClearedBySubject={stats.finalClearedBySubject || {}} navigate={navigate} />
