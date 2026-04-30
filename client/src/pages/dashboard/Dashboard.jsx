@@ -219,12 +219,12 @@ const SUBJECT_COLORS = {
 };
 
 const STAT_META = [
-  { key: 'total',    label: 'Total Students', icon: FiUsers,       iconBg: 'bg-blue-100',    iconColor: 'text-blue-500',   text: 'text-blue-600' },
-  { key: 'applied',  label: 'Not Calling',    icon: FiFileText,    iconBg: 'bg-amber-100',   iconColor: 'text-amber-500',  text: 'text-amber-600' },
-  { key: 'calling',  label: 'Calling',        icon: FiPhone,       iconBg: 'bg-sky-100',     iconColor: 'text-sky-500',    text: 'text-sky-600' },
-  { key: 'admitted', label: 'Admitted',        icon: FiAward,       iconBg: 'bg-emerald-100', iconColor: 'text-emerald-500',text: 'text-emerald-600' },
-  { key: 'rejected', label: 'Rejected',        icon: FiXCircle,     iconBg: 'bg-rose-100',    iconColor: 'text-rose-500',   text: 'text-rose-600' },
-  { key: 'disabled', label: 'Disabled',        icon: FiSlash,       iconBg: 'bg-gray-100',    iconColor: 'text-gray-400',   text: 'text-gray-500' },
+  { key: 'total',    label: 'Total Students', icon: FiUsers,       iconBg: 'bg-blue-100',    iconColor: 'text-blue-500',   text: 'text-blue-600',   href: '/students' },
+  { key: 'applied',  label: 'Not Calling',    icon: FiFileText,    iconBg: 'bg-amber-100',   iconColor: 'text-amber-500',  text: 'text-amber-600',  href: '/students?status=Applied' },
+  { key: 'calling',  label: 'Calling',        icon: FiPhone,       iconBg: 'bg-sky-100',     iconColor: 'text-sky-500',    text: 'text-sky-600',    href: '/students?status=Calling' },
+  { key: 'admitted', label: 'Admitted',        icon: FiAward,       iconBg: 'bg-emerald-100', iconColor: 'text-emerald-500',text: 'text-emerald-600',href: '/students?status=Admitted' },
+  { key: 'rejected', label: 'Rejected',        icon: FiXCircle,     iconBg: 'bg-rose-100',    iconColor: 'text-rose-500',   text: 'text-rose-600',   href: '/students?status=Rejected' },
+  { key: 'disabled', label: 'Disabled',        icon: FiSlash,       iconBg: 'bg-gray-100',    iconColor: 'text-gray-400',   text: 'text-gray-500',   href: '/students?tab=disabled' },
 ];
 
 const FUNNEL_STAGE_META = [
@@ -541,28 +541,28 @@ export default function Dashboard() {
 
       {/* Stat Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
-        {STAT_META.map(({ key, label, icon: Icon, iconBg, iconColor, text }) => {
-          const href = key === 'disabled'
-            ? '/students?tab=disabled'
-            : key === 'total'
-            ? '/students'
-            : key === 'calling'
-            ? '/students?status=Calling'
-            : `/students?status=${key.charAt(0).toUpperCase() + key.slice(1)}`;
-          return (
-            <div key={key}
-              onClick={() => navigate(href)}
-              className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex flex-col gap-3 hover:shadow-md hover:border-orange-200 transition-shadow cursor-pointer">
-              <div className={`w-10 h-10 rounded-xl ${iconBg} flex items-center justify-center`}>
-                <Icon size={18} className={iconColor} />
-              </div>
+        {STAT_META.map(({ key, label, icon: Icon, iconBg, iconColor, text, href }) => (
+          <div key={key}
+            onClick={() => navigate(href)}
+            className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex flex-col gap-3 hover:shadow-md hover:border-orange-200 transition-shadow cursor-pointer">
+            <div className={`w-10 h-10 rounded-xl ${iconBg} flex items-center justify-center`}>
+              <Icon size={18} className={iconColor} />
+            </div>
+            <div className="flex items-start justify-between gap-1">
               <div>
                 <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">{label}</p>
                 <p className={`text-3xl font-bold mt-0.5 ${text}`}>{stats[key] ?? 0}</p>
               </div>
+              {key === 'admitted' && (stats.admittedNoFunnelCount || 0) > 0 && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); navigate('/students?admittedNoFunnel=1'); }}
+                  className="text-[10px] font-semibold bg-rose-50 text-rose-600 border border-rose-200 px-1.5 py-1 rounded-lg hover:bg-rose-100 transition-colors text-center leading-tight shrink-0">
+                  ⚠️ {stats.admittedNoFunnelCount}<br/>pending
+                </button>
+              )}
             </div>
-          );
-        })}
+          </div>
+        ))}
       </div>
 
       {/* Funnel Stage Cards */}

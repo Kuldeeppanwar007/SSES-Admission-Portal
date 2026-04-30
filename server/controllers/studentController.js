@@ -101,6 +101,17 @@ const getStudents = async (req, res) => {
     // Funnel stage filter
     if (req.query.funnelStage) filter.funnelStage = req.query.funnelStage;
 
+    // Admitted but no Admission Closed funnel stage
+    if (req.query.admittedNoFunnel === '1') {
+      filter.status = 'Admitted';
+      filter.$or = [
+        { funnelStage: { $ne: 'Admission Closed' } },
+        { funnelStage: '' },
+        { funnelStage: null },
+        { funnelStage: { $exists: false } },
+      ];
+    }
+
     // Admission type filter
     if (req.query.admissionType) filter.admissionType = req.query.admissionType;
 
@@ -1281,6 +1292,12 @@ const getStats = async (req, res) => {
       if (resolved) finalClearedBySubject[resolved] = (finalClearedBySubject[resolved] || 0) + 1;
     });
 
+    // Admitted but Admission Closed funnel stage set nahi
+    const admittedNoFunnelCount = await Student.countDocuments({
+      status: 'Admitted',
+      funnelStage: { $ne: 'Admission Closed' },
+    });
+
     // Funnel stage counts — dashboard ke liye (overall)
     const funnelStageCounts = await Student.aggregate([
       { $match: { funnelStage: { $exists: true, $ne: '' }, isDisabled: { $ne: true } } },
@@ -1337,7 +1354,7 @@ const getStats = async (req, res) => {
       trackAdmissionTypeBreakdown[track][admissionType][subject || 'Unknown'] = count;
     });
 
-    res.json({ total, applied, calling, admitted, rejected, disabled, unassigned, trackWise, btechByBranch, finalClearedBySubject, admissionTypeBreakdown, trackAdmissionTypeBreakdown, funnelStageBreakdown, trackFunnelBreakdown });
+    res.json({ total, applied, calling, admitted, rejected, disabled, unassigned, admittedNoFunnelCount, trackWise, btechByBranch, finalClearedBySubject, admissionTypeBreakdown, trackAdmissionTypeBreakdown, funnelStageBreakdown, trackFunnelBreakdown });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
