@@ -24,7 +24,7 @@ import TrackManager from './pages/settings/TrackManager';
 import ActivityLog from './pages/activity/ActivityLog';
 import Profile from './pages/profile/Profile';
 
-const CURRENT_APP_VERSION = 2; // Har naye build pe yeh badhao
+const CURRENT_APP_VERSION = 3; // Har naye build pe yeh badhao
 const API_BASE = import.meta.env.VITE_API_URL || 'https://mkt.central.ssism.org';
 
 // Android back button handler
@@ -101,10 +101,10 @@ export default function App() {
         <h2 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: 12 }}>Update Required</h2>
         <p style={{ color: '#6b7280', marginBottom: 24 }}>Naya version available hai. App use karne ke liye please update karein.</p>
         <a
-          href="https://drive.google.com/uc?export=download&id=16xtbAlrf_n4rwsRYg0ga4rDQuZxYuIEq"
+          href="https://drive.google.com/uc?export=download&id=1YZXMIGaZR6DAcZi_C4ez_yevjUTcDHs_"
           style={{ background: '#2563eb', color: '#fff', padding: '12px 32px', borderRadius: 8, textDecoration: 'none', fontWeight: 600 }}
         >
-          Update Karein
+          Update Karein (v1.2)
         </a>
       </div>
     );
