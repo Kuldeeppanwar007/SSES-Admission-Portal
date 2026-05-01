@@ -29,6 +29,7 @@ const getISTDayRange = (istDateStr) => {
 const saveLocation = async (req, res) => {
   try {
     const { lat, lng, accuracy, timestamp, status } = req.body;
+    const io = req.app.get('io');
 
   // mock ping — fake location detected
   if (status === 'mock') {
@@ -59,7 +60,12 @@ const saveLocation = async (req, res) => {
   if (lat < -90 || lat > 90 || lng < -180 || lng > 180)
     return res.status(400).json({ message: 'Invalid coordinates' });
 
-  // Last location check — 150m ke andar same jagah ho toh naya log mat banao
+  // Accuracy threshold — 200m se zyada inaccurate reading reject karo
+  const MAX_ACCURACY = 200; // meters
+  if (accuracy != null && accuracy > 0 && accuracy > MAX_ACCURACY)
+    return res.status(201).json({ ok: true, skipped: true, reason: 'low_accuracy' });
+
+  // Last location check — 150m ke andar same jagah ho toh naya log mat banao + speed check
   const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
   const lastLog = await LocationLog.findOne({
     user: req.user._id, status: 'ok', lat: { $ne: null },
@@ -70,6 +76,22 @@ const saveLocation = async (req, res) => {
     if (dist < 150) {
       return res.status(201).json({ ok: true, skipped: true });
     }
+    // Speed check — 200 km/h (55 m/s) se zyada speed = suspicious/mock
+    const timeDiffSec = (new Date(timestamp ? Number(timestamp) : Date.now()) - lastLog.timestamp) / 1000;
+    if (timeDiffSec > 0) {
+      const speedMs = dist / timeDiffSec; // meters per second
+      if (speedMs > 55) { // 55 m/s = 200 km/h
+        await LocationLog.create({
+          user: req.user._id,
+          lat: null, lng: null,
+          accuracy: -1,
+          status: 'mock',
+          isMock: true,
+          timestamp: timestamp ? new Date(Number(timestamp)) : new Date(),
+        });
+        return res.status(201).json({ ok: true, reason: 'speed_anomaly' });
+      }
+    }
   }
 
   await LocationLog.create({
@@ -78,8 +100,21 @@ const saveLocation = async (req, res) => {
     accuracy: accuracy ?? -1,
     status: 'ok',
     timestamp: timestamp ? new Date(Number(timestamp)) : new Date(),
+  });
+
+  // Real-time broadcast — admin panel ko turant update karo
+  if (io) {
+    io.to('live_tracking').emit('location:update', {
+      userId:    req.user._id,
+      name:      req.user.name,
+      track:     req.user.track,
+      lat, lng,
+      accuracy:  accuracy ?? -1,
+      timestamp: timestamp ? new Date(Number(timestamp)) : new Date(),
     });
-    res.status(201).json({ ok: true });
+  }
+
+  res.status(201).json({ ok: true });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

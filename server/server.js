@@ -1,33 +1,53 @@
 const express = require('express');
-const dotenv = require('dotenv');
-const cors = require('cors');
+const http    = require('http');
+const dotenv  = require('dotenv');
+const cors    = require('cors');
 const cookieParser = require('cookie-parser');
-const rateLimit = require('express-rate-limit');
-const jwt = require('jsonwebtoken');
-const connectDB = require('./config/db');
-const { scheduleWeeklyBonus } = require('./utils/weeklyBonus');
+const rateLimit    = require('express-rate-limit');
+const jwt          = require('jsonwebtoken');
+const { Server }   = require('socket.io');
+const connectDB    = require('./config/db');
+const { scheduleWeeklyBonus }       = require('./utils/weeklyBonus');
 const { scheduleFollowupReminders } = require('./utils/followupReminder');
+const { runInactiveCheck }          = require('./controllers/analyticsController');
+const cron                          = require('node-cron');
 
 dotenv.config();
 connectDB();
 
-const app = express();
+const app    = express();
+const server = http.createServer(app);
+
+const allowedOrigins = [
+  process.env.CLIENT_URL,
+  'http://localhost:5173',
+  'https://mkt.central.ssism.org',
+  'http://mkt.central.ssism.org',
+  'http://localhost:3000',
+  'http://localhost:3010',
+  'capacitor://localhost',
+  'http://localhost',
+  'https://localhost',
+];
+
+// Socket.io — real-time live location broadcast
+const io = new Server(server, {
+  cors: { origin: allowedOrigins, credentials: true },
+});
+
+// io instance globally available for controllers
+app.set('io', io);
+
+io.on('connection', (socket) => {
+  // Admin join karo live-tracking room
+  socket.on('join:live', () => socket.join('live_tracking'));
+  socket.on('disconnect', () => {});
+});
 
 app.use(cors({
   origin: (origin, callback) => {
     if (!origin) return callback(null, true);
-    const allowed = [
-      process.env.CLIENT_URL,
-      'http://localhost:5173',
-      'https://mkt.central.ssism.org',
-      'http://mkt.central.ssism.org',
-      'http://localhost:3000',
-      'http://localhost:3010',
-      'capacitor://localhost',
-      'http://localhost',
-      'https://localhost',
-    ];
-    if (allowed.includes(origin)) return callback(null, true);
+    if (allowedOrigins.includes(origin)) return callback(null, true);
     return callback(null, false);
   },
   credentials: true,
@@ -92,6 +112,7 @@ app.use('/api/interviews', require('./routes/interviewRoutes'));
 app.use('/api/notifications', require('./routes/notificationRoutes'));
 app.use('/api/edit-requests', require('./routes/editRequestRoutes'));
 app.use('/api/track-config', require('./routes/trackConfigRoutes'));
+app.use('/api/analytics',    require('./routes/analyticsRoutes'));
 
 app.get('/', (req, res) => res.send('SSES Admission Portal API Running'));
 
@@ -105,8 +126,11 @@ app.use((err, req, res, next) => {
 });
 
 const PORT = process.env.PORT || 3009;
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
   scheduleWeeklyBonus();
   scheduleFollowupReminders();
+  // Har ghante inactive check — working hours me
+  cron.schedule('0 * * * *', runInactiveCheck, { timezone: 'Asia/Kolkata' });
+  console.log('[Inactive Check] Cron scheduled — every hour');
 });

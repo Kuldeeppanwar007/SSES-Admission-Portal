@@ -1,7 +1,8 @@
 import { useEffect, useState, useCallback } from 'react';
+import { io } from 'socket.io-client';
 import api from '../../api/axios';
 import toast from 'react-hot-toast';
-import { FiMapPin, FiCalendar, FiClock, FiFilter, FiBarChart2, FiNavigation, FiRefreshCw } from 'react-icons/fi';
+import { FiMapPin, FiCalendar, FiClock, FiFilter, FiBarChart2, FiNavigation, FiRefreshCw, FiActivity, FiAlertCircle } from 'react-icons/fi';
 import DatePicker from '../../components/DatePicker';
 import TrackingMap from '../../components/TrackingMap';
 import CampusMap from '../../components/CampusMap';
@@ -52,6 +53,14 @@ export default function Attendance() {
   // Campus Map tab
   const [liveLocations, setLiveLocations] = useState([]);
   const [loadingLive, setLoadingLive] = useState(false);
+
+  // Analytics tab
+  const [analyticsDate, setAnalyticsDate]       = useState(today);
+  const [analyticsTrack, setAnalyticsTrack]     = useState('');
+  const [dailyDist, setDailyDist]               = useState([]);
+  const [weeklyDist, setWeeklyDist]             = useState(null);
+  const [inactiveUsers, setInactiveUsers]       = useState([]);
+  const [loadingAnalytics, setLoadingAnalytics] = useState(false);
 
   // Live Tracking tab
   const [trackUsers, setTrackUsers] = useState([]);
@@ -154,6 +163,24 @@ export default function Attendance() {
       .finally(() => setLoadingTl(false));
   }, [selectedUser, trackDate]);
 
+  const fetchAnalytics = useCallback(() => {
+    setLoadingAnalytics(true);
+    const params = new URLSearchParams({ date: analyticsDate });
+    if (analyticsTrack) params.append('track', analyticsTrack);
+    Promise.all([
+      api.get(`/analytics/daily-distance?${params}`),
+      api.get(`/analytics/weekly-distance${analyticsTrack ? `?track=${analyticsTrack}` : ''}`),
+      api.get('/analytics/inactive-now'),
+    ])
+      .then(([d, w, i]) => {
+        setDailyDist(d.data);
+        setWeeklyDist(w.data);
+        setInactiveUsers(i.data.inactive || []);
+      })
+      .catch(() => toast.error('Failed to load analytics'))
+      .finally(() => setLoadingAnalytics(false));
+  }, [analyticsDate, analyticsTrack]);
+
   const fetchLiveLocations = useCallback(() => {
     setLoadingLive(true);
     api.get('/attendance/live-locations')
@@ -162,12 +189,29 @@ export default function Attendance() {
       .finally(() => setLoadingLive(false));
   }, []);
 
+  // Campus Map tab — socket.io real-time, polling fallback
   useEffect(() => {
     if (tab !== 'campus') return;
     fetchLiveLocations();
+
+    const BASE = (import.meta.env.VITE_API_URL || 'https://sses-admission-portal-1.onrender.com/api')
+      .replace('/api', '');
+    const socket = io(BASE, { transports: ['websocket'], withCredentials: true });
+    socket.on('connect', () => socket.emit('join:live'));
+    socket.on('location:update', (data) => {
+      setLiveLocations(prev =>
+        prev.map(u => u.userId?.toString() === data.userId?.toString()
+          ? { ...u, lat: data.lat, lng: data.lng, timestamp: data.timestamp }
+          : u
+        )
+      );
+    });
+    // Fallback polling har 2 min — socket disconnect hone par bhi data fresh rahe
     const id = setInterval(fetchLiveLocations, 2 * 60 * 1000);
-    return () => clearInterval(id);
+    return () => { socket.disconnect(); clearInterval(id); };
   }, [tab, fetchLiveLocations]);
+
+  useEffect(() => { if (tab === 'analytics') fetchAnalytics(); }, [tab, analyticsDate, analyticsTrack]); // eslint-disable-line
 
   useEffect(() => { if (tab === 'records') fetchRecords(); }, [tab, from, to, filterTrack]);
   useEffect(() => { if (tab === 'monthly') fetchMonthly(); }, [tab, month, monthTrack]);
@@ -210,10 +254,11 @@ export default function Attendance() {
       {/* Tabs */}
       <div className="flex flex-wrap gap-1 bg-gray-100 p-1 rounded-xl">
         {[
-          { key: 'records', label: 'Records', icon: FiFilter },
-          { key: 'monthly', label: 'Monthly %', icon: FiBarChart2 },
-          { key: 'tracking', label: 'Live Tracking', icon: FiNavigation },
-          { key: 'campus', label: 'Campus Map', icon: FiMapPin },
+          { key: 'records',   label: 'Records',       icon: FiFilter },
+          { key: 'monthly',   label: 'Monthly %',     icon: FiBarChart2 },
+          { key: 'tracking',  label: 'Live Tracking', icon: FiNavigation },
+          { key: 'campus',    label: 'Campus Map',    icon: FiMapPin },
+          { key: 'analytics', label: 'Analytics',     icon: FiActivity },
         ].map(({ key, label, icon: Icon }) => (
           <button key={key} onClick={() => setTab(key)}
             className={`flex-1 flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold transition-colors
@@ -556,6 +601,152 @@ export default function Attendance() {
           )}
         </>
       )}
+      {/* ── ANALYTICS TAB ── */}
+      {tab === 'analytics' && (
+        <div className="space-y-6">
+          <div className="flex flex-wrap gap-3 items-end">
+            <div className="flex flex-col gap-1">
+              <label className="text-xs text-gray-500 font-medium">Date</label>
+              <DatePicker value={analyticsDate} onChange={setAnalyticsDate} max={today} />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-xs text-gray-500 font-medium">Track</label>
+              <select value={analyticsTrack} onChange={e => setAnalyticsTrack(e.target.value)}
+                className="text-sm border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary/30">
+                <option value="">All Tracks</option>
+                {TRACKS.map(t => <option key={t} value={t}>{t}</option>)}
+              </select>
+            </div>
+            <button onClick={fetchAnalytics}
+              className="px-4 py-1.5 bg-primary text-white text-sm font-semibold rounded-lg hover:opacity-90 flex items-center gap-1.5">
+              <FiRefreshCw size={13} /> Refresh
+            </button>
+          </div>
+
+          {loadingAnalytics ? (
+            <div className="flex justify-center items-center h-40">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+            </div>
+          ) : (
+            <>
+              {inactiveUsers.length > 0 && (
+                <div className="bg-rose-50 border border-rose-200 rounded-2xl p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <FiAlertCircle className="text-rose-500" size={18} />
+                    <p className="text-sm font-bold text-rose-700">{inactiveUsers.length} Track Incharge Inactive (3+ hrs)</p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {inactiveUsers.map(u => (
+                      <div key={u.userId} className="bg-white border border-rose-200 rounded-xl px-3 py-2">
+                        <p className="text-sm font-semibold text-gray-800">{u.name}</p>
+                        <p className="text-xs text-gray-400">{u.track}</p>
+                        <p className="text-xs text-rose-500 mt-0.5">
+                          {u.lastSeen ? `Last seen ${u.minutesSinceLastPing} min ago` : 'No ping today'}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                <div className="px-5 py-3 bg-gray-50 border-b border-gray-100">
+                  <p className="text-sm font-bold text-gray-700">📍 Daily Distance — {analyticsDate}</p>
+                </div>
+                {dailyDist.length === 0 ? (
+                  <p className="text-center text-gray-400 py-8 text-sm">No data for this date.</p>
+                ) : (
+                  <div className="divide-y divide-gray-50">
+                    {dailyDist.map((u, i) => {
+                      const km = (u.totalDistance / 1000).toFixed(2);
+                      const maxDist = dailyDist[0]?.totalDistance || 1;
+                      const pct = Math.round((u.totalDistance / maxDist) * 100);
+                      return (
+                        <div key={u.userId} className="px-5 py-3 flex items-center gap-4">
+                          <span className="text-xs font-bold text-gray-400 w-5">{i + 1}</span>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between mb-1">
+                              <div>
+                                <p className="text-sm font-semibold text-gray-800">{u.name}</p>
+                                <p className="text-xs text-gray-400">{u.track}</p>
+                              </div>
+                              <div className="text-right shrink-0">
+                                <p className="text-sm font-bold text-primary">{km} km</p>
+                                <p className="text-[10px] text-gray-400">{u.pings} pings</p>
+                              </div>
+                            </div>
+                            <div className="w-full bg-gray-100 rounded-full h-1.5">
+                              <div className="h-1.5 rounded-full bg-primary transition-all" style={{ width: `${pct}%` }} />
+                            </div>
+                            {u.firstPing && u.lastPing && (
+                              <p className="text-[10px] text-gray-400 mt-1">
+                                {formatTime(u.firstPing)} → {formatTime(u.lastPing)}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {weeklyDist && weeklyDist.users.length > 0 && (
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                  <div className="px-5 py-3 bg-gray-50 border-b border-gray-100">
+                    <p className="text-sm font-bold text-gray-700">📊 Last 7 Days Distance (km)</p>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="bg-gray-50">
+                          <th className="text-left px-4 py-2 text-gray-500 font-semibold">Name</th>
+                          {weeklyDist.days.map(d => (
+                            <th key={d} className="px-2 py-2 text-gray-500 font-semibold text-center">
+                              {new Date(d).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric' })}
+                            </th>
+                          ))}
+                          <th className="px-3 py-2 text-gray-500 font-semibold text-right">Total</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-50">
+                        {weeklyDist.users.map(u => {
+                          const total = u.perDay.reduce((s, d) => s + d.distanceKm, 0).toFixed(2);
+                          return (
+                            <tr key={u.userId} className="hover:bg-gray-50/60">
+                              <td className="px-4 py-2">
+                                <p className="font-semibold text-gray-800">{u.name}</p>
+                                <p className="text-gray-400">{u.track}</p>
+                              </td>
+                              {u.perDay.map(d => (
+                                <td key={d.date} className="px-2 py-2 text-center">
+                                  <span className={`font-semibold ${
+                                    d.distanceKm === 0 ? 'text-gray-300' :
+                                    d.distanceKm >= 50 ? 'text-emerald-600' :
+                                    d.distanceKm >= 20 ? 'text-amber-600' : 'text-rose-500'
+                                  }`}>{d.distanceKm || '—'}</span>
+                                </td>
+                              ))}
+                              <td className="px-3 py-2 text-right font-bold text-primary">{total}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                  <div className="flex gap-4 px-5 py-3 border-t border-gray-50 text-[10px] text-gray-500">
+                    <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" /> 50+ km</span>
+                    <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-500 inline-block" /> 20-50 km</span>
+                    <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-rose-500 inline-block" /> &lt;20 km</span>
+                    <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-gray-300 inline-block" /> No data</span>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
+
       {/* ── CAMPUS MAP TAB ── */}
       {tab === 'campus' && (
         <div className="space-y-4">

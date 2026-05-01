@@ -19,6 +19,7 @@ import com.google.android.gms.location.LocationResult;
 import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.location.Priority;
 import com.google.android.gms.tasks.CancellationTokenSource;
+import org.json.JSONArray;
 import org.json.JSONObject;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
@@ -34,9 +35,20 @@ public class LocationService extends Service {
     private static final int    NOTIF_ID         = 101;
     private static final int    ALERT_NOTIF_ID   = 102;
     private static final int    MOCK_NOTIF_ID    = 103;
-    private static final long   INTERVAL_MS      = 60 * 1000L; // Every 1 minute
-    private static final long   TIMEOUT_MS       = 20_000L; // 20s timeout
-    private static final String PREFS            = "sses_prefs";
+    private static final long   INTERVAL_MS          = 60 * 1000L;   // fallback
+    private static final long   INTERVAL_MOVING      = 5  * 60 * 1000L; // 5 min — moving
+    private static final long   INTERVAL_STOPPED     = 15 * 60 * 1000L; // 15 min — stopped
+    private static final long   TIMEOUT_MS           = 20_000L; // 20s timeout
+    private static final String PREFS                = "sses_prefs";
+    private static final float  MAX_ACCURACY_M       = 200f;
+    private static final int    MAX_ACCURACY_RETRIES = 3;
+    private static final long   ACCURACY_RETRY_MS    = 10_000L;
+    private static final float  STOPPED_THRESHOLD_M  = 200f; // 200m se kam move = stopped
+    private static final int    MAX_QUEUE_SIZE        = 20;
+    private static final String QUEUE_KEY             = "pending_pings";
+    private int     accuracyRetryCount = 0;
+    private double  lastSentLat        = Double.NaN;
+    private double  lastSentLng        = Double.NaN;
 
     private Handler                     bgHandler;
     private HandlerThread               handlerThread;
@@ -106,6 +118,7 @@ public class LocationService extends Service {
             SharedPreferences prefs = getSharedPreferences(PREFS, MODE_PRIVATE);
             String token  = prefs.getString("token",  null);
             String apiUrl = prefs.getString("apiUrl", null);
+            long   nextInterval = prefs.getLong("next_interval", INTERVAL_MOVING);
 
             java.util.TimeZone ist = java.util.TimeZone.getTimeZone("Asia/Kolkata");
             java.util.Calendar cal = java.util.Calendar.getInstance(ist);
@@ -114,10 +127,9 @@ public class LocationService extends Service {
             int dayOfWeek = cal.get(java.util.Calendar.DAY_OF_WEEK);
             boolean isSunday = (dayOfWeek == java.util.Calendar.SUNDAY);
             if (!isSunday && hour >= 7 && hour < 19) {
-                fetchAndSendLocation(token, apiUrl, startTime);
+                fetchAndSendLocation(token, apiUrl, startTime, nextInterval);
             } else {
-                // Off-hours: next schedule exactly at INTERVAL_MS
-                scheduleNext(INTERVAL_MS);
+                scheduleNext(INTERVAL_MOVING);
             }
         };
         bgHandler.postDelayed(locationRunnable, delayMs);
@@ -183,9 +195,9 @@ public class LocationService extends Service {
 
     // ─── Location Fetch ───────────────────────────────────────────────────────
 
-    private void fetchAndSendLocation(String token, String apiUrl, long startTime) {
+    private void fetchAndSendLocation(String token, String apiUrl, long startTime, long adaptiveInterval) {
         if (token == null || apiUrl == null) {
-            scheduleNext(INTERVAL_MS);
+            scheduleNext(adaptiveInterval);
             return;
         }
 
@@ -199,7 +211,7 @@ public class LocationService extends Service {
                 cts.cancel();
                 sendUnavailablePing(token, apiUrl);
                 long elapsed = System.currentTimeMillis() - startTime;
-                scheduleNext(Math.max(0, INTERVAL_MS - elapsed));
+                scheduleNext(Math.max(0, adaptiveInterval - elapsed));
             }
         }, TIMEOUT_MS);
 
@@ -210,53 +222,93 @@ public class LocationService extends Service {
                     cts.cancel();
 
                     long elapsed = System.currentTimeMillis() - startTime;
-                    long nextDelay = Math.max(0, INTERVAL_MS - elapsed);
+                    long nextDelay = Math.max(0, adaptiveInterval - elapsed);
 
                     if (location == null) {
                         sendUnavailablePing(token, apiUrl);
-                    } else if (location.isFromMockProvider()) {
+                        accuracyRetryCount = 0;
+                        scheduleNext(nextDelay);
+                    } else if (isSuspiciousLocation(location)) {
+                        // Mock ya suspicious location detected
                         showMockLocationNotification();
                         sendMockPing(token, apiUrl);
+                        accuracyRetryCount = 0;
+                        scheduleNext(nextDelay);
+                    } else if (location.hasAccuracy() && location.getAccuracy() > MAX_ACCURACY_M
+                               && accuracyRetryCount < MAX_ACCURACY_RETRIES) {
+                        // GPS fix weak hai — thoda wait karke retry karo
+                        accuracyRetryCount++;
+                        scheduleNext(ACCURACY_RETRY_MS);
                     } else {
                         dismissLocationOffNotification();
                         dismissMockLocationNotification();
+                        accuracyRetryCount = 0;
                         sendLocation(location, token, apiUrl);
+                        scheduleNext(nextDelay);
                     }
-                    scheduleNext(nextDelay);
                 })
                 .addOnFailureListener(e -> {
                     e.printStackTrace();
                     sendUnavailablePing(token, apiUrl);
                     long elapsed = System.currentTimeMillis() - startTime;
-                    scheduleNext(Math.max(0, INTERVAL_MS - elapsed));
+                    scheduleNext(Math.max(0, adaptiveInterval - elapsed));
                 });
         } catch (SecurityException e) {
             e.printStackTrace();
             sendUnavailablePing(token, apiUrl);
-            scheduleNext(INTERVAL_MS);
+            scheduleNext(adaptiveInterval);
         }
     }
 
     // ─── HTTP Helpers ─────────────────────────────────────────────────────────
 
-    /** Generic POST — agar 401 aaye to token refresh karke ek baar retry karta hai */
+    /** Generic POST — offline queue support + 401 retry */
     private void postWithRefresh(String apiUrl, JSONObject body) {
         new Thread(() -> {
             SharedPreferences prefs = getSharedPreferences(PREFS, MODE_PRIVATE);
             String token = prefs.getString("token", null);
-            if (token == null) return;
+            if (token == null) { queuePing(body); return; }
+
+            // Pehle pending queue flush karo
+            flushQueue(apiUrl, token);
 
             int code = doPost(apiUrl + "/attendance/location", token, body);
-
             if (code == 401) {
-                // Token expire — refresh karo
                 String newToken = refreshAccessToken(apiUrl);
-                if (newToken != null) {
-                    doPost(apiUrl + "/attendance/location", newToken, body);
-                }
-                // newToken null = refresh bhi fail — stopSelf already called inside refreshAccessToken
+                if (newToken != null) code = doPost(apiUrl + "/attendance/location", newToken, body);
             }
+            // Network fail — queue me daalo
+            if (code == -1) queuePing(body);
         }).start();
+    }
+
+    /** Pending pings queue me add karo (max 20) */
+    private void queuePing(JSONObject body) {
+        try {
+            SharedPreferences prefs = getSharedPreferences(PREFS, MODE_PRIVATE);
+            JSONArray queue = new JSONArray(prefs.getString(QUEUE_KEY, "[]"));
+            if (queue.length() >= MAX_QUEUE_SIZE) queue.remove(0); // purana hata do
+            queue.put(body);
+            prefs.edit().putString(QUEUE_KEY, queue.toString()).apply();
+        } catch (Exception e) { e.printStackTrace(); }
+    }
+
+    /** Queue me stored pings server pe bhejo */
+    private void flushQueue(String apiUrl, String token) {
+        try {
+            SharedPreferences prefs = getSharedPreferences(PREFS, MODE_PRIVATE);
+            String raw = prefs.getString(QUEUE_KEY, "[]");
+            JSONArray queue = new JSONArray(raw);
+            if (queue.length() == 0) return;
+
+            JSONArray remaining = new JSONArray();
+            for (int i = 0; i < queue.length(); i++) {
+                JSONObject ping = queue.getJSONObject(i);
+                int code = doPost(apiUrl + "/attendance/location", token, ping);
+                if (code == -1) remaining.put(ping); // still failed — rakhna hoga
+            }
+            prefs.edit().putString(QUEUE_KEY, remaining.toString()).apply();
+        } catch (Exception e) { e.printStackTrace(); }
     }
 
     /** Returns HTTP response code, -1 on exception */
@@ -286,8 +338,35 @@ public class LocationService extends Service {
         }
     }
 
+    // Extra mock checks — isFromMockProvider ke alawa
+    private boolean isSuspiciousLocation(Location loc) {
+        if (loc.isFromMockProvider()) return true;
+        // Perfect zero accuracy — real GPS kabhi exactly 0 nahi hota
+        if (loc.hasAccuracy() && loc.getAccuracy() == 0f) return true;
+        // Unrealistic speed — 200 km/h se zyada field me impossible
+        if (loc.hasSpeed() && loc.getSpeed() > 55f) return true;
+        // Unrealistic altitude — India me 5000m+ ya negative
+        if (loc.hasAltitude() && (loc.getAltitude() > 5000 || loc.getAltitude() < -100)) return true;
+        return false;
+    }
+
     private void sendLocation(Location location, String token, String apiUrl) {
         try {
+            // Adaptive interval — last sent location se distance check karo
+            float[] results = new float[1];
+            long nextInterval = INTERVAL_MOVING; // default moving
+            if (!Double.isNaN(lastSentLat)) {
+                android.location.Location.distanceBetween(lastSentLat, lastSentLng,
+                    location.getLatitude(), location.getLongitude(), results);
+                nextInterval = results[0] < STOPPED_THRESHOLD_M ? INTERVAL_STOPPED : INTERVAL_MOVING;
+            }
+            lastSentLat = location.getLatitude();
+            lastSentLng = location.getLongitude();
+
+            // Store next interval in prefs so scheduleNext can use it after postWithRefresh
+            getSharedPreferences(PREFS, MODE_PRIVATE).edit()
+                .putLong("next_interval", nextInterval).apply();
+
             JSONObject body = new JSONObject();
             body.put("lat",       location.getLatitude());
             body.put("lng",       location.getLongitude());
