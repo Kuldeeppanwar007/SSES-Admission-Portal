@@ -180,7 +180,7 @@ router.post('/cleanup-data', protect, authorizeRoles('admin'), async (req, res) 
     res.status(500).json({ message: err.message });
   }
 });
-router.get('/activity-log', protect, authorizeRoles('admin', 'track_incharge'), getActivityLog);
+router.get('/activity-log', protect, authorizeRoles('admin', 'track_incharge', 'interviewer'), getActivityLog);
 router.get('/', protect, getStudents);
 router.get('/:id', protect, getStudent);
 
