@@ -40,9 +40,9 @@ const getStudents = async (req, res) => {
 
     // Optimize track filter
     if (req.user.role === 'track_incharge') {
-      filter.track = req.user.track; // Exact match instead of regex
+      filter.track = req.user.track;
     } else if (track) {
-      filter.track = track; // Exact match instead of regex
+      filter.track = track;
     }
     
     // Add town filter
@@ -1049,7 +1049,7 @@ const downloadCSVTemplate = (req, res) => {
 const getTrackStats = async (req, res) => {
   try {
     const Target = require('../models/Target');
-    const track = req.user.role === 'admin' ? (req.query.track || req.user.track) : req.user.track;
+    const track = (req.user.role === 'admin') ? (req.query.track || req.user.track) : req.user.track;
     if (!track) return res.status(400).json({ message: 'No track assigned' });
 
     const filter = { track };

@@ -20,6 +20,7 @@ export default function Users() {
     { key: 'admin', label: 'Admin' },
     { key: 'manager', label: 'Manager' },
     { key: 'track_incharge', label: 'Track Incharge' },
+    { key: 'interviewer', label: 'Interviewer' },
   ];
   const filteredUsers = activeTab === 'all' ? users : users.filter((u) => u.role === activeTab);
 
@@ -93,10 +94,10 @@ export default function Users() {
                 {ROLES.map((r) => <option key={r} value={r}>{r.replace('_', ' ')}</option>)}
               </select>
             </div>
-            {form.role === 'track_incharge' && (
+            {(form.role === 'track_incharge' || form.role === 'interviewer') && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Track</label>
-                <select value={form.track} onChange={(e) => setForm({ ...form, track: e.target.value })}
+                <label className="block text-sm font-medium text-gray-700 mb-1">Track<span className="text-red-500">*</span></label>
+                <select value={form.track} required onChange={(e) => setForm({ ...form, track: e.target.value })}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none">
                   <option value="">Select Track</option>
                   {MAIN_TRACKS.map((t) => <option key={t}>{t}</option>)}

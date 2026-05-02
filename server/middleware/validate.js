@@ -93,7 +93,7 @@ const addUserSchema = Joi.object({
   name:     Joi.string().min(2).max(60).required(),
   email:    Joi.string().email().required(),
   password: Joi.string().min(6).max(100).required(),
-  role:     Joi.string().valid('admin', 'manager', 'track_incharge').required(),
+  role:     Joi.string().valid('admin', 'manager', 'track_incharge', 'interviewer').required(),
   track:    Joi.string().max(60).optional().allow(''),
 });
 

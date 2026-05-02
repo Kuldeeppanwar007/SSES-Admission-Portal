@@ -1067,10 +1067,17 @@ export default function Students() {
                       )}
                     </td>
                     <td className="px-4 py-3">
-                      <button onClick={(e) => { e.stopPropagation(); handleViewHistory(s); }}
-                        className="flex items-center gap-1 text-xs text-white font-medium px-2.5 py-1.5 bg-primary hover:bg-primary-dark rounded-lg transition-colors">
-                        <FiClock size={12} /> History
-                      </button>
+                      {(user?.role === 'admin' || user?.role === 'interviewer') ? (
+                        <button onClick={(e) => { e.stopPropagation(); setInterviewStudent(s); }}
+                          className="flex items-center gap-1 text-xs text-white font-medium px-2.5 py-1.5 bg-primary hover:bg-primary-dark rounded-lg transition-colors">
+                          <FiClipboard size={12} /> Interview
+                        </button>
+                      ) : (
+                        <button onClick={(e) => { e.stopPropagation(); handleViewHistory(s); }}
+                          className="flex items-center gap-1 text-xs text-white font-medium px-2.5 py-1.5 bg-primary hover:bg-primary-dark rounded-lg transition-colors">
+                          <FiClock size={12} /> History
+                        </button>
+                      )}
                     </td>
                     <td className="px-4 py-3">
                       <button onClick={(e) => { 
@@ -1184,10 +1191,17 @@ export default function Students() {
                 className="flex-1 flex items-center justify-center gap-1.5 text-sm text-white font-semibold py-2 bg-primary hover:bg-primary-dark rounded-lg transition-colors">
                 <FiEdit2 size={14} /> Edit
               </button>
-              <button onClick={(e) => { e.stopPropagation(); handleViewHistory(s); }}
-                className="flex-1 flex items-center justify-center gap-1.5 text-sm text-white font-semibold py-2 bg-primary hover:bg-primary-dark rounded-lg transition-colors">
-                <FiClock size={14} /> History
-              </button>
+              {(user?.role === 'admin' || user?.role === 'interviewer') ? (
+                <button onClick={(e) => { e.stopPropagation(); setInterviewStudent(s); }}
+                  className="flex-1 flex items-center justify-center gap-1.5 text-sm text-white font-semibold py-2 bg-primary hover:bg-primary-dark rounded-lg transition-colors">
+                  <FiClipboard size={14} /> Interview
+                </button>
+              ) : (
+                <button onClick={(e) => { e.stopPropagation(); handleViewHistory(s); }}
+                  className="flex-1 flex items-center justify-center gap-1.5 text-sm text-white font-semibold py-2 bg-primary hover:bg-primary-dark rounded-lg transition-colors">
+                  <FiClock size={14} /> History
+                </button>
+              )}
             </div>
           </div>
         ))}
