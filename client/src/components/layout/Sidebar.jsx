@@ -25,7 +25,8 @@ export default function Sidebar({ open, onClose, collapsed, onToggle }) {
   const [trackMenuOpen, setTrackMenuOpen] = useState(location.pathname.startsWith('/admin-track'));
   const links = navItems.filter((i) => {
     if (i.adminOnly) return user?.role === 'admin';
-    if (i.trackOnly) return user?.role === 'track_incharge';
+    if (i.trackOnly) return user?.role === 'track_incharge' || user?.role === 'interviewer';
+    if (user?.role === 'interviewer') return i.to === '/dashboard' || i.to === '/students' || i.to === '/track-dashboard' || i.to === '/activity-log';
     return true;
   });
 

@@ -4,7 +4,7 @@ import api from '../../api/axios';
 import { TRACKS, STATUSES, STATUS_COLORS, TRACK_TOWNS, TOWN_TO_MAIN_TRACK } from '../../utils/constants';
 import useAuthStore from '../../store/authStore';
 import toast from 'react-hot-toast';
-import { FiPlus, FiUpload, FiSearch, FiEdit2, FiDownload, FiFilter, FiSlash, FiClipboard, FiExternalLink, FiChevronDown, FiSend } from 'react-icons/fi';
+import { FiPlus, FiUpload, FiSearch, FiEdit2, FiDownload, FiFilter, FiSlash, FiClipboard, FiExternalLink, FiChevronDown, FiSend, FiClock, FiX } from 'react-icons/fi';
 import DatePicker from '../../components/DatePicker';
 import { isOnline, cacheStudents, getCachedStudents } from '../../utils/offlineQueue';
 import { usePerformanceMonitor, useDebounce } from '../../hooks/usePerformance';
@@ -351,6 +351,9 @@ export default function Students() {
   const [selected, setSelected] = useState([]);
   const [exporting, setExporting] = useState(false);
   const [interviewStudent, setInterviewStudent] = useState(null);
+  const [historyStudent, setHistoryStudent] = useState(null);
+  const [history, setHistory] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
   const [searchTimeout, setSearchTimeout] = useState(null);
   const [interviewRound, setInterviewRound] = useState('');
   const [maxInterviewRound, setMaxInterviewRound] = useState(3);
@@ -616,6 +619,17 @@ export default function Students() {
     });
   }, [students, page]);
 
+  const handleViewHistory = async (s) => {
+    setHistoryStudent(s);
+    setHistory([]);
+    setHistoryLoading(true);
+    try {
+      const { data } = await api.get(`/students/${s._id}/status-history`);
+      setHistory(data);
+    } catch { toast.error('Failed to load history'); }
+    finally { setHistoryLoading(false); }
+  };
+
   return (
     <div>
       {interviewStudent && (
@@ -625,6 +639,68 @@ export default function Students() {
           onClose={() => setInterviewStudent(null)}
           onSaved={fetchStudents}
         />
+      )}
+
+      {/* History Modal */}
+      {historyStudent && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 p-4" onClick={() => setHistoryStudent(null)}>
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[85vh] flex flex-col" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+              <div>
+                <h3 className="font-semibold text-gray-800">Activity History</h3>
+                <p className="text-xs text-gray-400 mt-0.5">{historyStudent.name} — {history.length} update{history.length !== 1 ? 's' : ''}</p>
+              </div>
+              <button onClick={() => setHistoryStudent(null)} className="text-gray-400 hover:text-gray-600"><FiX size={18} /></button>
+            </div>
+            <div className="overflow-y-auto flex-1 p-4">
+              {historyLoading ? (
+                <div className="flex justify-center py-10"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" /></div>
+              ) : history.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-10 text-gray-400">
+                  <FiClock size={32} className="mb-2 opacity-30" />
+                  <p className="text-sm">Koi history nahi mili</p>
+                </div>
+              ) : (
+                <div className="relative">
+                  <div className="absolute left-4 top-2 bottom-2 w-0.5 bg-gray-100" />
+                  <div className="space-y-4">
+                    {history.map((h, idx) => {
+                      const roleColors = { admin: 'bg-purple-100 text-purple-700', track_incharge: 'bg-blue-100 text-blue-700', manager: 'bg-green-100 text-green-700' };
+                      const roleLabel = { admin: 'Admin', track_incharge: 'Track Incharge', manager: 'Manager' };
+                      const role = h.changedBy?.role || '';
+                      return (
+                        <div key={h._id} className="flex gap-4 relative">
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 z-10 text-white text-xs font-bold shadow ${idx === 0 ? 'bg-primary' : 'bg-gray-300'}`}>
+                            {(h.changedBy?.name || 'U')[0].toUpperCase()}
+                          </div>
+                          <div className={`flex-1 rounded-xl p-3.5 border ${idx === 0 ? 'border-orange-200 bg-orange-50/40' : 'border-gray-100 bg-white'}`}>
+                            <div className="flex items-start justify-between gap-2 mb-2">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="text-sm font-semibold text-gray-800">{h.changedBy?.name || 'Unknown'}</span>
+                                {role && <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${roleColors[role] || 'bg-gray-100 text-gray-500'}`}>{roleLabel[role] || role}</span>}
+                              </div>
+                              <span className="text-[11px] text-gray-400 shrink-0">{new Date(h.createdAt).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                            </div>
+                            <div className="flex items-center gap-2 flex-wrap mb-2">
+                              <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full ${STATUS_COLORS[h.status] || 'bg-gray-100 text-gray-600'}`}>{h.status}</span>
+                              {h.funnelStage && <span className="text-xs bg-orange-50 text-primary border border-orange-200 px-2.5 py-0.5 rounded-full font-medium">{h.funnelStage}</span>}
+                            </div>
+                            {h.remarks && (
+                              <div className="bg-white border border-gray-100 rounded-lg px-3 py-2 mt-1">
+                                <p className="text-xs text-gray-400 mb-0.5">Remark</p>
+                                <p className="text-sm text-gray-700">{h.remarks}</p>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       )}
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
@@ -922,7 +998,7 @@ export default function Students() {
                     <input type="checkbox" checked={allSelected} onChange={toggleAll}
                       className="rounded border-gray-300 text-primary focus:ring-primary cursor-pointer" />
                   </th>
-                  {['S.N.', 'Name', 'Father Name', 'Track', 'Town', 'Mobile', 'Form', 'Status', 'Attempt', 'Interview', 'Actions'].map((h) => (
+                  {['S.N.', 'Name', 'Father Name', 'Track', 'Town', 'Mobile', 'Form', 'Status', 'Attempt', 'History', 'Actions'].map((h) => (
                     <th key={h} className={`px-4 py-3 text-xs font-semibold uppercase text-gray-500 ${h === 'Attempt' ? 'text-center' : 'text-left'}`}>{h}</th>
                   ))}
                 </tr>
@@ -991,10 +1067,17 @@ export default function Students() {
                       )}
                     </td>
                     <td className="px-4 py-3">
-                      <button onClick={(e) => { e.stopPropagation(); setInterviewStudent(s); }}
-                        className="flex items-center gap-1 text-xs text-white font-medium px-2.5 py-1.5 bg-primary hover:bg-primary-dark rounded-lg transition-colors">
-                        <FiClipboard size={12} /> Interview
-                      </button>
+                      {(user?.role === 'admin' || user?.role === 'interviewer') ? (
+                        <button onClick={(e) => { e.stopPropagation(); setInterviewStudent(s); }}
+                          className="flex items-center gap-1 text-xs text-white font-medium px-2.5 py-1.5 bg-primary hover:bg-primary-dark rounded-lg transition-colors">
+                          <FiClipboard size={12} /> Interview
+                        </button>
+                      ) : (
+                        <button onClick={(e) => { e.stopPropagation(); handleViewHistory(s); }}
+                          className="flex items-center gap-1 text-xs text-white font-medium px-2.5 py-1.5 bg-primary hover:bg-primary-dark rounded-lg transition-colors">
+                          <FiClock size={12} /> History
+                        </button>
+                      )}
                     </td>
                     <td className="px-4 py-3">
                       <button onClick={(e) => { 
@@ -1108,10 +1191,17 @@ export default function Students() {
                 className="flex-1 flex items-center justify-center gap-1.5 text-sm text-white font-semibold py-2 bg-primary hover:bg-primary-dark rounded-lg transition-colors">
                 <FiEdit2 size={14} /> Edit
               </button>
-              <button onClick={(e) => { e.stopPropagation(); setInterviewStudent(s); }}
-                className="flex-1 flex items-center justify-center gap-1.5 text-sm text-white font-semibold py-2 bg-primary hover:bg-primary-dark rounded-lg transition-colors">
-                <FiClipboard size={14} /> Interview
-              </button>
+              {(user?.role === 'admin' || user?.role === 'interviewer') ? (
+                <button onClick={(e) => { e.stopPropagation(); setInterviewStudent(s); }}
+                  className="flex-1 flex items-center justify-center gap-1.5 text-sm text-white font-semibold py-2 bg-primary hover:bg-primary-dark rounded-lg transition-colors">
+                  <FiClipboard size={14} /> Interview
+                </button>
+              ) : (
+                <button onClick={(e) => { e.stopPropagation(); handleViewHistory(s); }}
+                  className="flex-1 flex items-center justify-center gap-1.5 text-sm text-white font-semibold py-2 bg-primary hover:bg-primary-dark rounded-lg transition-colors">
+                  <FiClock size={14} /> History
+                </button>
+              )}
             </div>
           </div>
         ))}

@@ -5,8 +5,8 @@ const { markAttendance, getMyAttendance, getAllAttendance, getMonthlyStats, save
 
 const { validate, schemas } = require('../middleware/validate');
 
-router.post('/mark', protect, authorizeRoles('track_incharge'), validate(schemas.markAttendance), markAttendance);
-router.get('/my', protect, authorizeRoles('track_incharge'), getMyAttendance);
+router.post('/mark', protect, authorizeRoles('track_incharge', 'interviewer'), validate(schemas.markAttendance), markAttendance);
+router.get('/my', protect, authorizeRoles('track_incharge', 'interviewer'), getMyAttendance);
 router.get('/all', protect, authorizeRoles('admin'), getAllAttendance);
 router.get('/monthly-stats', protect, authorizeRoles('admin'), getMonthlyStats);
 router.get('/day-view', protect, authorizeRoles('admin'), getDayView);

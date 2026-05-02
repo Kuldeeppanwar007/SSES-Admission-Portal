@@ -59,7 +59,7 @@ router.get('/track-stats', protect, async (req, res, next) => {
     req.user.track = req.query.track;
     return getTrackStats(req, res, next);
   }
-  if (req.user.role === 'track_incharge') return getTrackStats(req, res, next);
+  if (req.user.role === 'track_incharge' || req.user.role === 'interviewer') return getTrackStats(req, res, next);
   return res.status(403).json({ message: 'Access denied' });
 });
 router.get('/weekly-bonus-history', protect, async (req, res) => {
