@@ -27,11 +27,17 @@ const STATUS_COLORS = {
 };
 
 const FUNNEL_COLORS = {
-  'Call Completed':   'bg-purple-50 text-purple-700 border-purple-100',
-  'Lead Interested':  'bg-blue-50 text-blue-700 border-blue-100',
-  'Visit Scheduled':  'bg-amber-50 text-amber-700 border-amber-100',
-  'Visit Completed':  'bg-orange-50 text-primary border-orange-100',
-  'Admission Closed': 'bg-emerald-50 text-emerald-700 border-emerald-100',
+  'Call Completed':        'bg-purple-50 text-purple-700 border-purple-100',
+  'Lead Interested':       'bg-blue-50 text-blue-700 border-blue-100',
+  'Visit Scheduled':       'bg-amber-50 text-amber-700 border-amber-100',
+  'Visit Completed':       'bg-orange-50 text-primary border-orange-100',
+  'Admission Closed':      'bg-emerald-50 text-emerald-700 border-emerald-100',
+  'Call Not Received':     'bg-rose-50 text-rose-600 border-rose-100',
+  'Wrong Number':          'bg-red-50 text-red-600 border-red-100',
+  'Switch Off':            'bg-gray-50 text-gray-600 border-gray-200',
+  'Repeated No Response':  'bg-orange-50 text-orange-600 border-orange-100',
+  'Not Interested':        'bg-red-50 text-red-700 border-red-200',
+  'Joined Elsewhere':      'bg-slate-50 text-slate-600 border-slate-200',
 };
 
 const STAT_META = [

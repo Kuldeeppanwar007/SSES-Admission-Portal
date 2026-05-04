@@ -10,11 +10,11 @@ const SUBJECTS = ['B.Tech(CS)', 'B.Tech(IT)', 'B.Tech(ECE)', 'B.Tech(AI/ML)', 'B
 const BTECH_BRANCHES = ['CS', 'IT', 'AI/ML', 'ECE'];
 const SSISM_BRANCHES = ['BCA(ITEG)', 'BBA', 'BSC(BT)', 'BSC(MICRO)', 'B.Com (CA)', 'ITEG Diploma'];
 
-const FUNNEL_STAGES = ['', 'Call Completed', 'Lead Interested', 'Admission Closed', 'Call Not Received', 'Wrong Number', 'Switch Off'];
+const FUNNEL_STAGES = ['', 'Call Completed', 'Lead Interested', 'Admission Closed', 'Call Not Received', 'Wrong Number', 'Switch Off', 'Repeated No Response', 'Not Interested', 'Joined Elsewhere'];
 
 const ALLOWED_FUNNEL = {
   'Applied':  [],
-  'Calling':  ['Call Completed', 'Lead Interested', 'Call Not Received', 'Wrong Number', 'Switch Off'],
+  'Calling':  ['Call Completed', 'Lead Interested', 'Call Not Received', 'Wrong Number', 'Switch Off', 'Repeated No Response', 'Not Interested', 'Joined Elsewhere'],
   'Admitted': ['Admission Closed'],
   'Rejected': [],
   'Disabled': [],

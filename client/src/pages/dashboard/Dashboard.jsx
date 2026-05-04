@@ -234,6 +234,9 @@ const FUNNEL_STAGE_META = [
   { key: 'Wrong Number',      label: 'Wrong Number',      icon: FiAlertCircle, iconBg: 'bg-amber-100',   iconColor: 'text-amber-500',   text: 'text-amber-600',   border: 'border-amber-100' },
   { key: 'Switch Off',        label: 'Switch Off',        icon: FiPhoneOff,    iconBg: 'bg-gray-100',    iconColor: 'text-gray-400',    text: 'text-gray-500',    border: 'border-gray-100' },
   { key: 'Admission Closed',  label: 'Admission Closed',  icon: FiLock,        iconBg: 'bg-violet-100',  iconColor: 'text-violet-500',  text: 'text-violet-600',  border: 'border-violet-100' },
+  { key: 'Repeated No Response', label: 'No Response',    icon: FiPhoneMissed, iconBg: 'bg-orange-100',  iconColor: 'text-orange-500',  text: 'text-orange-600',  border: 'border-orange-100' },
+  { key: 'Not Interested',    label: 'Not Interested',    icon: FiXCircle,     iconBg: 'bg-red-100',     iconColor: 'text-red-500',     text: 'text-red-600',     border: 'border-red-100' },
+  { key: 'Joined Elsewhere',  label: 'Joined Elsewhere',  icon: FiSlash,       iconBg: 'bg-slate-100',   iconColor: 'text-slate-500',   text: 'text-slate-600',   border: 'border-slate-100' },
   { key: 'No Stage',          label: 'No Stage Set',      icon: FiSlash,       iconBg: 'bg-gray-100',    iconColor: 'text-gray-400',    text: 'text-gray-500',    border: 'border-gray-100' },
 ];
 
@@ -268,7 +271,7 @@ function FunnelStageCards({ funnelStageBreakdown, trackFunnelBreakdown, navigate
           </span>
         )}
       </div>
-      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
         {FUNNEL_STAGE_META.map(({ key, label, icon: Icon, iconBg, iconColor, text, border }) => (
           <div key={key}
             onClick={() => navigate(

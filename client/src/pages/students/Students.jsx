@@ -943,7 +943,7 @@ export default function Students() {
             }}
               className="flex-1 min-w-32 border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none">
               <option value="">All Funnel Stages</option>
-              {['Call Completed', 'Lead Interested', 'Admission Closed', 'Call Not Received', 'Wrong Number', 'Switch Off'].map((s) => (
+              {['Call Completed', 'Lead Interested', 'Admission Closed', 'Call Not Received', 'Wrong Number', 'Switch Off', 'Repeated No Response', 'Not Interested', 'Joined Elsewhere'].map((s) => (
                 <option key={s} value={s}>{s}</option>
               ))}
             </select>

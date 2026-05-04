@@ -306,7 +306,7 @@ const getFunnelPoints = async (funnelStage, track, subject) => {
 };
 
 const ALLOWED_FUNNEL = {
-  'Calling':  ['Call Completed', 'Lead Interested', 'Call Not Received', 'Wrong Number', 'Switch Off'],
+  'Calling':  ['Call Completed', 'Lead Interested', 'Call Not Received', 'Wrong Number', 'Switch Off', 'Repeated No Response', 'Not Interested', 'Joined Elsewhere'],
   'Admitted': ['Admission Closed'],
 };
 
@@ -1095,7 +1095,7 @@ const getTrackStats = async (req, res) => {
       'Admission Closed': 100,
     };
     const funnelBreakdown = await Student.aggregate([
-      { $match: { track, funnelStage: { $ne: '' }, funnelStage: { $exists: true } } },
+      { $match: { track, funnelStage: { $exists: true, $nin: ['', null] } } },
       { $group: { _id: '$funnelStage', count: { $sum: 1 } } },
     ]);
     const funnelData = funnelBreakdown.map(({ _id, count }) => ({
@@ -1300,7 +1300,7 @@ const getStats = async (req, res) => {
 
     // Funnel stage counts — dashboard ke liye (overall)
     const funnelStageCounts = await Student.aggregate([
-      { $match: { funnelStage: { $exists: true, $ne: '' }, isDisabled: { $ne: true } } },
+      { $match: { funnelStage: { $exists: true, $nin: ['', null] }, isDisabled: { $ne: true } } },
       { $group: { _id: '$funnelStage', count: { $sum: 1 } } },
     ]);
     const funnelStageBreakdown = {};
@@ -1312,7 +1312,7 @@ const getStats = async (req, res) => {
 
     // Track-wise funnel breakdown
     const trackFunnelAgg = await Student.aggregate([
-      { $match: { funnelStage: { $exists: true, $ne: '' }, isDisabled: { $ne: true } } },
+      { $match: { funnelStage: { $exists: true, $nin: ['', null] }, isDisabled: { $ne: true } } },
       { $group: { _id: { track: '$track', funnelStage: '$funnelStage' }, count: { $sum: 1 } } },
     ]);
     const trackFunnelBreakdown = {};
