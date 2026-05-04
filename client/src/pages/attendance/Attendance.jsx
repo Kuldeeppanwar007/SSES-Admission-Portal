@@ -40,8 +40,8 @@ export default function Attendance() {
   // Records tab
   const [records, setRecords] = useState([]);
   const [loadingRec, setLoadingRec] = useState(false);
-  const [from, setFrom] = useState('');
-  const [to, setTo] = useState('');
+  const [from, setFrom] = useState(today);
+  const [to, setTo] = useState(today);
   const [filterTrack, setFilterTrack] = useState('');
   const [filterRole, setFilterRole] = useState('');
   const [absentDate, setAbsentDate] = useState(today);
@@ -96,16 +96,18 @@ export default function Attendance() {
     if (!attendanceConfirm) return;
     setManualMarkLoading(attendanceConfirm.userId);
     api.post('/attendance/mark-manual', { userId: attendanceConfirm.userId, date: absentDate })
-      .then(() => { toast.success(`${attendanceConfirm.name} ki attendance mark ho gayi`); fetchAbsent(); fetchRecords(); setAttendanceConfirm(null); })
+      .then(() => { toast.success(`${attendanceConfirm.name} ki attendance mark ho gayi`); fetchAbsent(); fetchRecords(today, today); setAttendanceConfirm(null); })
       .catch(err => toast.error(err.response?.data?.message || 'Failed'))
       .finally(() => setManualMarkLoading(null));
   };
 
-  const fetchRecords = useCallback(() => {
+  const fetchRecords = useCallback((overrideFrom, overrideTo) => {
     setLoadingRec(true);
     const params = new URLSearchParams();
-    if (from) params.append('from', from);
-    if (to)   params.append('to', to);
+    const f = overrideFrom !== undefined ? overrideFrom : from;
+    const t = overrideTo !== undefined ? overrideTo : to;
+    if (f) params.append('from', f);
+    if (t) params.append('to', t);
     if (filterTrack) params.append('track', filterTrack);
     if (filterRole)  params.append('role', filterRole);
     api.get(`/attendance/all?${params}`)
@@ -304,8 +306,8 @@ export default function Attendance() {
 
   useEffect(() => { if (tab === 'analytics') fetchAnalytics(); }, [tab, analyticsDate, analyticsTrack]); // eslint-disable-line
 
-  useEffect(() => { if (tab === 'records') fetchRecords(); }, [tab, from, to, filterTrack, filterRole]); // eslint-disable-line
-  useEffect(() => { if (tab === 'records' && recordsView === 'absent') fetchAbsent(); }, [tab, recordsView, absentDate, absentTrack, absentRole]); // eslint-disable-line
+  useEffect(() => { if (tab === 'records') { fetchRecords(); fetchAbsent(); } }, [tab, from, to, filterTrack, filterRole]); // eslint-disable-line
+  useEffect(() => { if (tab === 'records') fetchAbsent(); }, [tab, absentDate, absentTrack, absentRole]); // eslint-disable-line
   useEffect(() => { if (tab === 'monthly') fetchMonthly(); }, [tab, month, monthTrack, monthRole]);
   useEffect(() => {
     if (tab === 'tracking') {
@@ -420,7 +422,7 @@ export default function Attendance() {
                         className="py-2 bg-primary text-white text-sm font-semibold rounded-lg hover:opacity-90">
                         Apply
                       </button>
-                      <button onClick={() => { setFrom(''); setTo(''); setFilterTrack(''); setFilterRole(''); }}
+                      <button onClick={() => { setFrom(today); setTo(today); setFilterTrack(''); setFilterRole(''); }}
                         className="py-2 border border-gray-200 text-gray-600 text-sm font-semibold rounded-lg hover:bg-gray-50">
                         Clear
                       </button>
