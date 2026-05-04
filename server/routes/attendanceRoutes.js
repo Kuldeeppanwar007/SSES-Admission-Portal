@@ -1,11 +1,12 @@
 const express = require('express');
 const router = express.Router();
 const { protect, authorizeRoles } = require('../middleware/authMiddleware');
-const { markAttendance, getMyAttendance, getAllAttendance, getMonthlyStats, saveLocation, getLocationLogs, getDayView, getTimeline, geocodePoints, getLiveLocations, getAbsentUsers, downloadAttendance } = require('../controllers/attendanceController');
+const { markAttendance, getMyAttendance, getAllAttendance, getMonthlyStats, saveLocation, getLocationLogs, getDayView, getTimeline, geocodePoints, getLiveLocations, getAbsentUsers, downloadAttendance, markAttendanceManual } = require('../controllers/attendanceController');
 
 const { validate, schemas } = require('../middleware/validate');
 
 router.post('/mark', protect, authorizeRoles('track_incharge', 'manager', 'interviewer'), validate(schemas.markAttendance), markAttendance);
+router.post('/mark-manual', protect, authorizeRoles('admin'), markAttendanceManual);
 router.get('/my', protect, authorizeRoles('track_incharge', 'manager', 'interviewer'), getMyAttendance);
 router.get('/all', protect, authorizeRoles('admin'), getAllAttendance);
 router.get('/absent', protect, authorizeRoles('admin'), getAbsentUsers);

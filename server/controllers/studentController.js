@@ -128,23 +128,33 @@ const getStudents = async (req, res) => {
       if (req.query.subjectFilter) {
         const sf = req.query.subjectFilter;
         const SUBJECT_TO_BRANCHES = {
-          'BCA':           ['BCA', 'BCA(ITEG)'],
-          'BBA':           ['BBA'],
-          'Bio':           ['Bio', 'BSC(BT)', 'BSC(Bt)', 'Biology'],
-          'Micro':         ['Micro', 'BSC(MICRO)'],
-          'Bcom':          ['Bcom', 'B.com(CA)', 'B.COM(CA)'],
-          'ITEG Diploma':  ['ITEG Diploma'],
-          'B.Tech(CS)':    ['B.Tech(CS)', 'CS'],
-          'B.Tech(IT)':    ['B.Tech(IT)', 'IT'],
-          'B.Tech(ECE)':   ['B.Tech(ECE)', 'ECE'],
-          'B.Tech(AI/ML)': ['B.Tech(AI/ML)', 'AI/ML', 'AIML'],
+          'BCA':           ['BCA', 'BCA(ITEG)', 'bca', 'bca(iteg)'],
+          'BBA':           ['BBA', 'bba'],
+          'Bio':           ['Bio', 'BSC(BT)', 'BSC(Bt)', 'Biology', 'bio', 'BSc(BT)', 'Bsc(BT)', 'BSC(bt)'],
+          'Micro':         ['Micro', 'BSC(MICRO)', 'micro', 'BSc(MICRO)', 'Bsc(Micro)', 'BSC(micro)'],
+          'Bcom':          ['Bcom', 'B.com(CA)', 'B.COM(CA)', 'B.Com (CA)', 'B.COM (CA)', 'b.com (ca)', 'b.com(ca)', 'B.Com(CA)', 'B.Com(ca)', 'bcom'],
+          'ITEG Diploma':  ['ITEG Diploma', 'iteg diploma', 'ITEG diploma'],
+          'B.Tech(CS)':    ['B.Tech(CS)', 'CS', 'cs', 'B.tech(CS)', 'b.tech(cs)'],
+          'B.Tech(IT)':    ['B.Tech(IT)', 'IT', 'it', 'B.tech(IT)', 'b.tech(it)'],
+          'B.Tech(ECE)':   ['B.Tech(ECE)', 'ECE', 'ece', 'B.tech(ECE)', 'b.tech(ece)'],
+          'B.Tech(AI/ML)': ['B.Tech(AI/ML)', 'AI/ML', 'AIML', 'ai/ml', 'aiml', 'B.Tech(AIML)', 'b.tech(ai/ml)', 'B.tech(AI/ML)'],
         };
         const aliases = SUBJECT_TO_BRANCHES[sf] || [sf];
-        // Sirf branch se filter karo — subject ignore
-        filter.branch = { $in: aliases };
+        // branch ya subject dono se filter karo
+        const branchSubjectCondition = { $or: [
+          { branch: { $in: aliases } },
+          { branch: { $regex: `^${sf.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, $options: 'i' } },
+          { subject: { $in: aliases } },
+          { subject: { $regex: `^${sf.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, $options: 'i' } },
+        ]};
         delete filter.subject;
-        if (filter.$and) {
-          filter.$and = filter.$and.filter(c => !c.$or || !c.$or.some(x => x.subject));
+        if (filter.$or) {
+          filter.$and = [...(filter.$and || []), { $or: filter.$or }, branchSubjectCondition];
+          delete filter.$or;
+        } else if (filter.$and) {
+          filter.$and.push(branchSubjectCondition);
+        } else {
+          Object.assign(filter, branchSubjectCondition);
         }
       }
     } else if (interviewFilter === 'hasAttempts') {
@@ -152,6 +162,7 @@ const getStudents = async (req, res) => {
       const studentIdsWithInterviews = await Interview.distinct('student');
       filter._id = { $in: studentIdsWithInterviews };
       filter['finalInterview.result'] = { $ne: 'Pass' };
+      filter.isDisabled = { $ne: true };
     } else if (interviewFilter?.startsWith('round_')) {
       const round = Number(interviewFilter.split('_')[1]);
       const Interview = require('../models/Interview');
@@ -163,6 +174,7 @@ const getStudents = async (req, res) => {
       const studentIds = lastRoundAgg.map(x => x._id);
       filter._id = { $in: studentIds };
       filter['finalInterview.result'] = { $ne: 'Pass' };
+      filter.isDisabled = { $ne: true };
     }
 
     // Optimize search with text index
@@ -1065,7 +1077,7 @@ const getTrackStats = async (req, res) => {
 
     const BTECH_SUBJECTS_TRACK = ['B.Tech(CS)', 'B.Tech(IT)', 'B.Tech(ECE)', 'B.Tech(AI/ML)'];
     const subjectAdmitted = await Student.aggregate([
-      { $match: { track, status: 'Admitted' } },
+      { $match: { track, status: 'Admitted', isDisabled: { $ne: true } } },
       { $group: { _id: '$subject', admitted: { $sum: 1 } } },
     ]);
 
@@ -1138,13 +1150,13 @@ const getStats = async (req, res) => {
     const BTECH_SUBJECTS = ['B.Tech(CS)', 'B.Tech(IT)', 'B.Tech(ECE)', 'B.Tech(AI/ML)'];
 
     const trackSubjectAdmitted = await Student.aggregate([
-      { $match: { status: 'Admitted', admissionType: 'Full Fees' } },
+      { $match: { status: 'Admitted', admissionType: 'Full Fees', isDisabled: { $ne: true } } },
       { $group: { _id: { track: '$track', subject: '$subject' }, admitted: { $sum: 1 } } },
     ]);
 
     // Capacity cards ke liye — sabhi admitted (all admission types)
     const allAdmittedBySubject = await Student.aggregate([
-      { $match: { status: 'Admitted' } },
+      { $match: { status: 'Admitted', isDisabled: { $ne: true } } },
       { $group: { _id: '$subject', admitted: { $sum: 1 } } },
     ]);
     const admittedBySubjectMap = {};
@@ -1152,7 +1164,7 @@ const getStats = async (req, res) => {
 
     // B.Tech branch-wise admitted count — sabhi admitted
     const btechBranches = await Student.aggregate([
-      { $match: { status: 'Admitted', subject: { $in: BTECH_SUBJECTS } } },
+      { $match: { status: 'Admitted', subject: { $in: BTECH_SUBJECTS }, isDisabled: { $ne: true } } },
       { $group: { _id: '$subject', admitted: { $sum: 1 } } },
     ]);
     const btechByBranch = {};
@@ -1161,7 +1173,7 @@ const getStats = async (req, res) => {
     // SSISM capacity — trackWise subjects mein bhi sab admitted chahiye (capacity display ke liye)
     // trackWise subjects admitted count ko allAdmittedBySubject se override karo
     const allTrackSubjectAdmitted = await Student.aggregate([
-      { $match: { status: 'Admitted' } },
+      { $match: { status: 'Admitted', isDisabled: { $ne: true } } },
       { $group: { _id: { track: '$track', subject: '$subject' }, admitted: { $sum: 1 } } },
     ]);
     const allTrackSubjectMap = {};
@@ -1269,23 +1281,26 @@ const getStats = async (req, res) => {
     // Final Cleared (interview pass) — subject-wise
     // branch field bhi check karo (SSISM students mein branch se normalize karo)
     const finalClearedRaw = await Student.find(
-      { 'finalInterview.result': 'Pass', status: { $ne: 'Admitted' } },
+      { 'finalInterview.result': 'Pass', status: { $ne: 'Admitted' }, isDisabled: { $ne: true } },
       { subject: 1, branch: 1 }
     ).lean();
     const finalClearedBySubject = {};
     finalClearedRaw.forEach(({ subject, branch }) => {
       // Branch se resolve karo (primary), subject fallback
       const BRANCH_TO_CANONICAL = {
-        'BCA': 'BCA', 'BCA(ITEG)': 'BCA',
-        'BBA': 'BBA',
-        'BSC(BT)': 'Bio', 'BSC(Bt)': 'Bio', 'Biology': 'Bio', 'Bio': 'Bio',
-        'BSC(MICRO)': 'Micro', 'Micro': 'Micro',
-        'B.com(CA)': 'Bcom', 'B.COM(CA)': 'Bcom', 'Bcom': 'Bcom',
-        'ITEG Diploma': 'ITEG Diploma',
-        'B.Tech(CS)': 'B.Tech(CS)', 'CS': 'B.Tech(CS)',
-        'B.Tech(IT)': 'B.Tech(IT)', 'IT': 'B.Tech(IT)',
-        'B.Tech(ECE)': 'B.Tech(ECE)', 'ECE': 'B.Tech(ECE)',
-        'B.Tech(AI/ML)': 'B.Tech(AI/ML)', 'AI/ML': 'B.Tech(AI/ML)', 'AIML': 'B.Tech(AI/ML)',
+        'BCA': 'BCA', 'BCA(ITEG)': 'BCA', 'bca': 'BCA', 'bca(iteg)': 'BCA',
+        'BBA': 'BBA', 'bba': 'BBA',
+        'BSC(BT)': 'Bio', 'BSC(Bt)': 'Bio', 'Biology': 'Bio', 'Bio': 'Bio', 'bio': 'Bio', 'BSc(BT)': 'Bio', 'Bsc(BT)': 'Bio',
+        'BSC(MICRO)': 'Micro', 'Micro': 'Micro', 'micro': 'Micro', 'BSc(MICRO)': 'Micro', 'Bsc(Micro)': 'Micro',
+        'B.com(CA)': 'Bcom', 'B.COM(CA)': 'Bcom', 'Bcom': 'Bcom', 'bcom': 'Bcom',
+        'B.Com (CA)': 'Bcom', 'B.COM (CA)': 'Bcom', 'b.com (ca)': 'Bcom', 'b.com(ca)': 'Bcom',
+        'B.Com(CA)': 'Bcom', 'B.Com(ca)': 'Bcom',
+        'ITEG Diploma': 'ITEG Diploma', 'iteg diploma': 'ITEG Diploma', 'ITEG diploma': 'ITEG Diploma',
+        'B.Tech(CS)': 'B.Tech(CS)', 'CS': 'B.Tech(CS)', 'cs': 'B.Tech(CS)', 'B.tech(CS)': 'B.Tech(CS)', 'b.tech(cs)': 'B.Tech(CS)',
+        'B.Tech(IT)': 'B.Tech(IT)', 'IT': 'B.Tech(IT)', 'it': 'B.Tech(IT)', 'B.tech(IT)': 'B.Tech(IT)', 'b.tech(it)': 'B.Tech(IT)',
+        'B.Tech(ECE)': 'B.Tech(ECE)', 'ECE': 'B.Tech(ECE)', 'ece': 'B.Tech(ECE)', 'B.tech(ECE)': 'B.Tech(ECE)', 'b.tech(ece)': 'B.Tech(ECE)',
+        'B.Tech(AI/ML)': 'B.Tech(AI/ML)', 'AI/ML': 'B.Tech(AI/ML)', 'AIML': 'B.Tech(AI/ML)', 'ai/ml': 'B.Tech(AI/ML)', 'aiml': 'B.Tech(AI/ML)',
+        'B.Tech(AIML)': 'B.Tech(AI/ML)', 'b.tech(ai/ml)': 'B.Tech(AI/ML)', 'B.tech(AI/ML)': 'B.Tech(AI/ML)',
       };
       // Branch se pehle resolve karo, warna subject se
       const resolved = (branch && BRANCH_TO_CANONICAL[branch]) || BRANCH_TO_CANONICAL[subject] || null;
@@ -1295,6 +1310,7 @@ const getStats = async (req, res) => {
     // Admitted but Admission Closed funnel stage set nahi
     const admittedNoFunnelCount = await Student.countDocuments({
       status: 'Admitted',
+      isDisabled: { $ne: true },
       funnelStage: { $ne: 'Admission Closed' },
     });
 
@@ -1334,7 +1350,7 @@ const getStats = async (req, res) => {
 
     // AdmissionType breakdown
     const admissionTypeData = await Student.aggregate([
-      { $match: { status: 'Admitted', admissionType: { $nin: [null, ''] } } },
+      { $match: { status: 'Admitted', admissionType: { $nin: [null, ''] }, isDisabled: { $ne: true } } },
       { $group: { _id: '$admissionType', count: { $sum: 1 } } },
     ]);
     const admissionTypeBreakdown = {};
@@ -1342,7 +1358,7 @@ const getStats = async (req, res) => {
 
     // Track-wise admission type breakdown (subject-wise)
     const trackAdmissionTypeData = await Student.aggregate([
-      { $match: { status: 'Admitted', admissionType: { $in: ['SNS', 'SVS', 'Shri Ram'] } } },
+      { $match: { status: 'Admitted', admissionType: { $in: ['SNS', 'SVS', 'Shri Ram'] }, isDisabled: { $ne: true } } },
       { $group: { _id: { track: '$track', admissionType: '$admissionType', subject: '$subject' }, count: { $sum: 1 } } },
     ]);
     // { track -> { admissionType -> { subject -> count } } }

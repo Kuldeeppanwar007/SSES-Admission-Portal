@@ -200,6 +200,30 @@ const getTimeline = async (req, res) => {
   res.json({ points, totalDistance: Math.round(totalDistance), totalStops });
 };
 
+// POST /api/attendance/mark-manual  (admin only)
+const markAttendanceManual = async (req, res) => {
+  try {
+    const { userId, date } = req.body;
+    if (!userId || !date) return res.status(400).json({ message: 'userId and date required' });
+
+    const user = await User.findById(userId).select('name');
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    const existing = await Attendance.findOne({ user: userId, date });
+    if (existing) return res.status(400).json({ message: 'Attendance already marked for this date' });
+
+    const record = await Attendance.create({
+      user: userId, date,
+      time: '00:00:00',
+      latitude: 0, longitude: 0,
+      locationSource: 'Manual',
+    });
+    res.status(201).json(record);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
 // POST /api/attendance/mark
 const markAttendance = async (req, res) => {
   try {
@@ -461,4 +485,4 @@ const getLiveLocations = async (req, res) => {
   } catch (err) { res.status(500).json({ message: err.message }); }
 };
 
-module.exports = { markAttendance, getMyAttendance, getAllAttendance, getMonthlyStats, saveLocation, getLocationLogs, getDayView, getTimeline, geocodePoints, getLiveLocations, getAbsentUsers, downloadAttendance };
+module.exports = { markAttendance, markAttendanceManual, getMyAttendance, getAllAttendance, getMonthlyStats, saveLocation, getLocationLogs, getDayView, getTimeline, geocodePoints, getLiveLocations, getAbsentUsers, downloadAttendance };

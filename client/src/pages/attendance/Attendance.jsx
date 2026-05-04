@@ -55,6 +55,7 @@ export default function Attendance() {
   const [leavingUserId, setLeavingUserId] = useState(null); // loading state for leave button
   const [leaveConfirm, setLeaveConfirm] = useState(null);   // { userId, name }
   const [leaveReason, setLeaveReason] = useState('');
+  const [attendanceConfirm, setAttendanceConfirm] = useState(null); // { userId, name }
 
   // Monthly tab
   const [monthlyStats, setMonthlyStats] = useState([]);
@@ -84,6 +85,21 @@ export default function Attendance() {
   const [autoRefresh, setAutoRefresh] = useState(false);
   const [tlData, setTlData] = useState(null);
   const [loadingTl, setLoadingTl] = useState(false);
+
+  const [manualMarkLoading, setManualMarkLoading] = useState(null);
+
+  const markManualAttendance = (userId, name) => {
+    setAttendanceConfirm({ userId, name });
+  };
+
+  const confirmMarkAttendance = () => {
+    if (!attendanceConfirm) return;
+    setManualMarkLoading(attendanceConfirm.userId);
+    api.post('/attendance/mark-manual', { userId: attendanceConfirm.userId, date: absentDate })
+      .then(() => { toast.success(`${attendanceConfirm.name} ki attendance mark ho gayi`); fetchAbsent(); fetchRecords(); setAttendanceConfirm(null); })
+      .catch(err => toast.error(err.response?.data?.message || 'Failed'))
+      .finally(() => setManualMarkLoading(null));
+  };
 
   const fetchRecords = useCallback(() => {
     setLoadingRec(true);
@@ -569,19 +585,24 @@ export default function Attendance() {
                             <p className="text-xs text-amber-600 mt-0.5">📝 {u.leaveReason}</p>
                           )}
                         </div>
-                        <div className="flex flex-col items-end gap-1.5 shrink-0">
+                        <div className="flex flex-col gap-1.5 shrink-0 min-w-[120px]">
                           {u.onLeave ? (
-                            <span className="text-xs font-semibold text-amber-600 bg-amber-50 px-2 py-1 rounded-full border border-amber-200">🏥 On Leave</span>
+                            <span className="text-xs font-semibold text-amber-600 bg-amber-50 px-3 py-2 rounded-xl border border-amber-200 text-center">🏥 On Leave</span>
                           ) : (
-                            <>
-                              <span className="text-xs font-semibold text-rose-500 bg-rose-50 px-2 py-1 rounded-full">Absent</span>
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => markManualAttendance(u.userId, u.name)}
+                                disabled={manualMarkLoading === u.userId}
+                                className="flex items-center justify-center gap-1 text-xs font-semibold px-3 py-2 rounded-xl bg-primary text-white hover:bg-primary-dark disabled:opacity-50 transition-colors">
+                                {manualMarkLoading === u.userId ? '...' : '✓ Present'}
+                              </button>
                               <button
                                 onClick={() => markLeave(u.userId, u.name, absentDate)}
                                 disabled={leavingUserId === u.userId}
-                                className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 disabled:opacity-50">
-                                {leavingUserId === u.userId ? '...' : '🏥 Mark Leave'}
+                                className="flex items-center justify-center gap-1 text-xs font-semibold px-3 py-2 rounded-xl bg-primary text-white hover:bg-primary-dark disabled:opacity-50 transition-colors">
+                                {leavingUserId === u.userId ? '...' : '🏥 Leave'}
                               </button>
-                            </>
+                            </div>
                           )}
                         </div>
                       </div>
@@ -1107,6 +1128,32 @@ export default function Attendance() {
               <button onClick={confirmMarkLeave} disabled={leavingUserId === leaveConfirm.userId}
                 className="py-2.5 bg-primary text-white text-sm font-semibold rounded-xl hover:opacity-90 disabled:opacity-60">
                 {leavingUserId === leaveConfirm.userId ? 'Saving...' : 'Confirm'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── ATTENDANCE CONFIRM MODAL ── */}
+      {attendanceConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4" onClick={() => setAttendanceConfirm(null)}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-xl shrink-0">✓</div>
+              <div>
+                <p className="font-bold text-gray-800">Mark Attendance</p>
+                <p className="text-sm text-gray-500">{attendanceConfirm.name} — {absentDate}</p>
+              </div>
+            </div>
+            <p className="text-sm text-gray-500 mb-5">Kya aap <span className="font-semibold text-gray-800">{attendanceConfirm.name}</span> ki attendance manually mark karna chahte hain?</p>
+            <div className="grid grid-cols-2 gap-3">
+              <button onClick={() => setAttendanceConfirm(null)}
+                className="py-2.5 border border-gray-200 text-gray-600 text-sm font-semibold rounded-xl hover:bg-gray-50">
+                Cancel
+              </button>
+              <button onClick={confirmMarkAttendance} disabled={manualMarkLoading === attendanceConfirm.userId}
+                className="py-2.5 bg-primary text-white text-sm font-semibold rounded-xl hover:bg-primary-dark disabled:opacity-60">
+                {manualMarkLoading === attendanceConfirm.userId ? 'Saving...' : 'Mark Present'}
               </button>
             </div>
           </div>
