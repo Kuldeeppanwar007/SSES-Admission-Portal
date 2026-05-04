@@ -1,6 +1,7 @@
 const Attendance = require('../models/Attendance');
 const User = require('../models/User');
 const LocationLog = require('../models/LocationLog');
+const Leave = require('../models/Leave');
 
 // IST helpers
 const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
@@ -212,6 +213,11 @@ const markAttendance = async (req, res) => {
   const date  = getISTDateString();
   const time  = getISTTimeString();
 
+  // Leave check — aaj leave par hai toh attendance block karo
+  const onLeave = await Leave.findOne({ user: req.user._id, date });
+  if (onLeave)
+    return res.status(400).json({ message: 'Attendance blocked: Aaj aapki leave mark hai. Admin se contact karein.' });
+
   const existing = await Attendance.findOne({ user: req.user._id, date });
   if (existing)
     return res.status(400).json({ message: 'Attendance already marked for today' });
@@ -262,10 +268,10 @@ const getMyAttendance = async (req, res) => {
   }
 };
 
-// GET /api/attendance/all?from=YYYY-MM-DD&to=YYYY-MM-DD&track=xxx
+// GET /api/attendance/all?from=YYYY-MM-DD&to=YYYY-MM-DD&track=xxx&role=xxx
 const getAllAttendance = async (req, res) => {
   try {
-    const { from, to, track } = req.query;
+    const { from, to, track, role } = req.query;
     const query = {};
     if (from || to) {
       query.date = {};
@@ -273,8 +279,11 @@ const getAllAttendance = async (req, res) => {
       if (to)   query.date.$lte = to;
     }
     let records = await Attendance.find(query)
-      .populate('user', 'name track')
+      .populate('user', 'name track role')
       .sort({ date: -1, time: -1 });
+    // Role filter — default: track_incharge + manager + interviewer
+    const allowedRoles = role ? [role] : ['track_incharge', 'manager', 'interviewer'];
+    records = records.filter(r => r.user && allowedRoles.includes(r.user.role));
     if (track) records = records.filter(r => r.user?.track === track);
     res.json(records);
   } catch (err) {
@@ -282,10 +291,92 @@ const getAllAttendance = async (req, res) => {
   }
 };
 
-// GET /api/attendance/monthly-stats?month=YYYY-MM&track=xxx
-// Returns per-user attendance count vs working days in that month
+// GET /api/attendance/absent?date=YYYY-MM-DD&track=xxx&role=xxx
+const getAbsentUsers = async (req, res) => {
+  try {
+    const date = req.query.date || getISTDateString();
+    const { track, role } = req.query;
+    const allowedRoles = role ? [role] : ['track_incharge', 'manager', 'interviewer'];
+
+    const userQuery = { role: { $in: allowedRoles }, isActive: true };
+    if (track) userQuery.track = track;
+    const allUsers = await User.find(userQuery).select('name track role');
+
+    const presentRecords = await Attendance.find({ date }).select('user');
+    const presentIds = new Set(presentRecords.map(r => r.user.toString()));
+
+    // Leave wale flag karo (exclude nahi, sirf mark karo)
+    const leaveRecords = await Leave.find({ date }).select('user reason');
+    const leaveMap = new Map(leaveRecords.map(l => [l.user.toString(), l.reason || '']));
+
+    const absent = allUsers.filter(u => !presentIds.has(u._id.toString()));
+    res.json(absent.map(u => ({
+      userId: u._id, name: u.name, track: u.track, role: u.role,
+      onLeave: leaveMap.has(u._id.toString()),
+      leaveReason: leaveMap.get(u._id.toString()) || '',
+    })));
+  } catch (err) { res.status(500).json({ message: err.message }); }
+};
+
+// GET /api/attendance/download?type=present|absent&from=&to=&date=&track=&role=
+const downloadAttendance = async (req, res) => {
+  try {
+    const xlsx = require('xlsx');
+    const { type, from, to, date, track, role } = req.query;
+    const allowedRoles = role ? [role] : ['track_incharge', 'manager', 'interviewer'];
+    const roleLabel = { track_incharge: 'Track Incharge', manager: 'Manager', interviewer: 'Interviewer' };
+
+    let rows = [];
+
+    if (type === 'absent') {
+      const targetDate = date || getISTDateString();
+      const userQuery = { role: { $in: allowedRoles }, isActive: true };
+      if (track) userQuery.track = track;
+      const allUsers = await User.find(userQuery).select('name track role');
+      const presentRecords = await Attendance.find({ date: targetDate }).select('user');
+      const presentIds = new Set(presentRecords.map(r => r.user.toString()));
+      const absent = allUsers.filter(u => !presentIds.has(u._id.toString()));
+      rows = absent.map((u, i) => ({
+        'S.N.': i + 1,
+        'Name': u.name,
+        'Track': u.track || '—',
+        'Role': roleLabel[u.role] || u.role,
+        'Date': targetDate,
+        'Status': 'Absent',
+      }));
+    } else {
+      const query = {};
+      if (from || to) { query.date = {}; if (from) query.date.$gte = from; if (to) query.date.$lte = to; }
+      let records = await Attendance.find(query).populate('user', 'name track role').sort({ date: -1, time: -1 });
+      records = records.filter(r => r.user && allowedRoles.includes(r.user.role));
+      if (track) records = records.filter(r => r.user?.track === track);
+      rows = records.map((r, i) => ({
+        'S.N.': i + 1,
+        'Name': r.user?.name || '—',
+        'Track': r.user?.track || '—',
+        'Role': roleLabel[r.user?.role] || r.user?.role || '—',
+        'Date': r.date,
+        'Time': r.time,
+        'Location Source': r.locationSource || '—',
+        'Status': 'Present',
+      }));
+    }
+
+    if (rows.length === 0) rows = [{ 'Message': 'No data found' }];
+    const wb = xlsx.utils.book_new();
+    const ws = xlsx.utils.json_to_sheet(rows);
+    xlsx.utils.book_append_sheet(wb, ws, 'Attendance');
+    const buf = xlsx.write(wb, { type: 'buffer', bookType: 'xlsx' });
+    const filename = `attendance_${type || 'present'}_${date || from || 'all'}.xlsx`;
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.send(buf);
+  } catch (err) { res.status(500).json({ message: err.message }); }
+};
+
+// GET /api/attendance/monthly-stats?month=YYYY-MM&track=xxx&role=xxx
 const getMonthlyStats = async (req, res) => {
-  const { month, track } = req.query; // month = "2025-06"
+  const { month, track, role } = req.query;
   if (!month) return res.status(400).json({ message: 'month required (YYYY-MM)' });
 
   const [year, mon] = month.split('-').map(Number);
@@ -293,19 +384,19 @@ const getMonthlyStats = async (req, res) => {
   const from = `${month}-01`;
   const to   = `${month}-${String(daysInMonth).padStart(2, '0')}`;
 
-  // Get all track_incharge users
-  const userQuery = { role: 'track_incharge', isActive: true };
+  // track_incharge + manager + interviewer — ya specific role
+  const allowedRoles = role ? [role] : ['track_incharge', 'manager', 'interviewer'];
+  const userQuery = { role: { $in: allowedRoles }, isActive: true };
   if (track) userQuery.track = track;
-  const users = await User.find(userQuery).select('name track');
+  const users = await User.find(userQuery).select('name track role');
 
-  // Get attendance records for the month
   const records = await Attendance.find({ date: { $gte: from, $lte: to } })
-    .populate('user', 'name track');
+    .populate('user', 'name track role');
 
   const stats = users.map(u => {
     const present = records.filter(r => r.user?._id?.toString() === u._id.toString()).length;
     const pct = Math.round((present / daysInMonth) * 100);
-    return { userId: u._id, name: u.name, track: u.track, present, total: daysInMonth, pct };
+    return { userId: u._id, name: u.name, track: u.track, role: u.role, present, total: daysInMonth, pct };
   });
 
   res.json(stats);
@@ -354,7 +445,7 @@ const getLiveLocations = async (req, res) => {
   try {
     const todayStr = getISTDateString();
     const { start, end } = getISTDayRange(todayStr);
-    const users = await User.find({ role: 'track_incharge', isActive: true }).select('name track');
+    const users = await User.find({ role: { $in: ['track_incharge', 'manager', 'interviewer'] }, isActive: true }).select('name track');
     const results = await Promise.all(users.map(async (u) => {
       const latest = await LocationLog.findOne({
         user: u._id, status: 'ok', lat: { $ne: null },
@@ -370,4 +461,4 @@ const getLiveLocations = async (req, res) => {
   } catch (err) { res.status(500).json({ message: err.message }); }
 };
 
-module.exports = { markAttendance, getMyAttendance, getAllAttendance, getMonthlyStats, saveLocation, getLocationLogs, getDayView, getTimeline, geocodePoints, getLiveLocations };
+module.exports = { markAttendance, getMyAttendance, getAllAttendance, getMonthlyStats, saveLocation, getLocationLogs, getDayView, getTimeline, geocodePoints, getLiveLocations, getAbsentUsers, downloadAttendance };

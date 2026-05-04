@@ -113,6 +113,7 @@ app.use('/api/notifications', require('./routes/notificationRoutes'));
 app.use('/api/edit-requests', require('./routes/editRequestRoutes'));
 app.use('/api/track-config', require('./routes/trackConfigRoutes'));
 app.use('/api/analytics',    require('./routes/analyticsRoutes'));
+app.use('/api/leaves',       require('./routes/leaveRoutes'));
 
 app.get('/', (req, res) => res.send('SSES Admission Portal API Running'));
 

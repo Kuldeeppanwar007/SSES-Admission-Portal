@@ -1,6 +1,7 @@
 const User         = require('../models/User');
 const LocationLog  = require('../models/LocationLog');
 const Notification = require('../models/Notification');
+const Leave        = require('../models/Leave');
 
 const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
 
@@ -27,7 +28,7 @@ const getDailyDistance = async (req, res) => {
     const date = req.query.date || getISTDateString();
     const { start, end } = getISTDayRange(date);
 
-    const userQuery = { role: 'track_incharge', isActive: true };
+    const userQuery = { role: { $in: ['track_incharge', 'manager', 'interviewer'] }, isActive: true };
     if (req.query.track) userQuery.track = req.query.track;
     const users = await User.find(userQuery).select('name track');
 
@@ -62,7 +63,7 @@ const getDailyDistance = async (req, res) => {
 // Last 7 din ka daily distance — chart ke liye
 const getWeeklyDistance = async (req, res) => {
   try {
-    const userQuery = { role: 'track_incharge', isActive: true };
+    const userQuery = { role: { $in: ['track_incharge', 'manager', 'interviewer'] }, isActive: true };
     if (req.query.track) userQuery.track = req.query.track;
     const users = await User.find(userQuery).select('name track');
 
@@ -109,10 +110,16 @@ const getInactiveNow = async (req, res) => {
     const { start } = getISTDayRange(todayStr);
     const threeHoursAgo = new Date(Date.now() - 3 * 60 * 60 * 1000);
 
-    const users = await User.find({ role: 'track_incharge', isActive: true }).select('name track');
+    // Aaj leave par hain unhe skip karo
+    const leaveToday = await Leave.find({ date: todayStr }).select('user');
+    const leaveIds = new Set(leaveToday.map(l => l.user.toString()));
+
+    const users = await User.find({ role: { $in: ['track_incharge', 'manager', 'interviewer'] }, isActive: true }).select('name track');
 
     const inactive = [];
     for (const u of users) {
+      if (leaveIds.has(u._id.toString())) continue; // leave par hai — skip
+
       const latest = await LocationLog.findOne({
         user: u._id, status: 'ok', lat: { $ne: null },
         timestamp: { $gte: start },
@@ -145,10 +152,16 @@ const runInactiveCheck = async () => {
     const { start } = getISTDayRange(todayStr);
     const threeHoursAgo = new Date(Date.now() - 3 * 60 * 60 * 1000);
 
-    const users = await User.find({ role: 'track_incharge', isActive: true }).select('name track');
+    // Leave wale skip karo
+    const leaveToday = await Leave.find({ date: todayStr }).select('user');
+    const leaveIds = new Set(leaveToday.map(l => l.user.toString()));
+
+    const users = await User.find({ role: { $in: ['track_incharge', 'manager', 'interviewer'] }, isActive: true }).select('name track');
     const inactiveNames = [];
 
     for (const u of users) {
+      if (leaveIds.has(u._id.toString())) continue;
+
       const latest = await LocationLog.findOne({
         user: u._id, status: 'ok', lat: { $ne: null },
         timestamp: { $gte: start },

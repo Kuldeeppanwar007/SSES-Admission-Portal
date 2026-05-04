@@ -43,12 +43,25 @@ export default function Attendance() {
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
   const [filterTrack, setFilterTrack] = useState('');
+  const [filterRole, setFilterRole] = useState('');
+  const [absentDate, setAbsentDate] = useState(today);
+  const [absentTrack, setAbsentTrack] = useState('');
+  const [absentRole, setAbsentRole] = useState('');
+  const [absentUsers, setAbsentUsers] = useState([]);
+  const [loadingAbsent, setLoadingAbsent] = useState(false);
+  const [recordsView, setRecordsView] = useState('present'); // 'present' | 'absent'
+  const [showPresentFilters, setShowPresentFilters] = useState(false);
+  const [showAbsentFilters, setShowAbsentFilters] = useState(false);
+  const [leavingUserId, setLeavingUserId] = useState(null); // loading state for leave button
+  const [leaveConfirm, setLeaveConfirm] = useState(null);   // { userId, name }
+  const [leaveReason, setLeaveReason] = useState('');
 
   // Monthly tab
   const [monthlyStats, setMonthlyStats] = useState([]);
   const [loadingMonth, setLoadingMonth] = useState(false);
   const [month, setMonth] = useState(thisMonth);
   const [monthTrack, setMonthTrack] = useState('');
+  const [monthRole, setMonthRole] = useState('');
 
   // Campus Map tab
   const [liveLocations, setLiveLocations] = useState([]);
@@ -78,25 +91,87 @@ export default function Attendance() {
     if (from) params.append('from', from);
     if (to)   params.append('to', to);
     if (filterTrack) params.append('track', filterTrack);
+    if (filterRole)  params.append('role', filterRole);
     api.get(`/attendance/all?${params}`)
       .then(r => setRecords(r.data))
       .catch(() => toast.error('Failed to load attendance'))
       .finally(() => setLoadingRec(false));
-  }, [from, to, filterTrack]);
+  }, [from, to, filterTrack, filterRole]);
+
+  const fetchAbsent = useCallback(() => {
+    setLoadingAbsent(true);
+    const params = new URLSearchParams({ date: absentDate });
+    if (absentTrack) params.append('track', absentTrack);
+    if (absentRole)  params.append('role', absentRole);
+    api.get(`/attendance/absent?${params}`)
+      .then(r => setAbsentUsers(r.data))
+      .catch(() => toast.error('Failed to load absent list'))
+      .finally(() => setLoadingAbsent(false));
+  }, [absentDate, absentTrack, absentRole]);
+
+  const downloadAttendance = (type) => {
+    const params = new URLSearchParams({ type });
+    if (type === 'absent') {
+      params.append('date', absentDate);
+      if (absentTrack) params.append('track', absentTrack);
+      if (absentRole)  params.append('role', absentRole);
+    } else {
+      if (from) params.append('from', from);
+      if (to)   params.append('to', to);
+      if (filterTrack) params.append('track', filterTrack);
+      if (filterRole)  params.append('role', filterRole);
+    }
+    api.get(`/attendance/download?${params}`, { responseType: 'blob' })
+      .then(res => {
+        const url = window.URL.createObjectURL(new Blob([res.data]));
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `attendance_${type}_${type === 'absent' ? absentDate : (from || today)}.xlsx`;
+        a.click();
+        window.URL.revokeObjectURL(url);
+      })
+      .catch(() => toast.error('Download failed'));
+  };
+
+  const markLeave = (userId, name, date) => {
+    setLeaveConfirm({ userId, name, date });
+    setLeaveReason('');
+  };
+
+  const confirmMarkLeave = () => {
+    if (!leaveConfirm) return;
+    setLeavingUserId(leaveConfirm.userId);
+    api.post('/leaves', { userId: leaveConfirm.userId, date: leaveConfirm.date, reason: leaveReason })
+      .then(res => {
+        const msg = res.data.attendanceRemoved
+          ? `${leaveConfirm.name} ko Leave mark kiya — attendance bhi remove ho gayi`
+          : `${leaveConfirm.name} ko Leave mark kiya`;
+        toast.success(msg);
+        fetchAbsent();
+        fetchRecords();
+        setLeaveConfirm(null);
+      })
+      .catch(() => toast.error('Leave mark failed'))
+      .finally(() => setLeavingUserId(null));
+  };
 
   const fetchMonthly = useCallback(() => {
     setLoadingMonth(true);
     const params = new URLSearchParams({ month });
     if (monthTrack) params.append('track', monthTrack);
+    if (monthRole)  params.append('role', monthRole);
     api.get(`/attendance/monthly-stats?${params}`)
       .then(r => setMonthlyStats(r.data))
       .catch(() => toast.error('Failed to load monthly stats'))
       .finally(() => setLoadingMonth(false));
-  }, [month, monthTrack]);
+  }, [month, monthTrack, monthRole]);
 
   const fetchTrackUsers = useCallback(() => {
-    api.get('/users?role=track_incharge')
-      .then(r => { setTrackUsers(r.data?.users || r.data || []); })
+    api.get('/users')
+      .then(r => {
+        const all = r.data?.users || r.data || [];
+        setTrackUsers(all.filter(u => ['track_incharge', 'manager', 'interviewer'].includes(u.role)));
+      })
       .catch(() => {});
   }, []);
 
@@ -213,8 +288,9 @@ export default function Attendance() {
 
   useEffect(() => { if (tab === 'analytics') fetchAnalytics(); }, [tab, analyticsDate, analyticsTrack]); // eslint-disable-line
 
-  useEffect(() => { if (tab === 'records') fetchRecords(); }, [tab, from, to, filterTrack]);
-  useEffect(() => { if (tab === 'monthly') fetchMonthly(); }, [tab, month, monthTrack]);
+  useEffect(() => { if (tab === 'records') fetchRecords(); }, [tab, from, to, filterTrack, filterRole]); // eslint-disable-line
+  useEffect(() => { if (tab === 'records' && recordsView === 'absent') fetchAbsent(); }, [tab, recordsView, absentDate, absentTrack, absentRole]); // eslint-disable-line
+  useEffect(() => { if (tab === 'monthly') fetchMonthly(); }, [tab, month, monthTrack, monthRole]);
   useEffect(() => {
     if (tab === 'tracking') {
       fetchTrackUsers();
@@ -271,79 +347,250 @@ export default function Attendance() {
       {/* ── RECORDS TAB ── */}
       {tab === 'records' && (
         <>
-          <div className="flex flex-wrap gap-3 items-end">
-            <div className="flex flex-col gap-1">
-              <label className="text-xs text-gray-500 font-medium">From</label>
-              <DatePicker value={from} onChange={setFrom} max={to || today} />
-            </div>
-            <div className="flex flex-col gap-1">
-              <label className="text-xs text-gray-500 font-medium">To</label>
-              <DatePicker value={to} onChange={setTo} min={from} max={today} />
-            </div>
-            <div className="flex flex-col gap-1">
-              <label className="text-xs text-gray-500 font-medium">Track</label>
-              <select value={filterTrack} onChange={e => setFilterTrack(e.target.value)}
-                className="text-sm border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary/30">
-                <option value="">All Tracks</option>
-                {allTracks.map(t => <option key={t} value={t}>{t}</option>)}
-              </select>
-            </div>
-            <button onClick={fetchRecords}
-              className="px-4 py-1.5 bg-primary text-white text-sm font-semibold rounded-lg hover:opacity-90 transition-opacity">
-              Apply
-            </button>
-            <button onClick={() => { setFrom(''); setTo(''); setFilterTrack(''); }}
-              className="px-4 py-1.5 border border-gray-200 text-gray-600 text-sm font-semibold rounded-lg hover:bg-gray-50 transition-colors">
-              Clear
-            </button>
+          {/* Present / Absent toggle */}
+          <div className="grid grid-cols-2 border border-gray-200 rounded-xl overflow-hidden mb-4">
+            <button onClick={() => setRecordsView('present')}
+              className={`py-2.5 text-sm font-semibold transition-colors ${
+                recordsView === 'present' ? 'bg-primary text-white' : 'bg-white text-gray-500'
+              }`}>Present ({records.length})</button>
+            <button onClick={() => { setRecordsView('absent'); fetchAbsent(); }}
+              className={`py-2.5 text-sm font-semibold transition-colors border-l border-gray-200 ${
+                recordsView === 'absent' ? 'bg-primary text-white' : 'bg-white text-gray-500'
+              }`}>Absent ({absentUsers.length})</button>
           </div>
 
-          {!loadingRec && (
-            <p className="text-xs text-gray-400">{records.length} record{records.length !== 1 ? 's' : ''} found</p>
-          )}
-
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-            {loadingRec ? (
-              <div className="flex justify-center items-center h-40">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-              </div>
-            ) : records.length === 0 ? (
-              <p className="text-center text-gray-400 py-12 text-sm">No attendance records found.</p>
-            ) : (
-              <div className="divide-y divide-gray-50">
-                {records.map(r => (
-                  <div key={r._id} className="px-4 py-3 hover:bg-gray-50/60 transition-colors">
-                    <div className="flex items-center justify-between mb-1">
-                      <div>
-                        <p className="font-semibold text-gray-800 text-sm">{r.user?.name}</p>
-                        <p className="text-xs text-gray-400">{r.user?.track}</p>
+          {/* ── PRESENT VIEW ── */}
+          {recordsView === 'present' && (
+            <>
+              {/* Filters */}
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                <button onClick={() => setShowPresentFilters(p => !p)}
+                  className="w-full flex items-center justify-between px-4 py-3 text-sm font-semibold text-gray-700">
+                  <span className="flex items-center gap-2"><FiFilter size={14} className="text-primary" /> Filters</span>
+                  <span className={`text-gray-400 transition-transform duration-200 ${showPresentFilters ? 'rotate-180' : ''}`}>▼</span>
+                </button>
+                {showPresentFilters && (
+                  <div className="px-4 pb-4 space-y-3 border-t border-gray-100">
+                    <div className="grid grid-cols-2 gap-2 pt-3">
+                      <div className="flex flex-col gap-1">
+                        <label className="text-xs text-gray-500 font-medium">From</label>
+                        <DatePicker value={from} onChange={setFrom} max={to || today} />
                       </div>
-                      {r.locationSource && (
-                        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
-                          r.locationSource === 'GPS' ? 'bg-emerald-50 text-emerald-700' :
-                          r.locationSource === 'Google' ? 'bg-blue-50 text-blue-700' :
-                          'bg-gray-100 text-gray-500'
-                        }`}>{r.locationSource}</span>
-                      )}
+                      <div className="flex flex-col gap-1">
+                        <label className="text-xs text-gray-500 font-medium">To</label>
+                        <DatePicker value={to} onChange={setTo} min={from} max={today} />
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <label className="text-xs text-gray-500 font-medium">Track</label>
+                        <select value={filterTrack} onChange={e => setFilterTrack(e.target.value)}
+                          className="text-sm border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary/30 w-full">
+                          <option value="">All Tracks</option>
+                          {allTracks.map(t => <option key={t} value={t}>{t}</option>)}
+                        </select>
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <label className="text-xs text-gray-500 font-medium">Role</label>
+                        <select value={filterRole} onChange={e => setFilterRole(e.target.value)}
+                          className="text-sm border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary/30 w-full">
+                          <option value="">All Roles</option>
+                          <option value="track_incharge">Track Incharge</option>
+                          <option value="manager">Manager</option>
+                          <option value="interviewer">Interviewer</option>
+                        </select>
+                      </div>
                     </div>
-                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500 mt-1">
-                      <span className="flex items-center gap-1">
-                        <FiCalendar size={11} className="text-primary" /> {r.date}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <FiClock size={11} className="text-primary" /> {r.time}
-                      </span>
-                      <a href={`https://maps.google.com/?q=${r.latitude},${r.longitude}`}
-                        target="_blank" rel="noreferrer"
-                        className="flex items-center gap-1 text-emerald-600 font-semibold hover:underline">
-                        <FiMapPin size={11} /> View Location
-                      </a>
+                    <div className="grid grid-cols-3 gap-2">
+                      <button onClick={() => { fetchRecords(); setShowPresentFilters(false); }}
+                        className="py-2 bg-primary text-white text-sm font-semibold rounded-lg hover:opacity-90">
+                        Apply
+                      </button>
+                      <button onClick={() => { setFrom(''); setTo(''); setFilterTrack(''); setFilterRole(''); }}
+                        className="py-2 border border-gray-200 text-gray-600 text-sm font-semibold rounded-lg hover:bg-gray-50">
+                        Clear
+                      </button>
+                      <button onClick={() => downloadAttendance('present')}
+                        className="py-2 bg-primary text-white text-sm font-semibold rounded-lg hover:opacity-90 flex items-center justify-center gap-1">
+                        Download
+                      </button>
                     </div>
                   </div>
-                ))}
+                )}
               </div>
-            )}
-          </div>
+
+              {!loadingRec && (
+                <p className="text-xs text-gray-400">{records.length} record{records.length !== 1 ? 's' : ''} found</p>
+              )}
+
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                {loadingRec ? (
+                  <div className="flex justify-center items-center h-40">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+                  </div>
+                ) : records.length === 0 ? (
+                  <p className="text-center text-gray-400 py-12 text-sm">No attendance records found.</p>
+                ) : (
+                  <div className="divide-y divide-gray-50">
+                    {records.map(r => (
+                      <div key={r._id} className="px-4 py-3 hover:bg-gray-50/60 transition-colors">
+                        <div className="flex items-center justify-between mb-1">
+                          <div>
+                            <p className="font-semibold text-gray-800 text-sm">{r.user?.name}</p>
+                            <p className="text-xs text-gray-400">
+                              {r.user?.track || '—'}
+                              <span className={`ml-2 px-1.5 py-0.5 rounded-full text-[10px] font-semibold ${
+                                r.user?.role === 'manager' ? 'bg-green-100 text-green-700' :
+                                r.user?.role === 'interviewer' ? 'bg-purple-100 text-purple-700' :
+                                'bg-blue-100 text-blue-700'
+                              }`}>
+                                {r.user?.role === 'track_incharge' ? 'Track Incharge' : r.user?.role === 'manager' ? 'Manager' : 'Interviewer'}
+                              </span>
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            {r.locationSource && (
+                              <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                                r.locationSource === 'GPS' ? 'bg-emerald-50 text-emerald-700' :
+                                r.locationSource === 'Google' ? 'bg-blue-50 text-blue-700' :
+                                'bg-gray-100 text-gray-500'
+                              }`}>{r.locationSource}</span>
+                            )}
+                            <button
+                              onClick={() => markLeave(r.user?._id, r.user?.name, r.date)}
+                              disabled={leavingUserId === r.user?._id}
+                              className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 disabled:opacity-50">
+                              {leavingUserId === r.user?._id ? '...' : '🏥 Leave'}
+                            </button>
+                          </div>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500 mt-1">
+                          <span className="flex items-center gap-1">
+                            <FiCalendar size={11} className="text-primary" /> {r.date}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <FiClock size={11} className="text-primary" /> {r.time}
+                          </span>
+                          <a href={`https://maps.google.com/?q=${r.latitude},${r.longitude}`}
+                            target="_blank" rel="noreferrer"
+                            className="flex items-center gap-1 text-emerald-600 font-semibold hover:underline">
+                            <FiMapPin size={11} /> View Location
+                          </a>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+
+          {/* ── ABSENT VIEW ── */}
+          {recordsView === 'absent' && (
+            <>
+              {/* Filters */}
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                <button onClick={() => setShowAbsentFilters(p => !p)}
+                  className="w-full flex items-center justify-between px-4 py-3 text-sm font-semibold text-gray-700">
+                  <span className="flex items-center gap-2"><FiFilter size={14} className="text-primary" /> Filters</span>
+                  <span className={`text-gray-400 transition-transform duration-200 ${showAbsentFilters ? 'rotate-180' : ''}`}>▼</span>
+                </button>
+                {showAbsentFilters && (
+                  <div className="px-4 pb-4 space-y-3 border-t border-gray-100">
+                    <div className="grid grid-cols-2 gap-2 pt-3">
+                      <div className="flex flex-col gap-1">
+                        <label className="text-xs text-gray-500 font-medium">Date</label>
+                        <DatePicker value={absentDate} onChange={setAbsentDate} max={today} />
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <label className="text-xs text-gray-500 font-medium">Role</label>
+                        <select value={absentRole} onChange={e => setAbsentRole(e.target.value)}
+                          className="text-sm border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary/30 w-full">
+                          <option value="">All Roles</option>
+                          <option value="track_incharge">Track Incharge</option>
+                          <option value="manager">Manager</option>
+                          <option value="interviewer">Interviewer</option>
+                        </select>
+                      </div>
+                      <div className="col-span-2 flex flex-col gap-1">
+                        <label className="text-xs text-gray-500 font-medium">Track</label>
+                        <select value={absentTrack} onChange={e => setAbsentTrack(e.target.value)}
+                          className="text-sm border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary/30 w-full">
+                          <option value="">All Tracks</option>
+                          {allTracks.map(t => <option key={t} value={t}>{t}</option>)}
+                        </select>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button onClick={() => { fetchAbsent(); setShowAbsentFilters(false); }}
+                        className="py-2 bg-primary text-white text-sm font-semibold rounded-lg hover:opacity-90">
+                        Apply
+                      </button>
+                      <button onClick={() => downloadAttendance('absent')}
+                        className="py-2 bg-primary text-white text-sm font-semibold rounded-lg hover:opacity-90 flex items-center justify-center gap-1">
+                       Download
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {!loadingAbsent && (
+                <p className="text-xs text-gray-400">{absentUsers.length} absent on {absentDate}</p>
+              )}
+
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                {loadingAbsent ? (
+                  <div className="flex justify-center items-center h-40">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+                  </div>
+                ) : absentUsers.length === 0 ? (
+                  <p className="text-center text-gray-400 py-12 text-sm">Sab present hain! 🎉</p>
+                ) : (
+                  <div className="divide-y divide-gray-50">
+                    {absentUsers.map(u => (
+                      <div key={u.userId} className="px-4 py-3 flex items-center gap-3">
+                        <div className={`w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm shrink-0 ${
+                          u.onLeave ? 'bg-amber-100 text-amber-600' : 'bg-rose-100 text-rose-600'
+                        }`}>
+                          {u.name[0].toUpperCase()}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-gray-800 text-sm">{u.name}</p>
+                          <p className="text-xs text-gray-400">
+                            {u.track || '—'}
+                            <span className={`ml-2 px-1.5 py-0.5 rounded-full text-[10px] font-semibold ${
+                              u.role === 'manager' ? 'bg-green-100 text-green-700' :
+                              u.role === 'interviewer' ? 'bg-purple-100 text-purple-700' :
+                              'bg-blue-100 text-blue-700'
+                            }`}>
+                              {u.role === 'track_incharge' ? 'Track Incharge' : u.role === 'manager' ? 'Manager' : 'Interviewer'}
+                            </span>
+                          </p>
+                          {u.onLeave && u.leaveReason && (
+                            <p className="text-xs text-amber-600 mt-0.5">📝 {u.leaveReason}</p>
+                          )}
+                        </div>
+                        <div className="flex flex-col items-end gap-1.5 shrink-0">
+                          {u.onLeave ? (
+                            <span className="text-xs font-semibold text-amber-600 bg-amber-50 px-2 py-1 rounded-full border border-amber-200">🏥 On Leave</span>
+                          ) : (
+                            <>
+                              <span className="text-xs font-semibold text-rose-500 bg-rose-50 px-2 py-1 rounded-full">Absent</span>
+                              <button
+                                onClick={() => markLeave(u.userId, u.name, absentDate)}
+                                disabled={leavingUserId === u.userId}
+                                className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 disabled:opacity-50">
+                                {leavingUserId === u.userId ? '...' : '🏥 Mark Leave'}
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </>
+          )}
         </>
       )}
 
@@ -363,6 +610,16 @@ export default function Attendance() {
                 className="text-sm border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary/30">
                 <option value="">All Tracks</option>
                 {TRACKS.map(t => <option key={t} value={t}>{t}</option>)}
+              </select>
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-xs text-gray-500 font-medium">Role</label>
+              <select value={monthRole} onChange={e => setMonthRole(e.target.value)}
+                className="text-sm border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary/30">
+                <option value="">All Roles</option>
+                <option value="track_incharge">Track Incharge</option>
+                <option value="manager">Manager</option>
+                <option value="interviewer">Interviewer</option>
               </select>
             </div>
             <button onClick={fetchMonthly}
@@ -391,7 +648,16 @@ export default function Attendance() {
                   <div className="divide-y divide-gray-50">
                     {monthlyStats.sort((a, b) => b.pct - a.pct).map(s => (
                       <div key={s.userId} className="grid grid-cols-5 items-center px-5 py-4 hover:bg-gray-50/60 transition-colors">
-                        <p className="text-sm font-semibold text-gray-800">{s.name}</p>
+                        <div>
+                          <p className="text-sm font-semibold text-gray-800">{s.name}</p>
+                          <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${
+                            s.role === 'manager' ? 'bg-green-100 text-green-700' :
+                            s.role === 'interviewer' ? 'bg-purple-100 text-purple-700' :
+                            'bg-blue-100 text-blue-700'
+                          }`}>
+                            {s.role === 'track_incharge' ? 'Track Incharge' : s.role === 'manager' ? 'Manager' : 'Interviewer'}
+                          </span>
+                        </div>
                         <p className="text-xs text-gray-500">{s.track}</p>
                         <div className="flex flex-col items-center gap-1">
                           <span className="text-sm font-bold text-gray-700 tabular-nums">{s.present} / {s.total}</span>
@@ -421,7 +687,16 @@ export default function Attendance() {
                     <div key={s.userId} className="px-4 py-3 flex items-center justify-between gap-3">
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-semibold text-gray-800 truncate">{s.name}</p>
-                        <p className="text-xs text-gray-400">{s.track} &bull; {s.present}/{s.total} days</p>
+                        <p className="text-xs text-gray-400">
+                          {s.track} &bull; {s.present}/{s.total} days
+                          <span className={`ml-2 px-1.5 py-0.5 rounded-full text-[10px] font-semibold ${
+                            s.role === 'manager' ? 'bg-green-100 text-green-700' :
+                            s.role === 'interviewer' ? 'bg-purple-100 text-purple-700' :
+                            'bg-blue-100 text-blue-700'
+                          }`}>
+                            {s.role === 'track_incharge' ? 'TI' : s.role === 'manager' ? 'Mgr' : 'Int'}
+                          </span>
+                        </p>
                         <div className="w-full bg-gray-100 rounded-full h-1.5 mt-1.5">
                           <div className={`h-1.5 rounded-full ${s.pct >= 75 ? 'bg-emerald-500' : s.pct >= 50 ? 'bg-amber-500' : 'bg-rose-500'}`}
                             style={{ width: `${Math.min(s.pct, 100)}%` }} />
@@ -633,7 +908,7 @@ export default function Attendance() {
                 <div className="bg-rose-50 border border-rose-200 rounded-2xl p-4">
                   <div className="flex items-center gap-2 mb-3">
                     <FiAlertCircle className="text-rose-500" size={18} />
-                    <p className="text-sm font-bold text-rose-700">{inactiveUsers.length} Track Incharge Inactive (3+ hrs)</p>
+                    <p className="text-sm font-bold text-rose-700">{inactiveUsers.length} Users Inactive (3+ hrs)</p>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {inactiveUsers.map(u => (
@@ -751,7 +1026,7 @@ export default function Attendance() {
       {tab === 'campus' && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <p className="text-sm text-gray-500">Aaj ke saare track incharge ki current location — college ke relative</p>
+            <p className="text-sm text-gray-500">Aaj ke saare users ki current location — college ke relative</p>
             <button onClick={fetchLiveLocations}
               className="flex items-center gap-1.5 px-3 py-1.5 bg-primary text-white text-sm font-semibold rounded-lg hover:opacity-90">
               <FiRefreshCw size={13} /> Refresh
@@ -799,6 +1074,42 @@ export default function Attendance() {
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* ── LEAVE CONFIRM MODAL ── */}
+      {leaveConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4" onClick={() => setLeaveConfirm(null)}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center text-xl shrink-0">🏥</div>
+              <div>
+                <p className="font-bold text-gray-800">Mark Leave</p>
+                <p className="text-sm text-gray-500">{leaveConfirm.name} — {leaveConfirm.date}</p>
+              </div>
+            </div>
+            <div className="mb-4">
+              <label className="text-xs text-gray-500 font-medium block mb-1">Reason (optional)</label>
+              <input
+                type="text"
+                value={leaveReason}
+                onChange={e => setLeaveReason(e.target.value)}
+                placeholder="e.g. Sick leave, Personal work..."
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                autoFocus
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <button onClick={() => setLeaveConfirm(null)}
+                className="py-2.5 border border-gray-200 text-gray-600 text-sm font-semibold rounded-xl hover:bg-gray-50">
+                Cancel
+              </button>
+              <button onClick={confirmMarkLeave} disabled={leavingUserId === leaveConfirm.userId}
+                className="py-2.5 bg-primary text-white text-sm font-semibold rounded-xl hover:opacity-90 disabled:opacity-60">
+                {leavingUserId === leaveConfirm.userId ? 'Saving...' : 'Confirm'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

@@ -71,7 +71,11 @@ export default function ActivityLog() {
 
   const fetchUsers = useCallback(() => {
     if (user?.role === 'admin')
-      api.get('/users?role=track_incharge').then(r => setUsers(r.data?.users || r.data || [])).catch(() => {});
+      api.get('/users').then(r => {
+        const all = r.data?.users || r.data || [];
+        // track_incharge + manager + interviewer — admin ko sab dikhao
+        setUsers(all.filter(u => ['track_incharge', 'manager', 'interviewer'].includes(u.role)));
+      }).catch(() => {});
   }, [user]);
 
   const fetchLogs = useCallback(() => {
@@ -91,8 +95,8 @@ export default function ActivityLog() {
   useEffect(() => { fetchUsers(); }, [fetchUsers]);
   useEffect(() => { fetchLogs(); }, [fetchLogs]);
 
-  const roleColors = { admin: 'bg-purple-100 text-purple-700', track_incharge: 'bg-blue-100 text-blue-700', manager: 'bg-green-100 text-green-700' };
-  const roleLabel = { admin: 'Admin', track_incharge: 'Track Incharge', manager: 'Manager' };
+  const roleColors = { admin: 'bg-purple-100 text-purple-700', track_incharge: 'bg-blue-100 text-blue-700', manager: 'bg-green-100 text-green-700', interviewer: 'bg-purple-100 text-purple-700' };
+  const roleLabel  = { admin: 'Admin', track_incharge: 'Track Incharge', manager: 'Manager', interviewer: 'Interviewer' };
 
   return (
     <div className="space-y-5 max-w-5xl mx-auto">
@@ -117,11 +121,11 @@ export default function ActivityLog() {
               className="text-sm border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary/30" />
           </div>
           <div className="flex flex-col gap-1">
-            <label className="text-xs text-gray-500 font-medium">Track Incharge</label>
+            <label className="text-xs text-gray-500 font-medium">User</label>
             <select value={selectedUser} onChange={e => setSelectedUser(e.target.value)}
               className="text-sm border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary/30 min-w-[160px]">
               <option value="">All Users</option>
-              {users.map(u => <option key={u._id} value={u._id}>{u.name} ({u.track})</option>)}
+              {users.map(u => <option key={u._id} value={u._id}>{u.name} ({u.role === 'track_incharge' ? 'TI' : u.role === 'manager' ? 'Mgr' : 'Int'})</option>)}
             </select>
           </div>
           <button onClick={fetchLogs}
