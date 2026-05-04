@@ -832,39 +832,59 @@ export default function Students() {
             )}
           </div>
         </div>
-        {/* Mobile: tabs full width, filters scrollable below */}
+        {/* Mobile: tabs full width grid, filters full width grid below */}
         <div className="md:hidden">
-          <div className="flex gap-1 bg-gray-100 p-1 rounded-xl w-full mb-2">
+          <div className="grid grid-cols-2 mb-2 border border-gray-200 rounded-xl overflow-hidden">
             <button onClick={() => switchTab('active')}
-              className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${!isDisabledTab ? 'bg-white shadow text-gray-800' : 'text-gray-500 hover:text-gray-700'}`}>
-              <FiSearch size={14} /> Active Profiles
+              className={`flex items-center justify-center gap-1.5 py-2.5 text-sm font-semibold transition-colors border-r border-gray-200 ${
+                !isDisabledTab ? 'bg-primary text-white' : 'bg-white text-gray-500'
+              }`}>
+              <FiSearch size={13} /> Active
             </button>
             <button onClick={() => switchTab('disabled')}
-              className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${isDisabledTab ? 'bg-white shadow text-gray-800' : 'text-gray-500 hover:text-gray-700'}`}>
-              <FiSlash size={14} /> Disabled Profiles
+              className={`flex items-center justify-center gap-1.5 py-2.5 text-sm font-semibold transition-colors ${
+                isDisabledTab ? 'bg-primary text-white' : 'bg-white text-gray-500'
+              }`}>
+              <FiSlash size={13} /> Disabled
             </button>
           </div>
-          <div className="flex gap-2 overflow-x-auto pb-1">
-            {user?.role !== 'track_incharge' && (
+          {user?.role !== 'track_incharge' && (
+            <div className="grid grid-cols-3 gap-2 mb-2">
               <select value={filters.track} onChange={(e) => { setFilters({ ...filters, track: e.target.value, town: '' }); setPage(1); }}
-                className="shrink-0 border border-gray-300 rounded-lg px-3 py-1.5 text-sm outline-none bg-white">
+                className="border border-gray-300 rounded-lg px-2 py-2 text-sm outline-none bg-white w-full">
                 <option value="">All Tracks</option>
                 {TRACKS.map((t) => <option key={t}>{t}</option>)}
               </select>
-            )}
-            <select value={filters.town} onChange={(e) => { setFilters({ ...filters, town: e.target.value }); setPage(1); }}
-              className="shrink-0 border border-gray-300 rounded-lg px-3 py-1.5 text-sm outline-none bg-white">
-              <option value="">All Towns</option>
-              {availableTowns.map((town) => <option key={town} value={town}>{town}</option>)}
-            </select>
-            {villages.length > 0 && (
-              <select value={filters.village} onChange={(e) => { setFilters({ ...filters, village: e.target.value }); setPage(1); }}
-                className="shrink-0 border border-gray-300 rounded-lg px-3 py-1.5 text-sm outline-none bg-white">
-                <option value="">All Villages/Cities</option>
-                {villages.map((v) => <option key={v} value={v}>{v}</option>)}
+              <select value={filters.town} onChange={(e) => { setFilters({ ...filters, town: e.target.value }); setPage(1); }}
+                className="border border-gray-300 rounded-lg px-2 py-2 text-sm outline-none bg-white w-full">
+                <option value="">All Towns</option>
+                {availableTowns.map((town) => <option key={town} value={town}>{town}</option>)}
               </select>
-            )}
-          </div>
+              {villages.length > 0 ? (
+                <select value={filters.village} onChange={(e) => { setFilters({ ...filters, village: e.target.value }); setPage(1); }}
+                  className="border border-gray-300 rounded-lg px-2 py-2 text-sm outline-none bg-white w-full">
+                  <option value="">All Villages</option>
+                  {villages.map((v) => <option key={v} value={v}>{v}</option>)}
+                </select>
+              ) : <div />}
+            </div>
+          )}
+          {user?.role === 'track_incharge' && (
+            <div className="grid grid-cols-2 gap-2 mb-2">
+              <select value={filters.town} onChange={(e) => { setFilters({ ...filters, town: e.target.value }); setPage(1); }}
+                className="border border-gray-300 rounded-lg px-2 py-2 text-sm outline-none bg-white w-full">
+                <option value="">All Towns</option>
+                {availableTowns.map((town) => <option key={town} value={town}>{town}</option>)}
+              </select>
+              {villages.length > 0 && (
+                <select value={filters.village} onChange={(e) => { setFilters({ ...filters, village: e.target.value }); setPage(1); }}
+                  className="border border-gray-300 rounded-lg px-2 py-2 text-sm outline-none bg-white w-full">
+                  <option value="">All Villages</option>
+                  {villages.map((v) => <option key={v} value={v}>{v}</option>)}
+                </select>
+              )}
+            </div>
+          )}
         </div>
       </div>
 

@@ -123,15 +123,15 @@ export default function Users() {
         </div>
       )}
 
-      <div className="flex gap-1 mb-4 border-b border-gray-200">
+      <div className="grid grid-cols-5 mb-4 border border-gray-200 rounded-xl overflow-hidden">
         {tabs.map((t) => (
           <button key={t.key} onClick={() => setActiveTab(t.key)}
-            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-              activeTab === t.key ? 'border-primary text-primary' : 'border-transparent text-gray-500 hover:text-gray-700'
+            className={`flex flex-col items-center justify-center py-2 px-1 text-xs font-medium transition-colors border-r last:border-r-0 border-gray-200 ${
+              activeTab === t.key ? 'bg-primary text-white' : 'bg-white text-gray-500 hover:bg-gray-50'
             }`}>
-            {t.label}
-            <span className={`ml-1.5 text-xs px-1.5 py-0.5 rounded-full ${
-              activeTab === t.key ? 'bg-primary text-white' : 'bg-gray-100 text-gray-500'
+            <span className="truncate w-full text-center">{t.label}</span>
+            <span className={`mt-0.5 text-[10px] px-1.5 py-0.5 rounded-full font-semibold ${
+              activeTab === t.key ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500'
             }`}>
               {t.key === 'all' ? users.length : users.filter((u) => u.role === t.key).length}
             </span>
