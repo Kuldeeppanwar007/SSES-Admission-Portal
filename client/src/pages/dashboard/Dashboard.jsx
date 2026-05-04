@@ -276,7 +276,7 @@ function FunnelStageCards({ funnelStageBreakdown, trackFunnelBreakdown, navigate
           <div key={key}
             onClick={() => navigate(
               key === 'No Stage'
-                ? `/students?status=Calling${selectedTrack ? `&track=${encodeURIComponent(selectedTrack)}` : ''}`
+                ? `/students?status=Calling&noFunnelStage=1${selectedTrack ? `&track=${encodeURIComponent(selectedTrack)}` : ''}`
                 : `/students?funnelStage=${encodeURIComponent(key)}${selectedTrack ? `&track=${encodeURIComponent(selectedTrack)}` : ''}`
             )}
             className={`bg-white rounded-2xl border ${border} shadow-sm p-4 flex flex-col gap-3 hover:shadow-md hover:border-orange-200 transition-shadow cursor-pointer`}>

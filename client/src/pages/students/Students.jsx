@@ -284,7 +284,8 @@ export default function Students() {
     const urlInterviewFilter = searchParams.get('interviewFilter');
     const urlFunnelStage = searchParams.get('funnelStage');
     const urlAdmittedNoFunnel = searchParams.get('admittedNoFunnel');
-    const hasUrlOverride = !!(urlTab || urlTrack || urlStatus || urlSubject || urlAdmissionType || urlInterviewFilter || urlFunnelStage || urlAdmittedNoFunnel);
+    const urlNoFunnelStage = searchParams.get('noFunnelStage');
+    const hasUrlOverride = !!(urlTab || urlTrack || urlStatus || urlSubject || urlAdmissionType || urlInterviewFilter || urlFunnelStage || urlAdmittedNoFunnel || urlNoFunnelStage);
     
     if (savedState && !hasUrlOverride) {
       try {
@@ -300,7 +301,7 @@ export default function Students() {
             formSource: parsed.filters?.formSource || '',
             interviewFilter: parsed.filters?.interviewFilter || '',
             funnelStage: parsed.filters?.funnelStage || urlFunnelStage || '',
-          admittedNoFunnel: parsed.filters?.admittedNoFunnel || urlAdmittedNoFunnel || '',
+          noFunnelStage: parsed.filters?.noFunnelStage || urlNoFunnelStage || '',
             admissionType: parsed.filters?.admissionType || '',
             branch: parsed.filters?.branch || '',
             subjectFilter: parsed.filters?.subjectFilter || '',
@@ -326,6 +327,7 @@ export default function Students() {
         interviewFilter: urlInterviewFilter || '',
         funnelStage: urlFunnelStage || '',
         admittedNoFunnel: urlAdmittedNoFunnel || '',
+        noFunnelStage: urlNoFunnelStage || '',
         admissionType: urlAdmissionType || '',
         branch: '',
         subjectFilter: urlSubject || '',
@@ -449,6 +451,7 @@ export default function Students() {
         formSource: filters.formSource,
         funnelStage: filters.funnelStage,
         admittedNoFunnel: filters.admittedNoFunnel,
+        noFunnelStage: filters.noFunnelStage,
         admissionType: filters.admissionType,
         interviewFilter: filters.interviewFilter,
         branch: filters.branch,
@@ -530,7 +533,7 @@ export default function Students() {
   const switchTab = (t) => { 
     setTab(t); 
     setPage(1); 
-    setFilters({ track: '', status: '', town: '', search: '', formSource: '', interviewFilter: '', funnelStage: '', admittedNoFunnel: '', admissionType: '', branch: '', subjectFilter: '', village: '', schoolName: '' }); 
+    setFilters({ track: '', status: '', town: '', search: '', formSource: '', interviewFilter: '', funnelStage: '', admittedNoFunnel: '', noFunnelStage: '', admissionType: '', branch: '', subjectFilter: '', village: '', schoolName: '' }); 
     setSelected([]);
     setHasMore(false);
     setInterviewRound('');

@@ -98,6 +98,24 @@ const getStudents = async (req, res) => {
       }
     }
 
+    // No funnel stage filter (Calling + empty funnelStage)
+    if (req.query.noFunnelStage === '1') {
+      filter.status = 'Calling';
+      const noStageCondition = { $or: [
+        { funnelStage: '' },
+        { funnelStage: null },
+        { funnelStage: { $exists: false } },
+      ]};
+      if (filter.$or) {
+        filter.$and = [...(filter.$and || []), { $or: filter.$or }, noStageCondition];
+        delete filter.$or;
+      } else if (filter.$and) {
+        filter.$and.push(noStageCondition);
+      } else {
+        Object.assign(filter, noStageCondition);
+      }
+    }
+
     // Funnel stage filter
     if (req.query.funnelStage) filter.funnelStage = req.query.funnelStage;
 
