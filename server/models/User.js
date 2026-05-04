@@ -17,6 +17,7 @@ const userSchema = new mongoose.Schema({
     set: v => v === '' ? null : v,
   },
   isActive: { type: Boolean, default: true },
+  theme: { type: String, default: 'orange' },
   points: { type: Number, default: 0 },
   refreshToken: { type: String, default: null },
 }, { timestamps: true });

@@ -49,4 +49,23 @@ const deleteUser = async (req, res) => {
   }
 };
 
-module.exports = { getUsers, createUser, updateUser, deleteUser };
+const getMyTheme = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id).select('theme');
+    res.json({ theme: user?.theme || 'orange' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+const updateMyTheme = async (req, res) => {
+  try {
+    const { theme } = req.body;
+    await User.findByIdAndUpdate(req.user.id, { theme });
+    res.json({ theme });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+module.exports = { getUsers, createUser, updateUser, deleteUser, getMyTheme, updateMyTheme };

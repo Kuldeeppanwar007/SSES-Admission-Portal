@@ -26,7 +26,7 @@ export default function Sidebar({ open, onClose, collapsed, onToggle }) {
   const links = navItems.filter((i) => {
     if (i.adminOnly) return user?.role === 'admin';
     if (i.trackOnly) return user?.role === 'track_incharge' || user?.role === 'interviewer';
-    if (user?.role === 'interviewer') return i.to === '/dashboard' || i.to === '/students' || i.to === '/track-dashboard' || i.to === '/activity-log';
+    if (user?.role === 'interviewer') return i.to === '/dashboard' || i.to === '/students' || i.to === '/track-dashboard' || i.to === '/activity-log' || i.to === '/settings';
     return true;
   });
 
@@ -43,7 +43,7 @@ export default function Sidebar({ open, onClose, collapsed, onToggle }) {
         {links.filter(l => l.to === '/dashboard').map(({ to, Icon, label }) => (
           <NavLink key={to} to={to} onClick={onClose}
             className={({ isActive }) =>
-              `flex items-center gap-3 px-3 py-3 rounded-lg transition-colors font-medium ${collapsed ? 'justify-center' : ''} ${isActive ? 'bg-primary text-white' : 'text-gray-600 hover:bg-orange-50 hover:text-primary'}`}
+              `flex items-center gap-3 px-3 py-3 rounded-lg transition-colors font-medium ${collapsed ? 'justify-center' : ''} ${isActive ? 'bg-primary text-white' : 'text-gray-600 hover:bg-primary/10 hover:text-primary'}`}
             title={collapsed ? label : ''}>
             <Icon size={20} />
             {!collapsed && <span>{label}</span>}
@@ -55,7 +55,7 @@ export default function Sidebar({ open, onClose, collapsed, onToggle }) {
           <div>
             <button onClick={() => setTrackMenuOpen((o) => !o)}
               className={`w-full flex items-center justify-between gap-3 px-3 py-3 rounded-lg transition-colors font-medium ${
-                location.pathname.startsWith('/admin-track') ? 'bg-orange-50 text-primary' : 'text-gray-600 hover:bg-orange-50 hover:text-primary'
+                location.pathname.startsWith('/admin-track') ? 'bg-primary/10 text-primary' : 'text-gray-600 hover:bg-primary/10 hover:text-primary'
               }`}>
               <div className="flex items-center gap-3">
                 <FiMap size={20} />
@@ -69,7 +69,7 @@ export default function Sidebar({ open, onClose, collapsed, onToggle }) {
                   <NavLink key={t} to={`/admin-track/${t}`} onClick={onClose}
                     className={({ isActive }) =>
                       `block px-3 py-2 rounded-lg text-sm transition-colors ${
-                        isActive ? 'bg-primary text-white font-semibold' : 'text-gray-500 hover:bg-orange-50 hover:text-primary'
+                        isActive ? 'bg-primary text-white font-semibold' : 'text-gray-500 hover:bg-primary/10 hover:text-primary'
                       }`}>
                     {t}
                   </NavLink>
@@ -81,7 +81,7 @@ export default function Sidebar({ open, onClose, collapsed, onToggle }) {
         {user?.role === 'admin' && collapsed && (
           <button onClick={() => navigate(`/admin-track/${MAIN_TRACKS[0]}`)} title="Track Dashboards"
             className={`w-full flex justify-center px-3 py-3 rounded-lg transition-colors ${
-              location.pathname.startsWith('/admin-track') ? 'bg-primary text-white' : 'text-gray-600 hover:bg-orange-50 hover:text-primary'
+              location.pathname.startsWith('/admin-track') ? 'bg-primary text-white' : 'text-gray-600 hover:bg-primary/10 hover:text-primary'
             }`}>
             <FiMap size={20} />
           </button>
@@ -91,13 +91,23 @@ export default function Sidebar({ open, onClose, collapsed, onToggle }) {
         {links.filter(l => l.to !== '/dashboard').map(({ to, Icon, label }, idx) => (
           <NavLink key={`${to}-${idx}`} to={to} onClick={onClose}
             className={({ isActive }) =>
-              `flex items-center gap-3 px-3 py-3 rounded-lg transition-colors font-medium ${collapsed ? 'justify-center' : ''} ${isActive ? 'bg-primary text-white' : 'text-gray-600 hover:bg-orange-50 hover:text-primary'}`}
+              `flex items-center gap-3 px-3 py-3 rounded-lg transition-colors font-medium ${collapsed ? 'justify-center' : ''} ${isActive ? 'bg-primary text-white' : 'text-gray-600 hover:bg-primary/10 hover:text-primary'}`}
             title={collapsed ? label : ''}>
             <Icon size={20} />
             {!collapsed && <span>{label}</span>}
           </NavLink>
         ))}
       </nav>
+
+      <div className="px-3 pb-1">
+        <NavLink to="/settings" onClick={onClose}
+          className={({ isActive }) =>
+            `flex items-center gap-3 px-3 py-3 rounded-lg transition-colors font-medium ${collapsed ? 'justify-center' : ''} ${isActive ? 'bg-primary text-white' : 'text-gray-600 hover:bg-primary/10 hover:text-primary'}`}
+          title={collapsed ? 'Settings' : ''}>
+          <FiSettings size={20} />
+          {!collapsed && <span>Settings</span>}
+        </NavLink>
+      </div>
 
       <div className="p-3 border-t border-gray-200">
         {!collapsed && (

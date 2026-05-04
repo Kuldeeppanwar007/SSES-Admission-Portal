@@ -21,6 +21,7 @@ import Targets from './pages/targets/Targets';
 import Attendance from './pages/attendance/Attendance';
 import EditRequests from './pages/students/EditRequests';
 import TrackManager from './pages/settings/TrackManager';
+import Settings from './pages/settings/Settings';
 import ActivityLog from './pages/activity/ActivityLog';
 import Profile from './pages/profile/Profile';
 
@@ -131,6 +132,7 @@ export default function App() {
               <TrackManager />
             </ProtectedRoute>
           } />
+          <Route path="/settings" element={<Settings />} />
         </Route>
       </Routes>
     </BrowserRouter>

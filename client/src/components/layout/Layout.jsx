@@ -2,10 +2,12 @@ import { useState } from 'react';
 import Navbar from './Navbar';
 import Sidebar from './Sidebar';
 import { Outlet } from 'react-router-dom';
+import { useTheme } from '../../hooks/useTheme';
 
 export default function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
+  useTheme(); // apply saved theme on load
 
   return (
     <div className="min-h-screen bg-gray-50">
