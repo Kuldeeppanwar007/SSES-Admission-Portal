@@ -6,14 +6,15 @@ const BONUS = { 1: 200, 2: 150, 3: 100 };
 
 const BTECH_SUBJECTS = ['B.Tech(CS)', 'B.Tech(IT)', 'B.Tech(ECE)', 'B.Tech(AI/ML)'];
 
-// Get Monday of current week in IST
+// Get Monday of PREVIOUS week in IST (called on Sunday midnight)
 const getWeekStart = () => {
   const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
   const nowIST = new Date(Date.now() + IST_OFFSET_MS);
-  const day  = nowIST.getUTCDay();
-  const diff = nowIST.getUTCDate() - day + (day === 0 ? -6 : 1);
+  // Sunday pe hain — previous week ka Monday chahiye (7 days peeche)
+  const day  = nowIST.getUTCDay(); // 0 = Sunday
+  const diff = day === 0 ? -6 : 1 - day; // previous Monday
   const monday = new Date(nowIST);
-  monday.setUTCDate(diff);
+  monday.setUTCDate(nowIST.getUTCDate() + diff - 7); // ek aur week peeche
   monday.setUTCHours(0, 0, 0, 0);
   return new Date(monday.getTime() - IST_OFFSET_MS);
 };
@@ -31,7 +32,7 @@ const calcAdmissionPointsPerTrack = async () => {
   });
 
   const admittedAgg = await Student.aggregate([
-    { $match: { status: 'Admitted', isDisabled: { $ne: true } } },
+    { $match: { status: 'Admitted', admissionType: 'Full Fees', isDisabled: { $ne: true } } },
     { $group: { _id: { track: '$track', subject: '$subject' }, count: { $sum: 1 } } },
   ]);
 
@@ -93,14 +94,12 @@ const runWeeklyBonus = async () => {
   }
 };
 
-// Every Saturday at 23:59
-// cron format: second(optional) minute hour day-of-month month day-of-week
-// day-of-week: 6 = Saturday
+// Every Sunday at 00:00 IST (Saturday midnight)
 const scheduleWeeklyBonus = () => {
-  cron.schedule('59 23 * * 6', runWeeklyBonus, {
+  cron.schedule('0 0 * * 0', runWeeklyBonus, {
     timezone: 'Asia/Kolkata',
   });
-  console.log('[WeeklyBonus] Cron scheduled — every Saturday 23:59 IST');
+  console.log('[WeeklyBonus] Cron scheduled — every Sunday 00:00 IST');
 };
 
 module.exports = { scheduleWeeklyBonus, runWeeklyBonus };

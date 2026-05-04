@@ -1215,6 +1215,16 @@ const getStats = async (req, res) => {
       if (!trackMap[track]) trackMap[track] = { subjects: {} };
     });
 
+    // Weekly bonus per track — sabhi weeks ka total
+    const WeeklyBonus = require('../models/WeeklyBonus');
+    const allBonuses = await WeeklyBonus.find({}).lean();
+    const weeklyBonusMap = {}; // { track: totalBonusPoints }
+    allBonuses.forEach(({ bonuses }) => {
+      bonuses.forEach(({ track, points }) => {
+        if (track) weeklyBonusMap[track] = (weeklyBonusMap[track] || 0) + points;
+      });
+    });
+
     // Har track ki calling efficiency calculate karo
     const callingData = await Student.aggregate([
       { $match: { isDisabled: { $ne: true } } },
@@ -1266,6 +1276,7 @@ const getStats = async (req, res) => {
         })),
         fullFeesSubjects,
         points: pointsMap[track] || 0,
+        weeklyBonus: weeklyBonusMap[track] || 0,
         admissionPoints,
         callingPoints,
         funnelPoints,

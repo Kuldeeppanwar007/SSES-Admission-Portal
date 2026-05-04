@@ -346,11 +346,13 @@ function PointsTable({ trackWise }) {
                     {SUBJECT_LABELS[s]}
                   </th>
                 ))}
+                <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 whitespace-nowrap">Adm. Pts</th>
+                <th className="px-5 py-3 text-left text-xs font-semibold text-amber-500 whitespace-nowrap">🎁 Bonus</th>
                 <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500">Total</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {tracks.map(({ track, fullFeesSubjects, admissionPoints }, i) => {
+              {tracks.map(({ track, fullFeesSubjects, admissionPoints, weeklyBonus, points }, i) => {
                 const subjectMap = {};
                 (fullFeesSubjects || []).forEach(({ subject, admitted }) => {
                   if (BTECH_SUBJECTS.includes(subject)) {
@@ -380,6 +382,14 @@ function PointsTable({ trackWise }) {
                     })}
                     <td className="px-5 py-3 font-bold text-primary tabular-nums">
                       {admissionPoints || 0}
+                    </td>
+                    <td className="px-5 py-3 tabular-nums">
+                      {weeklyBonus > 0
+                        ? <span className="font-bold text-amber-600">+{weeklyBonus}</span>
+                        : <span className="text-gray-300">—</span>}
+                    </td>
+                    <td className="px-5 py-3 font-bold text-primary tabular-nums">
+                      {points || 0}
                     </td>
                   </tr>
                 );
