@@ -5,6 +5,7 @@ import { STATUSES, STATUS_COLORS } from '../../utils/constants';
 import useAuthStore from '../../store/authStore';
 import toast from 'react-hot-toast';
 import { FiEdit2, FiArrowLeft, FiImage, FiFileText, FiExternalLink, FiClock, FiX, FiDownload, FiSend } from 'react-icons/fi';
+import BottomSheet from '../../components/BottomSheet';
 
 export default function StudentDetail() {
   const { id } = useParams();
@@ -383,13 +384,8 @@ const handleViewHistory = async () => {
 
       {/* Final Interview Modal */}
       {finalForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setFinalForm(null)}>
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-              <h3 className="font-bold text-gray-800">Take Final Interview</h3>
-              <button onClick={() => setFinalForm(null)} className="text-gray-400 hover:text-gray-600 text-xl font-bold leading-none">&times;</button>
-            </div>
-            <form onSubmit={handleFinalInterview} className="px-5 py-4 space-y-4">
+        <BottomSheet open onClose={() => setFinalForm(null)} title="Take Final Interview" maxWidth="max-w-sm">
+            <form onSubmit={handleFinalInterview} className="space-y-4 pt-2">
               <div>
                 <label className="block text-xs font-medium text-gray-500 mb-1">Round</label>
                 <input value={interviews.length + 1} disabled
@@ -414,19 +410,13 @@ const handleViewHistory = async () => {
                 {finalLoading ? 'Saving...' : 'Submit'}
               </button>
             </form>
-          </div>
-        </div>
+        </BottomSheet>
       )}
 
       {/* Request Edit Modal */}
       {editReqForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setEditReqForm(null)}>
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-              <h3 className="font-bold text-gray-800">Request Edit</h3>
-              <button onClick={() => setEditReqForm(null)} className="text-gray-400 hover:text-gray-600 text-xl font-bold leading-none">&times;</button>
-            </div>
-            <form onSubmit={handleEditRequest} className="px-5 py-4 space-y-4">
+        <BottomSheet open onClose={() => setEditReqForm(null)} title="Request Edit" maxWidth="max-w-sm">
+            <form onSubmit={handleEditRequest} className="space-y-4 pt-2">
               <div>
                 <label className="block text-xs font-medium text-gray-500 mb-1">Field</label>
                 <select required value={editReqForm.field}
@@ -465,22 +455,13 @@ const handleViewHistory = async () => {
                 {editReqLoading ? 'Bhej raha hai...' : 'Request Bhejo'}
               </button>
             </form>
-          </div>
-        </div>
+        </BottomSheet>
       )}
 
       {/* Status History Modal */}
       {showHistory && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[85vh] flex flex-col">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-              <div>
-                <h3 className="font-semibold text-gray-800">Activity History</h3>
-                <p className="text-xs text-gray-400 mt-0.5">{history.length} update{history.length !== 1 ? 's' : ''} found</p>
-              </div>
-              <button onClick={() => setShowHistory(false)} className="text-gray-400 hover:text-gray-600"><FiX size={18} /></button>
-            </div>
-            <div className="overflow-y-auto flex-1 p-4">
+        <BottomSheet open onClose={() => setShowHistory(false)} title="Activity History" subtitle={`${history.length} update${history.length !== 1 ? 's' : ''} found`}>
+            <div className="pt-2">
               {history.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-10 text-gray-400">
                   <FiClock size={32} className="mb-2 opacity-30" />
@@ -556,8 +537,7 @@ const handleViewHistory = async () => {
                 </div>
               )}
             </div>
-          </div>
-        </div>
+        </BottomSheet>
       )}
     </div>
   );

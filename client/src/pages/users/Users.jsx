@@ -3,6 +3,7 @@ import api from '../../api/axios';
 import { TRACKS, ROLES, MAIN_TRACKS } from '../../utils/constants';
 import toast from 'react-hot-toast';
 import { FiPlus, FiTrash2, FiEdit2, FiEye, FiEyeOff } from 'react-icons/fi';
+import BottomSheet from '../../components/BottomSheet';
 
 const emptyForm = { name: '', email: '', password: '', role: 'track_incharge', track: '', isActive: true };
 
@@ -62,66 +63,64 @@ export default function Users() {
         </button>
       </div>
 
-      {showForm && (
-        <div className="bg-white rounded-xl shadow p-6 mb-6">
-          <h3 className="font-semibold mb-4">{editId ? 'Edit User' : 'Add New User'}</h3>
-          <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {[['Name', 'name', 'text'], ['Email', 'email', 'email']].map(([label, key, type]) => (
-              <div key={key}>
-                <label className="block text-sm font-medium text-gray-700 mb-1">{label}<span className="text-red-500">*</span></label>
-                <input type={type} value={form[key]} required
-                  onChange={(e) => setForm({ ...form, [key]: e.target.value })}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
-              </div>
-            ))}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Password{!editId && <span className="text-red-500">*</span>}</label>
-              <div className="relative">
-                <input type={showPassword ? 'text' : 'password'} value={form.password} required={!editId}
-                  placeholder={editId ? 'Leave blank to keep current' : ''}
-                  onChange={(e) => setForm({ ...form, password: e.target.value })}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 pr-9 text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
-                <button type="button" onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
-                  {showPassword ? <FiEyeOff size={16} /> : <FiEye size={16} />}
-                </button>
-              </div>
+      <BottomSheet
+        open={showForm}
+        onClose={() => { setShowForm(false); setEditId(null); }}
+        title={editId ? 'Edit User' : 'Add New User'}
+        maxWidth="max-w-lg"
+      >
+        <form onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+          {[['Name', 'name', 'text'], ['Email', 'email', 'email']].map(([label, key, type]) => (
+            <div key={key}>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{label}<span className="text-red-500">*</span></label>
+              <input type={type} value={form[key]} required
+                onChange={(e) => setForm({ ...form, [key]: e.target.value })}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
             </div>
+          ))}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Password{!editId && <span className="text-red-500">*</span>}</label>
+            <div className="relative">
+              <input type={showPassword ? 'text' : 'password'} value={form.password} required={!editId}
+                placeholder={editId ? 'Leave blank to keep current' : ''}
+                onChange={(e) => setForm({ ...form, password: e.target.value })}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 pr-9 text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
+              <button type="button" onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                {showPassword ? <FiEyeOff size={16} /> : <FiEye size={16} />}
+              </button>
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
+            <select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none">
+              {ROLES.map((r) => <option key={r} value={r}>{r.replace('_', ' ')}</option>)}
+            </select>
+          </div>
+          {(form.role === 'track_incharge' || form.role === 'interviewer') && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
-              <select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}
+              <label className="block text-sm font-medium text-gray-700 mb-1">Track<span className="text-red-500">*</span></label>
+              <select value={form.track} required onChange={(e) => setForm({ ...form, track: e.target.value })}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none">
-                {ROLES.map((r) => <option key={r} value={r}>{r.replace('_', ' ')}</option>)}
+                <option value="">Select Track</option>
+                {MAIN_TRACKS.map((t) => <option key={t}>{t}</option>)}
               </select>
             </div>
-            {(form.role === 'track_incharge' || form.role === 'interviewer') && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Track<span className="text-red-500">*</span></label>
-                <select value={form.track} required onChange={(e) => setForm({ ...form, track: e.target.value })}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none">
-                  <option value="">Select Track</option>
-                  {MAIN_TRACKS.map((t) => <option key={t}>{t}</option>)}
-                </select>
-              </div>
-            )}
-            <div className="flex items-center gap-2 mt-2">
-              <input type="checkbox" id="isActive" checked={form.isActive}
-                onChange={(e) => setForm({ ...form, isActive: e.target.checked })} />
-              <label htmlFor="isActive" className="text-sm text-gray-700">Active</label>
-            </div>
-            <div className="md:col-span-2 flex gap-3">
-              <button type="submit" disabled={loading}
-                className="bg-primary text-white px-5 py-2 rounded-lg text-sm hover:bg-primary-dark disabled:opacity-60">
-                {loading ? 'Saving...' : editId ? 'Update' : 'Create User'}
-              </button>
-              <button type="button" onClick={() => { setShowForm(false); setEditId(null); }}
-                className="border border-gray-300 text-gray-600 px-5 py-2 rounded-lg text-sm hover:bg-gray-50">
-                Cancel
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
+          )}
+          <div className="flex items-center gap-2">
+            <input type="checkbox" id="isActive" checked={form.isActive}
+              onChange={(e) => setForm({ ...form, isActive: e.target.checked })} />
+            <label htmlFor="isActive" className="text-sm text-gray-700">Active</label>
+          </div>
+          <div className="sm:col-span-2">
+            <button type="submit" disabled={loading}
+              className="w-full bg-primary text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-primary-dark disabled:opacity-60 transition-colors">
+              {loading ? 'Saving...' : editId ? 'Update User' : 'Create User'}
+            </button>
+          </div>
+        </form>
+      </BottomSheet>
 
       <div className="grid grid-cols-5 mb-4 border border-gray-200 rounded-xl overflow-hidden">
         {tabs.map((t) => (

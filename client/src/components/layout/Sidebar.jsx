@@ -1,5 +1,5 @@
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
-import { FiHome, FiUsers, FiUserCheck, FiChevronLeft, FiChevronRight, FiFlag, FiPieChart, FiChevronDown, FiMap, FiCheckSquare, FiEdit, FiSettings, FiActivity } from 'react-icons/fi';
+import { FiHome, FiUsers, FiUserCheck, FiChevronLeft, FiChevronRight, FiFlag, FiPieChart, FiChevronDown, FiMap, FiCheckSquare, FiEdit, FiSettings, FiActivity, FiX } from 'react-icons/fi';
 import { useState } from 'react';
 import useAuthStore from '../../store/authStore';
 import { TRACKS, MAIN_TRACKS } from '../../utils/constants';
@@ -37,6 +37,17 @@ export default function Sidebar({ open, onClose, collapsed, onToggle }) {
         className="hidden md:flex absolute -right-4 top-1/2 -translate-y-1/2 z-50 w-8 h-8 bg-white border border-gray-200 rounded-full items-center justify-center shadow text-gray-500 hover:text-primary hover:border-primary transition-colors">
         {collapsed ? <FiChevronRight size={13} /> : <FiChevronLeft size={13} />}
       </button>
+
+      {/* Mobile close button */}
+      <div className="md:hidden flex items-center justify-between px-4 py-3 border-b border-gray-100">
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-bold text-gray-700">Menu</span>
+        </div>
+        <button onClick={onClose}
+          className="p-1.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-500 transition-colors">
+          <FiX size={18} />
+        </button>
+      </div>
 
       <nav className="flex-1 p-3 space-y-1 mt-2 overflow-y-auto">
         {/* Dashboard */}
@@ -109,7 +120,7 @@ export default function Sidebar({ open, onClose, collapsed, onToggle }) {
         </NavLink>
       </div>
 
-      <div className="p-3 border-t border-gray-200">
+      <div className="p-3 border-t border-gray-200" style={{ paddingBottom: 'calc(12px + env(safe-area-inset-bottom, 16px))' }}>
         {!collapsed && (
           <>
             <p className="text-sm text-gray-700 font-medium mb-0.5">{user?.name}</p>
@@ -127,15 +138,20 @@ export default function Sidebar({ open, onClose, collapsed, onToggle }) {
         {sidebarContent}
       </aside>
 
-      {open && (
-        <div className="md:hidden fixed inset-0 z-40 flex"
-          style={{ top: 'calc(56px + env(safe-area-inset-top, 20px))' }}>
-          <div className="absolute inset-0 bg-black bg-opacity-40" onClick={onClose} />
-          <aside className="relative w-64 bg-white h-full flex flex-col shadow-xl">
-            {sidebarContent}
-          </aside>
-        </div>
-      )}
+      <div className={`md:hidden fixed inset-0 z-40 flex transition-all duration-300 ${open ? 'pointer-events-auto' : 'pointer-events-none'}`}
+        style={{ top: 'calc(56px + env(safe-area-inset-top, 20px))' }}>
+        <div
+          className="absolute inset-0 bg-black transition-opacity duration-300"
+          style={{ opacity: open ? 0.4 : 0 }}
+          onClick={onClose}
+        />
+        <aside
+          className="relative w-64 bg-white h-full flex flex-col shadow-xl transition-transform duration-300 ease-out"
+          style={{ transform: open ? 'translateX(0)' : 'translateX(-100%)' }}
+        >
+          {sidebarContent}
+        </aside>
+      </div>
     </>
   );
 }

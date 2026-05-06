@@ -5,6 +5,7 @@ import { TRACKS, STATUSES, TRACK_TOWNS } from '../../utils/constants';
 import useAuthStore from '../../store/authStore';
 import toast from 'react-hot-toast';
 import { FiExternalLink, FiCamera, FiImage, FiFileText, FiUser, FiCreditCard, FiX } from 'react-icons/fi';
+import BottomSheet from '../../components/BottomSheet';
 
 const SUBJECTS = ['B.Tech(CS)', 'B.Tech(IT)', 'B.Tech(ECE)', 'B.Tech(AI/ML)', 'BCA', 'BBA', 'Bcom', 'Bio', 'Micro'];
 const BTECH_BRANCHES = ['CS', 'IT', 'AI/ML', 'ECE'];
@@ -88,22 +89,17 @@ function CameraModal({ onCapture, onClose }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/80 z-50 flex flex-col items-center justify-center p-4">
-      <div className="bg-white rounded-2xl overflow-hidden w-full max-w-lg">
-        <div className="flex items-center justify-between px-4 py-3 border-b">
-          <span className="font-semibold text-gray-800">Take Photo</span>
-          <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-600"><FiX size={20} /></button>
-        </div>
+    <BottomSheet open onClose={onClose} title="Take Photo" maxWidth="max-w-lg">
         {error ? (
-          <div className="p-6 text-center">
+          <div className="py-6 text-center">
             <p className="text-sm text-red-500 mb-4">{error}</p>
             <button type="button" onClick={onClose}
               className="px-4 py-2 bg-gray-100 rounded-lg text-sm font-medium text-gray-600">Close</button>
           </div>
         ) : (
           <>
-            <video ref={videoRef} autoPlay playsInline muted className="w-full bg-black" />
-            <div className="p-4 flex justify-center">
+            <video ref={videoRef} autoPlay playsInline muted className="w-full bg-black rounded-xl" />
+            <div className="pt-4 flex justify-center">
               <button type="button" onClick={capture} disabled={!ready}
                 className="bg-primary text-white px-8 py-2.5 rounded-xl font-semibold hover:bg-primary-dark transition-colors flex items-center gap-2 disabled:opacity-50">
                 <FiCamera size={16} /> {ready ? 'Capture' : 'Loading...'}
@@ -111,8 +107,7 @@ function CameraModal({ onCapture, onClose }) {
             </div>
           </>
         )}
-      </div>
-    </div>
+    </BottomSheet>
   );
 }
 

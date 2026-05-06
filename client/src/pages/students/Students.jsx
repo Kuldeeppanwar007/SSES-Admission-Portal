@@ -5,6 +5,7 @@ import { TRACKS, STATUSES, STATUS_COLORS, TRACK_TOWNS, TOWN_TO_MAIN_TRACK } from
 import useAuthStore from '../../store/authStore';
 import toast from 'react-hot-toast';
 import { FiPlus, FiUpload, FiSearch, FiEdit2, FiDownload, FiFilter, FiSlash, FiClipboard, FiExternalLink, FiChevronDown, FiSend, FiClock, FiX } from 'react-icons/fi';
+import BottomSheet from '../../components/BottomSheet';
 import DatePicker from '../../components/DatePicker';
 import { isOnline, cacheStudents, getCachedStudents } from '../../utils/offlineQueue';
 import { usePerformanceMonitor, useDebounce } from '../../hooks/usePerformance';
@@ -86,19 +87,8 @@ function InterviewModal({ student, user, onClose, onSaved }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={onClose}>
-      <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-xl w-full sm:max-w-3xl max-h-[92vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-
-        {/* Header */}
-        <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b">
-          <div>
-            <h3 className="font-bold text-primary text-lg">Technical Interview Form</h3>
-            <p className="text-sm text-gray-500">Student — {student.name}</p>
-          </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl leading-none">×</button>
-        </div>
-
-        <form onSubmit={handleSubmit} className="px-4 sm:px-6 py-4 space-y-5">
+    <BottomSheet open onClose={onClose} title="Technical Interview Form" subtitle={`Student — ${student.name}`} maxWidth="max-w-3xl">
+        <form onSubmit={handleSubmit} className="space-y-5 pt-2">
 
           {/* Previous Round Data */}
           {prevRound && (
@@ -213,8 +203,7 @@ function InterviewModal({ student, user, onClose, onSaved }) {
             {loading ? 'Saving...' : 'Submit'}
           </button>
         </form>
-      </div>
-    </div>
+    </BottomSheet>
   );
 }
 
@@ -646,16 +635,8 @@ export default function Students() {
 
       {/* History Modal */}
       {historyStudent && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 p-4" onClick={() => setHistoryStudent(null)}>
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[85vh] flex flex-col" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-              <div>
-                <h3 className="font-semibold text-gray-800">Activity History</h3>
-                <p className="text-xs text-gray-400 mt-0.5">{historyStudent.name} — {history.length} update{history.length !== 1 ? 's' : ''}</p>
-              </div>
-              <button onClick={() => setHistoryStudent(null)} className="text-gray-400 hover:text-gray-600"><FiX size={18} /></button>
-            </div>
-            <div className="overflow-y-auto flex-1 p-4">
+        <BottomSheet open onClose={() => setHistoryStudent(null)} title="Activity History" subtitle={`${historyStudent.name} — ${history.length} update${history.length !== 1 ? 's' : ''}`}>
+            <div className="pt-2">
               {historyLoading ? (
                 <div className="flex justify-center py-10"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" /></div>
               ) : history.length === 0 ? (
@@ -702,8 +683,7 @@ export default function Students() {
                 </div>
               )}
             </div>
-          </div>
-        </div>
+        </BottomSheet>
       )}
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3 mb-4">

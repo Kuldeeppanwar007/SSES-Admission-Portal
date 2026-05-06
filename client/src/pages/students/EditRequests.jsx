@@ -4,6 +4,7 @@ import api from '../../api/axios';
 import toast from 'react-hot-toast';
 import { FiCheck, FiX, FiExternalLink } from 'react-icons/fi';
 import useAuthStore from '../../store/authStore';
+import BottomSheet from '../../components/BottomSheet';
 
 const STATUS_COLORS = {
   Pending:  'bg-amber-100 text-amber-700',
@@ -135,15 +136,8 @@ export default function EditRequests() {
 
       {/* Review Modal */}
       {reviewModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setReviewModal(null)}>
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-              <h3 className="font-bold text-gray-800">
-                {reviewModal.action === 'Approved' ? '✅ Approve' : '❌ Reject'} Request
-              </h3>
-              <button onClick={() => setReviewModal(null)} className="text-gray-400 hover:text-gray-600 text-xl font-bold">&times;</button>
-            </div>
-            <div className="px-5 py-4 space-y-4">
+        <BottomSheet open onClose={() => setReviewModal(null)} title={`${reviewModal.action === 'Approved' ? '✅ Approve' : '❌ Reject'} Request`} maxWidth="max-w-sm">
+            <div className="space-y-4 pt-2">
               <div className="bg-gray-50 rounded-lg p-3 text-sm">
                 <p><span className="text-gray-400">Field:</span> <span className="font-medium">{reviewModal.req.field}</span></p>
                 <p><span className="text-gray-400">New Value:</span> <span className="font-medium text-emerald-600">{reviewModal.req.newValue}</span></p>
@@ -159,8 +153,7 @@ export default function EditRequests() {
                 {submitting ? 'Processing...' : `Confirm ${reviewModal.action}`}
               </button>
             </div>
-          </div>
-        </div>
+        </BottomSheet>
       )}
     </div>
   );

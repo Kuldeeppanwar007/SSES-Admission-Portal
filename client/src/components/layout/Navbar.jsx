@@ -13,8 +13,33 @@ export default function Navbar({ onMenuClick }) {
   const navigate = useNavigate();
   const [online, setOnline] = useState(navigator.onLine);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [menuVisible, setMenuVisible] = useState(false);
+  const [menuMounted, setMenuMounted] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [logoutVisible, setLogoutVisible] = useState(false);
+  const [logoutMounted, setLogoutMounted] = useState(false);
   const menuRef = useRef(null);
+
+  const openMenu = () => {
+    setMenuMounted(true);
+    requestAnimationFrame(() => requestAnimationFrame(() => setMenuVisible(true)));
+    setMenuOpen(true);
+  };
+  const closeMenu = () => {
+    setMenuVisible(false);
+    setMenuOpen(false);
+    setTimeout(() => setMenuMounted(false), 200);
+  };
+  const openLogout = () => {
+    setLogoutMounted(true);
+    requestAnimationFrame(() => requestAnimationFrame(() => setLogoutVisible(true)));
+    setShowLogoutModal(true);
+  };
+  const closeLogout = () => {
+    setLogoutVisible(false);
+    setShowLogoutModal(false);
+    setTimeout(() => setLogoutMounted(false), 250);
+  };
 
   useEffect(() => {
     const on  = () => setOnline(true);
@@ -25,7 +50,7 @@ export default function Navbar({ onMenuClick }) {
   }, []);
 
   useEffect(() => {
-    const handler = (e) => { if (menuRef.current && !menuRef.current.contains(e.target)) setMenuOpen(false); };
+    const handler = (e) => { if (menuRef.current && !menuRef.current.contains(e.target)) closeMenu(); };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, []);
@@ -33,7 +58,7 @@ export default function Navbar({ onMenuClick }) {
   const handleLogout = () => {
     logout();
     navigate('/login');
-    setShowLogoutModal(false);
+    closeLogout();
   };
 
   return (
@@ -55,18 +80,21 @@ export default function Navbar({ onMenuClick }) {
           )}
           <NotificationBell />
           <div className="relative" ref={menuRef}>
-            <button onClick={() => setMenuOpen(o => !o)}
+            <button onClick={() => menuOpen ? closeMenu() : openMenu()}
               className="w-8 h-8 rounded-full bg-orange-50 border border-orange-200 flex items-center justify-center text-primary hover:bg-orange-100 transition-colors">
               <FiSettings size={15} />
             </button>
-            {menuOpen && (
-              <div className="absolute right-0 mt-2 w-44 bg-white rounded-xl shadow-lg border border-gray-100 py-1 z-50">
-                <button onClick={() => { navigate('/profile'); setMenuOpen(false); }}
+            {menuMounted && (
+              <div
+                className="absolute right-0 mt-2 w-44 bg-white rounded-xl shadow-lg border border-gray-100 py-1 z-50 transition-all duration-200"
+                style={{ opacity: menuVisible ? 1 : 0, transform: menuVisible ? 'translateY(0) scale(1)' : 'translateY(-8px) scale(0.95)', transformOrigin: 'top right' }}
+              >
+                <button onClick={() => { navigate('/profile'); closeMenu(); }}
                   className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-orange-50 hover:text-primary transition-colors">
                   <FiUser size={15} /> View Profile
                 </button>
                 {!isMobile && (
-                  <button onClick={() => { setShowLogoutModal(true); setMenuOpen(false); }}
+                  <button onClick={() => { openLogout(); closeMenu(); }}
                     className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-orange-50 hover:text-primary transition-colors">
                     <FiLogOut size={15} /> Logout
                   </button>
@@ -77,9 +105,15 @@ export default function Navbar({ onMenuClick }) {
         </div>
       </nav>
 
-      {showLogoutModal && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 px-6">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xs p-6 space-y-4">
+      {logoutMounted && (
+        <div
+          className="fixed inset-0 z-[9999] flex items-center justify-center px-6 transition-all duration-250"
+          style={{ backgroundColor: logoutVisible ? 'rgba(0,0,0,0.5)' : 'rgba(0,0,0,0)' }}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-xs p-6 space-y-4 transition-all duration-250"
+            style={{ opacity: logoutVisible ? 1 : 0, transform: logoutVisible ? 'scale(1)' : 'scale(0.92)' }}
+          >
             <div className="flex flex-col items-center text-center gap-2">
               <div className="w-12 h-12 rounded-full bg-orange-50 border border-orange-200 flex items-center justify-center">
                 <FiLogOut size={22} className="text-primary" />
@@ -88,7 +122,7 @@ export default function Navbar({ onMenuClick }) {
               <p className="text-sm text-gray-400">Aap portal se bahar ho jaayenge.</p>
             </div>
             <div className="flex gap-3">
-              <button onClick={() => setShowLogoutModal(false)}
+              <button onClick={closeLogout}
                 className="flex-1 border border-gray-200 text-gray-600 py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-50 transition-colors">
                 Cancel
               </button>

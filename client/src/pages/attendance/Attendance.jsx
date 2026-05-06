@@ -6,6 +6,7 @@ import { FiMapPin, FiCalendar, FiClock, FiFilter, FiBarChart2, FiNavigation, FiR
 import DatePicker from '../../components/DatePicker';
 import TrackingMap from '../../components/TrackingMap';
 import CampusMap from '../../components/CampusMap';
+import BottomSheet from '../../components/BottomSheet';
 
 const today = new Date().toISOString().slice(0, 10);
 const thisMonth = today.slice(0, 7);
@@ -1102,150 +1103,116 @@ export default function Attendance() {
 
       {/* ── LEAVE CONFIRM MODAL ── */}
       {leaveConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4" onClick={() => setLeaveConfirm(null)}>
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center gap-3 mb-4">
+        <BottomSheet open onClose={() => setLeaveConfirm(null)} title="Mark Leave" subtitle={`${leaveConfirm.name} — ${leaveConfirm.date}`} maxWidth="max-w-sm">
+          <div className="space-y-4 pt-2">
+            <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center text-xl shrink-0">🏥</div>
-              <div>
-                <p className="font-bold text-gray-800">Mark Leave</p>
-                <p className="text-sm text-gray-500">{leaveConfirm.name} — {leaveConfirm.date}</p>
-              </div>
+              <p className="text-sm text-gray-500">Leave mark karne ke baad attendance remove ho jayegi agar already mark thi.</p>
             </div>
-            <div className="mb-4">
+            <div>
               <label className="text-xs text-gray-500 font-medium block mb-1">Reason (optional)</label>
-              <input
-                type="text"
-                value={leaveReason}
-                onChange={e => setLeaveReason(e.target.value)}
+              <input type="text" value={leaveReason} onChange={e => setLeaveReason(e.target.value)}
                 placeholder="e.g. Sick leave, Personal work..."
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-                autoFocus
-              />
+                autoFocus />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <button onClick={() => setLeaveConfirm(null)}
-                className="py-2.5 border border-gray-200 text-gray-600 text-sm font-semibold rounded-xl hover:bg-gray-50">
-                Cancel
-              </button>
+                className="py-2.5 border border-gray-200 text-gray-600 text-sm font-semibold rounded-xl hover:bg-gray-50">Cancel</button>
               <button onClick={confirmMarkLeave} disabled={leavingUserId === leaveConfirm.userId}
                 className="py-2.5 bg-primary text-white text-sm font-semibold rounded-xl hover:opacity-90 disabled:opacity-60">
                 {leavingUserId === leaveConfirm.userId ? 'Saving...' : 'Confirm'}
               </button>
             </div>
           </div>
-        </div>
+        </BottomSheet>
       )}
 
       {/* ── ATTENDANCE CONFIRM MODAL ── */}
       {attendanceConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4" onClick={() => setAttendanceConfirm(null)}>
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center gap-3 mb-4">
+        <BottomSheet open onClose={() => setAttendanceConfirm(null)} title="Mark Attendance" subtitle={`${attendanceConfirm.name} — ${absentDate}`} maxWidth="max-w-sm">
+          <div className="space-y-4 pt-2">
+            <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-xl shrink-0">✓</div>
-              <div>
-                <p className="font-bold text-gray-800">Mark Attendance</p>
-                <p className="text-sm text-gray-500">{attendanceConfirm.name} — {absentDate}</p>
-              </div>
+              <p className="text-sm text-gray-500">Kya aap <span className="font-semibold text-gray-800">{attendanceConfirm.name}</span> ki attendance manually mark karna chahte hain?</p>
             </div>
-            <p className="text-sm text-gray-500 mb-5">Kya aap <span className="font-semibold text-gray-800">{attendanceConfirm.name}</span> ki attendance manually mark karna chahte hain?</p>
             <div className="grid grid-cols-2 gap-3">
               <button onClick={() => setAttendanceConfirm(null)}
-                className="py-2.5 border border-gray-200 text-gray-600 text-sm font-semibold rounded-xl hover:bg-gray-50">
-                Cancel
-              </button>
+                className="py-2.5 border border-gray-200 text-gray-600 text-sm font-semibold rounded-xl hover:bg-gray-50">Cancel</button>
               <button onClick={confirmMarkAttendance} disabled={manualMarkLoading === attendanceConfirm.userId}
                 className="py-2.5 bg-primary text-white text-sm font-semibold rounded-xl hover:bg-primary-dark disabled:opacity-60">
                 {manualMarkLoading === attendanceConfirm.userId ? 'Saving...' : 'Mark Present'}
               </button>
             </div>
           </div>
-        </div>
+        </BottomSheet>
       )}
 
       {/* ── DAY VIEW MODAL ── */}
       {dvModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4" onClick={() => setDvModal(null)}>
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col" onClick={e => e.stopPropagation()}>
-
-            {/* Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-              <div>
-                <p className="font-bold text-gray-800 text-lg">{dvModal.name}</p>
-                <div className="flex items-center gap-2 mt-0.5">
-                  <button onClick={() => changeDvMonth(-1)}
-                    className="text-gray-400 hover:text-primary font-bold text-base leading-none">&#8249;</button>
-                  <p className="text-xs text-gray-500 font-semibold min-w-[90px] text-center">
-                    {new Date(dvModal.month + '-02').toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })}
-                  </p>
-                  <button onClick={() => changeDvMonth(1)}
-                    disabled={dvModal.month >= thisMonth}
-                    className="text-gray-400 hover:text-primary font-bold text-base leading-none disabled:opacity-30">&#8250;</button>
-                </div>
-              </div>
-              <button onClick={() => setDvModal(null)} className="text-gray-400 hover:text-gray-600 text-2xl font-bold leading-none">&times;</button>
+        <BottomSheet open onClose={() => setDvModal(null)} maxWidth="max-w-2xl"
+          title={dvModal.name}
+          subtitle={
+            <span className="flex items-center gap-2 mt-0.5">
+              <button onClick={() => changeDvMonth(-1)} className="text-gray-400 hover:text-primary font-bold text-base">&#8249;</button>
+              <span className="text-xs text-gray-500 font-semibold min-w-[90px] text-center">
+                {new Date(dvModal.month + '-02').toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })}
+              </span>
+              <button onClick={() => changeDvMonth(1)} disabled={dvModal.month >= thisMonth}
+                className="text-gray-400 hover:text-primary font-bold text-base disabled:opacity-30">&#8250;</button>
+            </span>
+          }>
+          {loadingDv ? (
+            <div className="flex justify-center items-center h-48">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
             </div>
-
-            {loadingDv ? (
-              <div className="flex justify-center items-center h-48">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+          ) : dvData && (
+            <>
+              <div className="flex gap-5 py-3 bg-gray-50 rounded-xl px-4 mb-3 text-sm font-semibold">
+                <span className="text-emerald-600">✓ Present: {dvData.days.filter(d => d.present).length}</span>
+                <span className="text-rose-500">✗ Absent: {dvData.days.filter(d => !d.present && new Date(d.date).getDay() !== 0).length}</span>
+                <span className="text-violet-500">● Sunday: {dvData.days.filter(d => new Date(d.date).getDay() === 0).length}</span>
               </div>
-            ) : dvData && (
-              <>
-                {/* Summary */}
-                <div className="flex gap-5 px-6 py-3 bg-gray-50 border-b border-gray-100 text-sm font-semibold">
-                  <span className="text-emerald-600">✓ Present: {dvData.days.filter(d => d.present).length}</span>
-                  <span className="text-rose-500">✗ Absent: {dvData.days.filter(d => !d.present && new Date(d.date).getDay() !== 0).length}</span>
-                  <span className="text-violet-500">● Sunday: {dvData.days.filter(d => new Date(d.date).getDay() === 0).length}</span>
-                </div>
-
-                {/* Day cards grid - week wise rows */}
-                <div className="overflow-y-auto flex-1 p-4">
-                  {/* Weekday headers */}
-                  <div className="grid grid-cols-7 gap-1 mb-1">
-                    {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d => (
-                      <div key={d} className={`text-center text-[10px] font-bold uppercase py-1 ${
-                        d === 'Sun' ? 'text-violet-400' : 'text-gray-400'
-                      }`}>{d}</div>
-                    ))}
+              <div className="grid grid-cols-7 gap-1 mb-1">
+                {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d => (
+                  <div key={d} className={`text-center text-[10px] font-bold uppercase py-1 ${
+                    d === 'Sun' ? 'text-violet-400' : 'text-gray-400'
+                  }`}>{d}</div>
+                ))}
+              </div>
+              {(() => {
+                const firstDay = new Date(dvModal.month + '-01').getDay();
+                const allDays = [...Array(firstDay).fill(null), ...dvData.days];
+                const weeks = [];
+                for (let i = 0; i < allDays.length; i += 7) weeks.push(allDays.slice(i, i + 7));
+                return weeks.map((week, wi) => (
+                  <div key={wi} className="grid grid-cols-7 gap-1 mb-1">
+                    {week.map((day, di) => {
+                      if (!day) return <div key={di} />;
+                      const isSunday = new Date(day.date).getDay() === 0;
+                      const d = new Date(day.date).getDate();
+                      return (
+                        <div key={day.date} className={`rounded-lg flex flex-col items-center py-1.5 border ${
+                          isSunday ? 'bg-violet-50 border-violet-200' :
+                          day.present ? 'bg-emerald-50 border-emerald-200' : 'bg-rose-50 border-rose-200'
+                        }`}>
+                          <span className={`text-sm font-bold ${
+                            isSunday ? 'text-violet-600' : day.present ? 'text-emerald-700' : 'text-rose-600'
+                          }`}>{d}</span>
+                          <span className={`text-[9px] font-semibold ${
+                            isSunday ? 'text-violet-400' : day.present ? 'text-emerald-500' : 'text-rose-400'
+                          }`}>
+                            {isSunday ? 'Off' : day.present ? (day.time ? day.time.slice(0,5) : 'P') : 'A'}
+                          </span>
+                        </div>
+                      );
+                    })}
                   </div>
-                  {/* Weeks */}
-                  {(() => {
-                    const firstDay = new Date(dvModal.month + '-01').getDay(); // 0=Sun
-                    const allDays = [...Array(firstDay).fill(null), ...dvData.days];
-                    const weeks = [];
-                    for (let i = 0; i < allDays.length; i += 7)
-                      weeks.push(allDays.slice(i, i + 7));
-                    return weeks.map((week, wi) => (
-                      <div key={wi} className="grid grid-cols-7 gap-1 mb-1">
-                        {week.map((day, di) => {
-                          if (!day) return <div key={di} />;
-                          const isSunday = new Date(day.date).getDay() === 0;
-                          const d = new Date(day.date).getDate();
-                          return (
-                            <div key={day.date} className={`rounded-lg flex flex-col items-center py-1.5 border ${
-                              isSunday ? 'bg-violet-50 border-violet-200' :
-                              day.present ? 'bg-emerald-50 border-emerald-200' :
-                              'bg-rose-50 border-rose-200'
-                            }`}>
-                              <span className={`text-sm font-bold ${
-                                isSunday ? 'text-violet-600' : day.present ? 'text-emerald-700' : 'text-rose-600'
-                              }`}>{d}</span>
-                              <span className={`text-[9px] font-semibold ${
-                                isSunday ? 'text-violet-400' : day.present ? 'text-emerald-500' : 'text-rose-400'
-                              }`}>
-                                {isSunday ? 'Off' : day.present ? (day.time ? day.time.slice(0,5) : 'P') : 'A'}
-                              </span>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    ));
-                  })()}
-                </div>
-              </>
-            )}
-          </div>
-        </div>
+                ));
+              })()}
+            </>
+          )}
+        </BottomSheet>
       )}
     </div>
   );
