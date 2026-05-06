@@ -1,5 +1,5 @@
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
-import { FiHome, FiUsers, FiUserCheck, FiChevronLeft, FiChevronRight, FiFlag, FiPieChart, FiChevronDown, FiMap, FiCheckSquare, FiEdit, FiSettings, FiActivity, FiX } from 'react-icons/fi';
+import { FiHome, FiUsers, FiUserCheck, FiChevronLeft, FiChevronRight, FiFlag, FiPieChart, FiChevronDown, FiMap, FiCheckSquare, FiEdit, FiSettings, FiActivity, FiX, FiBarChart2 } from 'react-icons/fi';
 import { useState } from 'react';
 import useAuthStore from '../../store/authStore';
 import { TRACKS, MAIN_TRACKS } from '../../utils/constants';
@@ -12,6 +12,8 @@ const navItems = [
   { to: '/edit-requests', Icon: FiEdit, label: 'Edit Requests', trackOnly: true },
   { to: '/activity-log', Icon: FiActivity, label: 'Activity Log', adminOnly: true },
   { to: '/activity-log', Icon: FiActivity, label: 'Activity Log', trackOnly: true },
+  { to: '/daily-summary', Icon: FiBarChart2, label: 'Daily Summary', adminOnly: true },
+  { to: '/daily-summary', Icon: FiBarChart2, label: 'Daily Summary', trackOnly: true },
   { to: '/targets', Icon: FiFlag, label: 'Targets', adminOnly: true },
   { to: '/track-manager', Icon: FiSettings, label: 'Track Manager', adminOnly: true },
   { to: '/users', Icon: FiUserCheck, label: 'Users', adminOnly: true },
@@ -26,7 +28,7 @@ export default function Sidebar({ open, onClose, collapsed, onToggle }) {
   const links = navItems.filter((i) => {
     if (i.adminOnly) return user?.role === 'admin';
     if (i.trackOnly) return user?.role === 'track_incharge' || user?.role === 'interviewer';
-    if (user?.role === 'interviewer') return i.to === '/dashboard' || i.to === '/students' || i.to === '/track-dashboard' || i.to === '/activity-log' || i.to === '/settings';
+    if (user?.role === 'interviewer') return i.to === '/dashboard' || i.to === '/students' || i.to === '/track-dashboard' || i.to === '/activity-log' || i.to === '/daily-summary' || i.to === '/settings';
     return true;
   });
 

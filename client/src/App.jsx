@@ -24,6 +24,7 @@ import TrackManager from './pages/settings/TrackManager';
 import Settings from './pages/settings/Settings';
 import ActivityLog from './pages/activity/ActivityLog';
 import Profile from './pages/profile/Profile';
+import DailySummary from './pages/summary/DailySummary';
 
 // Android back button handler
 function BackButtonHandler() {
@@ -125,6 +126,11 @@ export default function App() {
           <Route path="/activity-log" element={
             <ProtectedRoute roles={['admin', 'track_incharge', 'interviewer']}>
               <ActivityLog />
+            </ProtectedRoute>
+          } />
+          <Route path="/daily-summary" element={
+            <ProtectedRoute roles={['admin', 'track_incharge', 'interviewer']}>
+              <DailySummary />
             </ProtectedRoute>
           } />
           <Route path="/track-manager" element={
