@@ -554,9 +554,11 @@ export default function Students() {
         // Selected multiple — selected + date
         filename = `students_selected_${dateStr}.xlsx`;
       } else {
-        // Export all — track filter laga ho to track name, warna "all"
+        // Export all — track + funnelStage filter laga ho to reflect in filename
         const trackPart = filters.track ? filters.track.replace(/[^a-zA-Z0-9]/g, '_') : 'all';
-        filename = `students_${trackPart}_${dateStr}.xlsx`;
+        const funnelPart = filters.funnelStage ? `_${filters.funnelStage.replace(/[^a-zA-Z0-9]/g, '_')}` : '';
+        const statusPart = filters.status ? `_${filters.status}` : '';
+        filename = `students_${trackPart}${statusPart}${funnelPart}_${dateStr}.xlsx`;
       }
 
       a.download = filename;

@@ -964,6 +964,7 @@ const exportStudents = async (req, res) => {
     if (ids && ids.length > 0) {
       students = await Student.find({ _id: { $in: ids } }).populate('addedBy', 'name');
     } else {
+      const { funnelStage } = req.query;
       const filter = {};
       if (req.user.role === 'track_incharge') filter.track = { $regex: `^${req.user.track}$`, $options: 'i' };
       else if (track) filter.track = { $regex: `^${track}$`, $options: 'i' };
@@ -978,6 +979,8 @@ const exportStudents = async (req, res) => {
       
       if (status === 'Disabled') filter.isDisabled = true;
       else { filter.isDisabled = { $ne: true }; if (status) filter.status = status; }
+
+      if (funnelStage) filter.funnelStage = funnelStage;
       
       if (search) {
         const searchConditions = [
@@ -987,10 +990,9 @@ const exportStudents = async (req, res) => {
         ];
         
         if (filter.$or) {
-          // If town filter exists, combine with search using $and
           filter.$and = [
-            { $or: filter.$or }, // town filter
-            { $or: searchConditions } // search filter
+            { $or: filter.$or },
+            { $or: searchConditions }
           ];
           delete filter.$or;
         } else {
