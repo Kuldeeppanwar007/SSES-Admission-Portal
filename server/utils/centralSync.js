@@ -1,0 +1,156 @@
+const axios = require('axios');
+
+const MOCK_MODE = process.env.CENTRAL_MOCK_MODE === 'true';
+
+// Student model se SSISM (new_student_reg) payload banao
+const buildSsismPayload = (s) => ({
+  id:                   s.externalId || String(s._id),
+  firstName:            (s.name || '').split(' ')[0] || '',
+  lastName:             (s.name || '').split(' ').slice(1).join(' ') || '',
+  fathersName:          s.fatherName        || '',
+  mobile:               Number(s.mobileNo)  || null,
+  email:                s.email             || '',
+  branch:               s.branch            || '',
+  year:                 s.year              || 'I',
+  joinBatch:            s.joinBatch         || null,
+  feesScheme:           s.feesScheme        || '',
+  dob:                  s.dob               || null,
+  fatherContactNumber:  Number(s.fatherContactNumber) || null,
+  schoolName:           s.schoolName        || '',
+  school12Sub:          s.school12Sub       || '',
+  rollNumber12:         s.rollNumber12      || null,
+  persentage12:         s.persentage12      || null,
+  persentage11:         s.persentage11      || null,
+  persentage10:         s.persentage10      || null,
+  rollNumber10:         s.rollNumber10      || null,
+  aadharNo:             s.aadharNo          || null,
+  fatherOccupation:     s.fatherOccupation  || null,
+  fatherIncome:         s.fatherIncome      || null,
+  category:             s.category          || '',
+  gender:               s.gender            || '',
+  pincode:              s.pincode           || null,
+  trackName:            s.trackName         || null,
+  address:              s.fullAddress       || null,
+  village:              s.village           || '',
+  tehsil:               s.tehsil            || null,
+  district:             s.district          || null,
+  regFees:              s.regFees           || null,
+  regFeesStatus:        s.regFeesStatus     || 'Unpaid',
+  accRegFeesStatus:     s.accRegFeesStatus  || 'Unpaid',
+  photo:                s.photo             || null,
+  receiptS3Url:         s.receiptS3Url      || null,
+  regFeeReceiptNo:      s.regFeeReceiptNo   || null,
+  payMode:              s.payMode           || null,
+  paymentStatus:        s.paymentStatus     || null,
+  transactionId:        s.transactionId     || null,
+  merchantTransactionId:s.merchantTransactionId || null,
+  isTop20:              s.isTop20           || false,
+  sRank:                s.sRank             || null,
+  persentage11:         s.persentage11      || null,
+  passout12:            s.passout12         || null,
+  linkSource:           s.linkSource        || 'default',
+  remark:               s.remarks           || null,
+  regFeeDate:           s.regFeeDate        || null,
+  registrationNo:       s.receiptNo         || String(s._id),
+});
+
+// Student model se B.Tech (btech_student_reg) payload banao
+const buildBtechPayload = (s) => ({
+  id:                   s.externalId || String(s._id),
+  firstName:            (s.name || '').split(' ')[0] || '',
+  lastName:             (s.name || '').split(' ').slice(1).join(' ') || '',
+  fathersName:          s.fatherName         || null,
+  mobile:               Number(s.mobileNo)   || null,
+  whatsappNumber:       Number(s.whatsappNumber || s.whatsappNo) || null,
+  email:                s.email              || '',
+  schoolName:           s.schoolName         || '',
+  persentage12:         s.persentage12       || null,
+  persentage11:         s.persentage11       || null,
+  persentage10:         s.persentage10       || null,
+  jeeScore:             s.jeeScore           || null,
+  district:             s.district           || null,
+  village:              s.village            || null,
+  trackName:            s.trackName          || null,
+  priority1:            s.priority1          || s.branch || null,
+  priority2:            s.priority2          || null,
+  priority3:            s.priority3          || null,
+  address:              s.fullAddress        || null,
+  branch:               s.branch             || null,
+  year:                 s.year               || null,
+  joinBatch:            s.joinBatch          || null,
+  feesScheme:           s.feesScheme         || null,
+  dob:                  s.dob                || null,
+  school12Sub:          s.school12Sub        || null,
+  rollNumber12:         s.rollNumber12       || null,
+  rollNumber10:         s.rollNumber10       || null,
+  aadharNo:             s.aadharNo           || null,
+  fatherOccupation:     s.fatherOccupation   || null,
+  fatherIncome:         s.fatherIncome       || null,
+  fatherContactNumber:  s.fatherContactNumber|| null,
+  category:             s.category           || null,
+  gender:               s.gender             || null,
+  pincode:              s.pincode            || null,
+  tehsil:               s.tehsil             || null,
+  photo:                s.photo              || null,
+  receiptS3Url:         s.receiptS3Url       || null,
+  regFeeReceiptNo:      s.regFeeReceiptNo    || null,
+  regFees:              s.regFees            || null,
+  regFeesStatus:        s.regFeesStatus      || 'Unpaid',
+  accRegFeesStatus:     s.accRegFeesStatus   || 'Unpaid',
+  payMode:              s.payMode            || null,
+  paymentStatus:        s.paymentStatus      || null,
+  transactionId:        s.transactionId      || null,
+  merchantTransactionId:s.merchantTransactionId || null,
+  applicationType:      s.applicationType    || 'SIMPLE_APPLICATION',
+  isTop20:              s.isTop20            || false,
+  sRank:                s.sRank              || null,
+  passout12:            s.passout12          || null,
+  linkSource:           s.linkSource         || null,
+  remark:               s.remarks            || null,
+  regFeeDate:           s.regFeeDate         || null,
+  registrationNo:       s.receiptNo          || String(s._id),
+});
+
+// Central ko ek student bhejo
+const sendToCentral = async (student) => {
+  const formSource = student.formSource;
+  if (!['btech', 'ssism'].includes(formSource))
+    throw new Error(`Invalid formSource: ${formSource}`);
+
+  const isBtech  = formSource === 'btech';
+  const payload  = isBtech ? buildBtechPayload(student) : buildSsismPayload(student);
+  const apiUrl   = isBtech ? process.env.CENTRAL_BTECH_API_URL : process.env.CENTRAL_SSISM_API_URL;
+
+  if (MOCK_MODE) {
+    console.log(`[MOCK] Central sync — ${formSource} — student: ${student.name}`);
+    console.log('[MOCK] Payload:', JSON.stringify(payload, null, 2));
+    return { mock: true, studentId: String(student._id), formSource, payload };
+  }
+
+  if (!apiUrl) throw new Error(`Central API URL not configured for ${formSource}`);
+
+  const { data } = await axios.post(apiUrl, payload, {
+    headers: {
+      'Content-Type': 'application/json',
+      'x-webhook-secret': process.env.WEBHOOK_SECRET,
+    },
+    timeout: 15000,
+  });
+  return data;
+};
+
+// Bulk bhejo — array of students
+const sendBulkToCentral = async (students) => {
+  const results = { success: [], failed: [] };
+  for (const student of students) {
+    try {
+      const result = await sendToCentral(student);
+      results.success.push({ id: String(student._id), name: student.name, result });
+    } catch (err) {
+      results.failed.push({ id: String(student._id), name: student.name, error: err.message });
+    }
+  }
+  return results;
+};
+
+module.exports = { sendToCentral, sendBulkToCentral, buildBtechPayload, buildSsismPayload };

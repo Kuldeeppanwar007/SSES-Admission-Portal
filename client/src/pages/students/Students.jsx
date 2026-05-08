@@ -4,7 +4,7 @@ import api from '../../api/axios';
 import { TRACKS, STATUSES, STATUS_COLORS, TRACK_TOWNS, TOWN_TO_MAIN_TRACK } from '../../utils/constants';
 import useAuthStore from '../../store/authStore';
 import toast from 'react-hot-toast';
-import { FiPlus, FiUpload, FiSearch, FiEdit2, FiDownload, FiFilter, FiSlash, FiClipboard, FiExternalLink, FiChevronDown, FiSend, FiClock, FiX } from 'react-icons/fi';
+import { FiPlus, FiUpload, FiSearch, FiEdit2, FiDownload, FiFilter, FiSlash, FiClipboard, FiExternalLink, FiChevronDown, FiSend, FiClock, FiX, FiRefreshCw } from 'react-icons/fi';
 import BottomSheet from '../../components/BottomSheet';
 import DatePicker from '../../components/DatePicker';
 import { isOnline, cacheStudents, getCachedStudents } from '../../utils/offlineQueue';
@@ -353,6 +353,9 @@ export default function Students() {
   const [branches, setBranches] = useState([]);
   const [villages, setVillages] = useState([]);
   const [schools, setSchools] = useState([]);
+  const [syncingCentral, setSyncingCentral] = useState(false);
+  const [eligibleLoading, setEligibleLoading] = useState(false);
+  const [confirmSync, setConfirmSync] = useState(null); // { id, name } ya 'bulk'
 
   useEffect(() => {
     const handler = (e) => { if (mobileActionsRef.current && !mobileActionsRef.current.contains(e.target)) setMobileActionsOpen(false); };
@@ -427,6 +430,21 @@ export default function Students() {
           setHasMore(cached.data.hasMore || false);
           toast('Offline — cached data dikh raha hai', { icon: '📶' });
         }
+        return;
+      }
+
+      // Central tabs ke liye eligible API use karo
+      if (tab === 'shiftCentral' || tab === 'shifted') {
+        const { data } = await api.get('/central-sync/eligible', {
+          params: { onlyPending: tab === 'shiftCentral' ? '1' : '0', search: debouncedSearch, track: filters.track },
+        });
+        const all = data.students || [];
+        const list = tab === 'shifted' ? all.filter(s => s.shiftedToCentral) : all;
+        setStudents(list);
+        setTotal(list.length);
+        setPages(1);
+        setHasMore(false);
+        setSelected([]);
         return;
       }
       
@@ -585,6 +603,38 @@ export default function Students() {
     } catch { toast.error('Failed to download CSV template'); }
   };
 
+  const handleSyncSingle = async (studentId, studentName) => {
+    setConfirmSync({ id: studentId, name: studentName });
+  };
+
+  const doSyncSingle = async (studentId) => {
+    setSyncingCentral(true);
+    try {
+      await api.post(`/central-sync/${studentId}`);
+      toast.success('Student central ko bhej diya');
+      setConfirmSync(null);
+      fetchStudents();
+    } catch (err) { toast.error(err.response?.data?.message || 'Sync failed'); }
+    finally { setSyncingCentral(false); }
+  };
+
+  const handleBulkSync = async () => {
+    if (selected.length === 0) return toast.error('Koi student select nahi kiya');
+    setConfirmSync('bulk');
+  };
+
+  const doBulkSync = async () => {
+    setSyncingCentral(true);
+    try {
+      const { data } = await api.post('/central-sync/bulk', { ids: selected });
+      toast.success(`${data.success} students central ko bheje${data.failed > 0 ? `, ${data.failed} failed` : ''}`);
+      setSelected([]);
+      setConfirmSync(null);
+      fetchStudents();
+    } catch (err) { toast.error(err.response?.data?.message || 'Bulk sync failed'); }
+    finally { setSyncingCentral(false); }
+  };
+
   const handleBulkUpload = async (e) => {
     const file = e.target.files[0]; if (!file) return;
     const formData = new FormData(); formData.append('file', file);
@@ -596,6 +646,9 @@ export default function Students() {
   };
 
   const isDisabledTab = tab === 'disabled';
+  const isShiftCentralTab = tab === 'shiftCentral';
+  const isShiftedTab = tab === 'shifted';
+  const isCentralTab = isShiftCentralTab || isShiftedTab;
   const allSelected = students.length > 0 && selected.length === students.length;
 
   // Memoize filtered students for better performance
@@ -624,6 +677,45 @@ export default function Students() {
 
   return (
     <div>
+      {/* Central Sync Confirmation */}
+      {confirmSync && (
+        <BottomSheet
+          open
+          onClose={() => !syncingCentral && setConfirmSync(null)}
+          title="Send to Central"
+          subtitle={confirmSync === 'bulk'
+            ? `${selected.length} student${selected.length > 1 ? 's' : ''} will be sent to Central`
+            : `Send "${confirmSync.name}" to Central?`
+          }
+          maxWidth="max-w-sm"
+        >
+          <div className="pt-2 space-y-3">
+            <p className="text-sm text-gray-500">
+              {confirmSync === 'bulk'
+                ? `${selected.length} student${selected.length > 1 ? 's' : ''} will be registered in the Central database. This action cannot be undone.`
+                : 'This student will be registered in the Central database. This action cannot be undone.'
+              }
+            </p>
+            <div className="flex gap-3 pt-1">
+              <button
+                onClick={() => confirmSync === 'bulk' ? doBulkSync() : doSyncSingle(confirmSync.id)}
+                disabled={syncingCentral}
+                className="flex-1 flex items-center justify-center gap-2 bg-primary hover:bg-primary-dark text-white py-2.5 rounded-xl font-semibold text-sm disabled:opacity-60 transition-colors">
+                {syncingCentral
+                  ? <><FiRefreshCw size={14} className="animate-spin" /> Sending...</>
+                  : <><FiSend size={14} /> Confirm & Send</>}
+              </button>
+              <button
+                onClick={() => setConfirmSync(null)}
+                disabled={syncingCentral}
+                className="flex-1 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-600 hover:bg-gray-50 font-medium disabled:opacity-60">
+                Cancel
+              </button>
+            </div>
+          </div>
+        </BottomSheet>
+      )}
+
       {interviewStudent && (
         <InterviewModal
           student={interviewStudent}
@@ -781,57 +873,97 @@ export default function Students() {
 
       {/* Tabs + inline quick filters */}
       <div className="mb-4">
-        {/* Desktop: tabs + filters ek row mein */}
+        {/* Desktop tabs */}
         <div className="hidden md:flex items-center justify-between gap-2">
           <div className="flex gap-1 bg-gray-100 p-1 rounded-xl">
             <button onClick={() => switchTab('active')}
-              className={`flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${!isDisabledTab ? 'bg-white shadow text-gray-800' : 'text-gray-500 hover:text-gray-700'}`}>
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${tab === 'active' ? 'bg-white shadow text-gray-800' : 'text-gray-500 hover:text-gray-700'}`}>
               <FiSearch size={14} /> Active Profiles
             </button>
+            {(user?.role === 'admin' || user?.role === 'manager') && (
+              <>
+                <button onClick={() => switchTab('shiftCentral')}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${tab === 'shiftCentral' ? 'bg-primary shadow text-white' : 'text-gray-500 hover:text-gray-700'}`}>
+                  <FiSend size={14} /> Shift Central
+                </button>
+                <button onClick={() => switchTab('shifted')}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${tab === 'shifted' ? 'bg-primary shadow text-white' : 'text-gray-500 hover:text-gray-700'}`}>
+                  <FiRefreshCw size={14} /> Shifted Students
+                </button>
+              </>
+            )}
             <button onClick={() => switchTab('disabled')}
-              className={`flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${isDisabledTab ? 'bg-white shadow text-gray-800' : 'text-gray-500 hover:text-gray-700'}`}>
-              <FiSlash size={14} /> Disabled Profiles
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${tab === 'disabled' ? 'bg-white shadow text-gray-800' : 'text-gray-500 hover:text-gray-700'}`}>
+              <FiSlash size={14} /> Disabled
             </button>
           </div>
-          <div className="flex items-center gap-2">
-            {user?.role !== 'track_incharge' && (
-              <select value={filters.track} onChange={(e) => { setFilters({ ...filters, track: e.target.value, town: '' }); setPage(1); }}
+          {/* Track filter — sirf non-central tabs pe */}
+          {!isCentralTab && (
+            <div className="flex items-center gap-2">
+              {user?.role !== 'track_incharge' && (
+                <select value={filters.track} onChange={(e) => { setFilters({ ...filters, track: e.target.value, town: '' }); setPage(1); }}
+                  className="border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none bg-white">
+                  <option value="">All Tracks</option>
+                  {TRACKS.map((t) => <option key={t}>{t}</option>)}
+                </select>
+              )}
+              <select value={filters.town} onChange={(e) => { setFilters({ ...filters, town: e.target.value }); setPage(1); }}
                 className="border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none bg-white">
-                <option value="">All Tracks</option>
-                {TRACKS.map((t) => <option key={t}>{t}</option>)}
+                <option value="">All Towns</option>
+                {availableTowns.map((town) => <option key={town} value={town}>{town}</option>)}
               </select>
-            )}
-            <select value={filters.town} onChange={(e) => { setFilters({ ...filters, town: e.target.value }); setPage(1); }}
+              {villages.length > 0 && (
+                <select value={filters.village} onChange={(e) => { setFilters({ ...filters, village: e.target.value }); setPage(1); }}
+                  className="border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none bg-white">
+                  <option value="">All Villages/Cities</option>
+                  {villages.map((v) => <option key={v} value={v}>{v}</option>)}
+                </select>
+              )}
+            </div>
+          )}
+          {/* Central tabs — track filter only */}
+          {isCentralTab && user?.role !== 'track_incharge' && (
+            <select value={filters.track} onChange={(e) => { setFilters({ ...filters, track: e.target.value }); setPage(1); }}
               className="border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none bg-white">
-              <option value="">All Towns</option>
-              {availableTowns.map((town) => <option key={town} value={town}>{town}</option>)}
+              <option value="">All Tracks</option>
+              {TRACKS.map((t) => <option key={t}>{t}</option>)}
             </select>
-            {villages.length > 0 && (
-              <select value={filters.village} onChange={(e) => { setFilters({ ...filters, village: e.target.value }); setPage(1); }}
-                className="border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none bg-white">
-                <option value="">All Villages/Cities</option>
-                {villages.map((v) => <option key={v} value={v}>{v}</option>)}
-              </select>
-            )}
-          </div>
+          )}
         </div>
-        {/* Mobile: tabs full width grid, filters full width grid below */}
+
+        {/* Mobile tabs */}
         <div className="md:hidden">
-          <div className="grid grid-cols-2 mb-2 border border-gray-200 rounded-xl overflow-hidden">
+          <div className="grid grid-cols-2 gap-1 mb-2">
             <button onClick={() => switchTab('active')}
-              className={`flex items-center justify-center gap-1.5 py-2.5 text-sm font-semibold transition-colors border-r border-gray-200 ${
-                !isDisabledTab ? 'bg-primary text-white' : 'bg-white text-gray-500'
+              className={`flex items-center justify-center gap-1.5 py-2.5 text-sm font-semibold rounded-xl transition-colors border ${
+                tab === 'active' ? 'bg-primary text-white border-primary' : 'bg-white text-gray-500 border-gray-200'
               }`}>
               <FiSearch size={13} /> Active
             </button>
+            {(user?.role === 'admin' || user?.role === 'manager') ? (
+              <>
+                <button onClick={() => switchTab('shiftCentral')}
+                  className={`flex items-center justify-center gap-1.5 py-2.5 text-sm font-semibold rounded-xl transition-colors border ${
+                    tab === 'shiftCentral' ? 'bg-primary text-white border-primary' : 'bg-white text-gray-500 border-gray-200'
+                  }`}>
+                  <FiSend size={13} /> Shift Central
+                </button>
+                <button onClick={() => switchTab('shifted')}
+                  className={`flex items-center justify-center gap-1.5 py-2.5 text-sm font-semibold rounded-xl transition-colors border ${
+                    tab === 'shifted' ? 'bg-primary text-white border-primary' : 'bg-white text-gray-500 border-gray-200'
+                  }`}>
+                  <FiRefreshCw size={13} /> Shifted
+                </button>
+              </>
+            ) : <div />}
             <button onClick={() => switchTab('disabled')}
-              className={`flex items-center justify-center gap-1.5 py-2.5 text-sm font-semibold transition-colors ${
-                isDisabledTab ? 'bg-primary text-white' : 'bg-white text-gray-500'
+              className={`flex items-center justify-center gap-1.5 py-2.5 text-sm font-semibold rounded-xl transition-colors border ${
+                tab === 'disabled' ? 'bg-primary text-white border-primary' : 'bg-white text-gray-500 border-gray-200'
               }`}>
               <FiSlash size={13} /> Disabled
             </button>
           </div>
-          {user?.role !== 'track_incharge' && (
+          {!isCentralTab && user?.role !== 'track_incharge' && (
             <div className="grid grid-cols-3 gap-2 mb-2">
               <select value={filters.track} onChange={(e) => { setFilters({ ...filters, track: e.target.value, town: '' }); setPage(1); }}
                 className="border border-gray-300 rounded-lg px-2 py-2 text-sm outline-none bg-white w-full">
@@ -852,7 +984,7 @@ export default function Students() {
               ) : <div />}
             </div>
           )}
-          {user?.role === 'track_incharge' && (
+          {!isCentralTab && user?.role === 'track_incharge' && (
             <div className="grid grid-cols-2 gap-2 mb-2">
               <select value={filters.town} onChange={(e) => { setFilters({ ...filters, town: e.target.value }); setPage(1); }}
                 className="border border-gray-300 rounded-lg px-2 py-2 text-sm outline-none bg-white w-full">
@@ -871,7 +1003,8 @@ export default function Students() {
         </div>
       </div>
 
-      {/* Search + Filters */}
+      {/* Search + Filters — sirf non-central tabs pe */}
+      {!isCentralTab && (
       <div className="bg-white rounded-xl shadow p-3 mb-4 space-y-2">
         <div className="flex gap-2">
           <div className="flex items-center gap-2 flex-1 border border-gray-300 rounded-lg px-3">
@@ -955,9 +1088,132 @@ export default function Students() {
           </div>
         )}
       </div>
+      )}
 
-      {/* Selection bar */}
-      {selected.length > 0 && (
+      {/* Central Tabs — Shift Central & Shifted Students */}
+      {isCentralTab && (
+        <div className="bg-white rounded-xl shadow p-3 mb-4">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2 flex-1 border border-gray-300 rounded-lg px-3">
+              <FiSearch className="text-gray-400 shrink-0" size={15} />
+              <input placeholder="Search name, mobile..." value={filters.search}
+                onChange={handleSearchChange}
+                className="flex-1 py-2 outline-none text-sm" />
+            </div>
+            {tab === 'shiftCentral' && (
+              <button onClick={handleBulkSync} disabled={syncingCentral || selected.length === 0}
+                className="flex items-center gap-1.5 bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-lg text-sm font-semibold disabled:opacity-60 transition-colors shrink-0">
+                {syncingCentral
+                  ? <><FiRefreshCw size={13} className="animate-spin" /> Sending...</>
+                  : <><FiSend size={13} /> Send {selected.length > 0 ? `(${selected.length})` : 'Selected'} to Central</>}
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Central tab — table */}
+      {isCentralTab && (
+        <div className="bg-white rounded-xl shadow overflow-hidden">
+          {loading ? (
+            <div className="flex justify-center py-12"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600" /></div>
+          ) : students.length === 0 ? (
+            <div className="text-center py-12 text-gray-400">
+              <FiSend size={32} className="mx-auto mb-2 opacity-20" />
+              <p className="text-sm">{tab === 'shiftCentral' ? 'Koi pending student nahi' : 'Koi shifted student nahi'}</p>
+            </div>
+          ) : (
+            <>
+              {/* Desktop table */}
+              <div className="hidden md:block overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-50 border-b">
+                    <tr>
+                      {tab === 'shiftCentral' && (
+                        <th className="px-4 py-3 w-10">
+                          <input type="checkbox" checked={allSelected} onChange={toggleAll}
+                            className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer" />
+                        </th>
+                      )}
+                      {['S.N.', 'Name', 'Father Name', 'Track', 'Mobile', 'Form', 'Branch/Priority', tab === 'shifted' ? 'Shifted At' : 'Action'].map(h => (
+                        <th key={h} className="px-4 py-3 text-xs font-semibold uppercase text-gray-500 text-left">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {students.map((s, i) => (
+                      <tr key={s._id} className="hover:bg-gray-50 cursor-pointer" onClick={() => navigate(`/students/${s._id}`)}>                        {tab === 'shiftCentral' && (
+                          <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
+                            <input type="checkbox" checked={selected.includes(s._id)} onChange={() => toggleSelect(s._id)}
+                              className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer" />
+                          </td>
+                        )}
+                        <td className="px-4 py-3 text-gray-500">{i + 1}</td>
+                        <td className="px-4 py-3 font-medium text-gray-800">{s.name}</td>
+                        <td className="px-4 py-3 text-gray-600">{s.fatherName}</td>
+                        <td className="px-4 py-3 text-gray-600">{s.track}</td>
+                        <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
+                          {s.mobileNo && <a href={`tel:${s.mobileNo}`} className="text-gray-600 hover:text-primary hover:underline">{s.mobileNo}</a>}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            s.formSource === 'btech' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'
+                          }`}>{s.formSource === 'btech' ? 'B.Tech' : 'SSISM'}</span>
+                        </td>
+                        <td className="px-4 py-3 text-gray-500 text-xs">{s.branch || s.priority1 || s.subject || '—'}</td>
+                        <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
+                          {tab === 'shifted' ? (
+                            <span className="text-xs text-gray-400">{s.shiftedAt ? new Date(s.shiftedAt).toLocaleDateString('en-IN') : '—'}</span>
+                          ) : (
+                            <button onClick={e => { e.stopPropagation(); handleSyncSingle(s._id, s.name); }}
+                              disabled={syncingCentral}
+                              className="flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 bg-primary hover:bg-primary-dark text-white rounded-lg disabled:opacity-60">
+                              <FiSend size={11} /> Send
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              {/* Mobile cards */}
+              <div className="md:hidden divide-y divide-gray-100">
+                {students.map((s, i) => (
+                  <div key={s._id} className="p-4 flex items-center gap-3" onClick={() => navigate(`/students/${s._id}`)}>                    {tab === 'shiftCentral' && (
+                      <input type="checkbox" checked={selected.includes(s._id)}
+                        onChange={e => { e.stopPropagation(); toggleSelect(s._id); }}
+                        onClick={e => e.stopPropagation()}
+                        className="rounded border-gray-300 text-emerald-600 shrink-0" />
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-gray-800 truncate">{i + 1}. {s.name}</p>
+                      <p className="text-xs text-gray-400">{s.fatherName} · {s.mobileNo}</p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                          s.formSource === 'btech' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'
+                        }`}>{s.formSource === 'btech' ? 'B.Tech' : 'SSISM'}</span>
+                        <span className="text-xs text-gray-400">{s.track}</span>
+                        {tab === 'shifted' && s.shiftedAt && (
+                          <span className="text-xs text-emerald-600">✓ {new Date(s.shiftedAt).toLocaleDateString('en-IN')}</span>
+                        )}
+                      </div>
+                    </div>
+                    {tab === 'shiftCentral' && (
+                      <button onClick={e => { e.stopPropagation(); handleSyncSingle(s._id, s.name); }}
+                        disabled={syncingCentral}
+                        className="flex items-center gap-1 text-xs font-medium px-3 py-2 bg-primary hover:bg-primary-dark text-white rounded-lg disabled:opacity-60 shrink-0">
+                        <FiSend size={12} /> Send
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      )}
+      {!isCentralTab && selected.length > 0 && (
         <div className="flex items-center justify-between bg-orange-50 border border-orange-200 rounded-xl px-4 py-2.5 mb-3">
           <span className="text-sm font-semibold text-primary">{selected.length} student{selected.length > 1 ? 's' : ''} selected</span>
           <div className="flex gap-2">
@@ -970,8 +1226,8 @@ export default function Students() {
         </div>
       )}
 
-      {/* Table — desktop */}
-      <div className="hidden md:block bg-white rounded-xl shadow overflow-hidden">
+      {/* Table — desktop, sirf non-central tabs */}
+      {!isCentralTab && <div className="hidden md:block bg-white rounded-xl shadow overflow-hidden">
         {loading && students.length === 0 ? (
           // Loading skeleton
           <div className="animate-pulse">
@@ -1099,10 +1355,10 @@ export default function Students() {
             </table>
           </div>
         )}
-      </div>
+      </div>}
 
-      {/* Cards — mobile */}
-      <div className="md:hidden space-y-3">
+      {/* Cards — mobile, sirf non-central tabs */}
+      {!isCentralTab && <div className="md:hidden space-y-3">
         {loading && students.length === 0 ? (
           // Mobile loading skeleton
           <div className="space-y-3">
@@ -1208,10 +1464,10 @@ export default function Students() {
             </div>
           </div>
         ))}
-      </div>
+      </div>}
 
-      {/* Pagination */}
-      {pages > 1 && (
+      {/* Pagination — sirf non-central tabs */}
+      {!isCentralTab && pages > 1 && (
         <div className="flex justify-center items-center gap-2 mt-4 flex-wrap">
           <button onClick={() => setPage(p => Math.max(p - 1, 1))} disabled={page === 1}
             className="px-3 py-1.5 rounded text-sm border bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-40">‹</button>
