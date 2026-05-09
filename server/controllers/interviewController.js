@@ -12,7 +12,7 @@ const addInterview = async (req, res) => {
       date,
       mathematicsMarks, subjectiveKnowledge, reasoningMarks,
       goalClarity, sincerity, communicationLevel, confidenceLevel,
-      assignmentMarks, result, remarks, visitPurpose,
+      assignmentMarks, result, remarks, visitPurpose, interviewType,
     } = req.body;
 
     const studentId = req.params.studentId;
@@ -40,6 +40,7 @@ const addInterview = async (req, res) => {
       totalMark,
       result: result || 'Pending',
       remarks: remarks || '',
+      interviewType: interviewType || null,
     });
 
     // Agar visitPurpose diya hai to aaj ki latest ReceptionEntry update karo

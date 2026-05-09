@@ -140,6 +140,13 @@ const getStudents = async (req, res) => {
     if (req.query.schoolName) filter.schoolName = { $regex: `^${req.query.schoolName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, $options: 'i' };
 
     // Optimize interview filter
+    // interviewType filter — IDs collect karo, baad mein intersect honge
+    let interviewTypeIds = null;
+    if (req.query.interviewType) {
+      const Interview = require('../models/Interview');
+      interviewTypeIds = await Interview.distinct('student', { interviewType: req.query.interviewType });
+    }
+
     if (interviewFilter === 'finalCleared') {
       filter['finalInterview.result'] = 'Pass';
       filter.status = { $ne: 'Admitted' };
@@ -178,21 +185,29 @@ const getStudents = async (req, res) => {
     } else if (interviewFilter === 'hasAttempts') {
       const Interview = require('../models/Interview');
       const studentIdsWithInterviews = await Interview.distinct('student');
-      filter._id = { $in: studentIdsWithInterviews };
+      const baseIds = interviewTypeIds
+        ? studentIdsWithInterviews.filter(id => interviewTypeIds.some(tid => tid.toString() === id.toString()))
+        : studentIdsWithInterviews;
+      filter._id = { $in: baseIds };
       filter['finalInterview.result'] = { $ne: 'Pass' };
       filter.isDisabled = { $ne: true };
     } else if (interviewFilter?.startsWith('round_')) {
       const round = Number(interviewFilter.split('_')[1]);
       const Interview = require('../models/Interview');
-      // Sirf wahi students jinka last (max) round = N ho
       const lastRoundAgg = await Interview.aggregate([
         { $group: { _id: '$student', lastRound: { $max: '$round' } } },
         { $match: { lastRound: round } },
       ]);
       const studentIds = lastRoundAgg.map(x => x._id);
-      filter._id = { $in: studentIds };
+      const baseIds = interviewTypeIds
+        ? studentIds.filter(id => interviewTypeIds.some(tid => tid.toString() === id.toString()))
+        : studentIds;
+      filter._id = { $in: baseIds };
       filter['finalInterview.result'] = { $ne: 'Pass' };
       filter.isDisabled = { $ne: true };
+    } else if (interviewTypeIds) {
+      // sirf interviewType filter, koi interviewFilter nahi
+      filter._id = { $in: interviewTypeIds };
     }
 
     // Optimize search with text index
@@ -1094,6 +1109,14 @@ const getTrackStats = async (req, res) => {
 
     const disabled = await Student.countDocuments({ track, isDisabled: true });
 
+    // Final Cleared — interview pass but not yet admitted
+    const finalCleared = await Student.countDocuments({
+      track,
+      'finalInterview.result': 'Pass',
+      status: { $ne: 'Admitted' },
+      isDisabled: { $ne: true },
+    });
+
     // Interview attempts count — students with at least 1 interview
     const Interview = require('../models/Interview');
     const studentIdsWithInterviews = await Interview.distinct('student', {});
@@ -1152,7 +1175,7 @@ const getTrackStats = async (req, res) => {
     const callingEfficiency = totalActive > 0 ? Math.round((callingCount / totalActive) * 100) : 0;
 
     res.json({
-      track, total, applied, calling, admitted, rejected, disabled, interviewAttempts, subjects,
+      track, total, applied, calling, admitted, rejected, disabled, finalCleared, interviewAttempts, subjects,
       points: trackPoints?.points || 0,
       statusBreakdown: statusBreakdown.map(({ _id, count }) => ({ status: _id, count })),
       funnelBreakdown: funnelData,
@@ -1175,6 +1198,15 @@ const getStats = async (req, res) => {
     const rejected = await Student.countDocuments({ status: 'Rejected' });
     const disabled = await Student.countDocuments({ isDisabled: true });
     const unassigned = await Student.countDocuments({ $or: [{ track: '' }, { track: null }, { track: { $exists: false } }] });
+
+    // Interview attempts — students with at least 1 interview, not yet final cleared
+    const Interview = require('../models/Interview');
+    const studentIdsWithInterviews = await Interview.distinct('student');
+    const interviewAttempts = await Student.countDocuments({
+      _id: { $in: studentIdsWithInterviews },
+      'finalInterview.result': { $ne: 'Pass' },
+      isDisabled: { $ne: true },
+    });
 
     const BTECH_SUBJECTS = ['B.Tech(CS)', 'B.Tech(IT)', 'B.Tech(ECE)', 'B.Tech(AI/ML)'];
 
@@ -1354,6 +1386,13 @@ const getStats = async (req, res) => {
       funnelStage: { $ne: 'Admission Closed' },
     });
 
+    // Total final cleared (not yet admitted)
+    const finalCleared = await Student.countDocuments({
+      'finalInterview.result': 'Pass',
+      status: { $ne: 'Admitted' },
+      isDisabled: { $ne: true },
+    });
+
     // Funnel stage counts — dashboard ke liye (overall)
     const funnelStageCounts = await Student.aggregate([
       { $match: { funnelStage: { $exists: true, $nin: ['', null] }, isDisabled: { $ne: true } } },
@@ -1410,7 +1449,7 @@ const getStats = async (req, res) => {
       trackAdmissionTypeBreakdown[track][admissionType][subject || 'Unknown'] = count;
     });
 
-    res.json({ total, applied, calling, admitted, rejected, disabled, unassigned, admittedNoFunnelCount, trackWise, btechByBranch, finalClearedBySubject, admissionTypeBreakdown, trackAdmissionTypeBreakdown, funnelStageBreakdown, trackFunnelBreakdown });
+    res.json({ total, applied, calling, admitted, rejected, disabled, unassigned, admittedNoFunnelCount, finalCleared, interviewAttempts, trackWise, btechByBranch, finalClearedBySubject, admissionTypeBreakdown, trackAdmissionTypeBreakdown, funnelStageBreakdown, trackFunnelBreakdown });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

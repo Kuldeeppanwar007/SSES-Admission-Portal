@@ -37,7 +37,7 @@ const getEntries = async (req, res) => {
     const entries = await ReceptionEntry.find(query)
       .populate('enteredBy', 'name')
       .populate('interviewer', 'name')
-      .populate('studentId', 'name')
+      .populate('studentId', 'name finalInterview')
       .sort({ createdAt: -1 });
     res.json(entries);
   } catch (err) {

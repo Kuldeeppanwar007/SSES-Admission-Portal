@@ -24,6 +24,7 @@ const interviewSchema = new mongoose.Schema({
   totalMark:   { type: Number, required: true },
   result:      { type: String, enum: ['Pass', 'Fail', 'Pending'], default: 'Pending' },
   remarks:     { type: String, default: '' },
+  interviewType: { type: String, enum: ['Online', 'On Campus', null], default: null },
 }, { timestamps: true });
 
 module.exports = mongoose.model('Interview', interviewSchema);

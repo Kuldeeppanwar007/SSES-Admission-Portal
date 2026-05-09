@@ -74,7 +74,7 @@ function ReceptionDrawerTable({ list, emptyMsg }) {
       </thead>
       <tbody className="divide-y divide-gray-50">
         {list.map((e, i) => (
-          <tr key={e._id || i} className="hover:bg-sky-50/30 transition-colors">
+          <tr key={e._id || i} className={`transition-colors ${e.studentId?.finalInterview?.result === 'Pass' ? 'bg-green-50 hover:bg-green-100/70' : 'hover:bg-sky-50/30'}`}>
             <td className="px-4 py-3 text-gray-400 text-xs">{i + 1}</td>
             <td className="px-4 py-3 font-semibold text-gray-800">{e.admissionFormNo}</td>
             <td className="px-4 py-3 text-gray-700 text-xs font-medium">{e.studentId?.name || '—'}</td>
@@ -119,7 +119,7 @@ function DrawerTable({ list, byField, emptyMsg }) {
       </thead>
       <tbody className="divide-y divide-gray-50">
         {list.map((row, i) => (
-          <tr key={i} className="hover:bg-orange-50/30 transition-colors">
+          <tr key={i} className={`transition-colors ${row.finalCleared ? 'bg-green-50 hover:bg-green-100/70' : 'hover:bg-orange-50/30'}`}>
             <td className="px-4 py-3 text-gray-400 text-xs">{i + 1}</td>
             <td className="px-4 py-3">
               <div className="flex items-center gap-2">
@@ -460,7 +460,7 @@ export default function DailySummary() {
                             `${displayDate} — ${value} entr${value === 1 ? 'y' : 'ies'}`,
                             data.entries.filter(e => e.visitPurpose === purpose).map(e => ({
                               _id: e._id, admissionFormNo: e.admissionFormNo,
-                              studentId: { name: e.studentName }, town: e.town,
+                              studentId: { name: e.studentName, finalInterview: e.finalInterview }, town: e.town,
                               branch: e.branch, createdAt: e.createdAt,
                             })),
                             '', 'Koi entry nahi mili', 'reception'
@@ -758,7 +758,7 @@ export default function DailySummary() {
                   </thead>
                   <tbody className="divide-y divide-gray-50">
                     {filteredReceptionEntries.map((e, i) => (
-                      <tr key={e._id} className="hover:bg-sky-50/30 transition-colors">
+                      <tr key={e._id} className={`transition-colors ${e.studentId?.finalInterview?.result === 'Pass' ? 'bg-green-50 hover:bg-green-100/70' : 'hover:bg-sky-50/30'}`}>
                         <td className="px-4 py-3 text-gray-400 text-xs">{i + 1}</td>
                         <td className="px-4 py-3 font-semibold text-gray-800">{e.admissionFormNo}</td>
                         <td className="px-4 py-3 text-gray-700 text-xs font-medium">{e.studentId?.name || '—'}</td>

@@ -324,6 +324,11 @@ const handleViewHistory = async () => {
                     <span className="text-sm font-bold text-primary bg-orange-50 border border-orange-200 px-3 py-1 rounded-full">Round {h.round}</span>
                     <span className="text-sm text-gray-500">{h.interviewer?.name}</span>
                     <span className="text-xs text-gray-400">{new Date(h.date).toLocaleDateString('en-IN')}</span>
+                    {h.interviewType && (
+                      <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                        h.interviewType === 'Online' ? 'bg-blue-100 text-blue-700' : 'bg-violet-100 text-violet-700'
+                      }`}>{h.interviewType}</span>
+                    )}
                   </div>
                   <span className={`text-xs font-bold px-3 py-1 rounded-full ${
                     h.result === 'Pass' ? 'bg-emerald-100 text-emerald-700' :

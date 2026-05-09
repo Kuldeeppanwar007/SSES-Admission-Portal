@@ -30,7 +30,7 @@ const emptyForm = {
   date: new Date().toISOString().slice(0, 10),
   mathematicsMarks: '', subjectiveKnowledge: '', reasoningMarks: '',
   goalClarity: '', sincerity: '', communicationLevel: '', confidenceLevel: '',
-  assignmentMarks: '', result: 'Pending', remarks: '', visitPurpose: '',
+  assignmentMarks: '', result: 'Pending', remarks: '', visitPurpose: '', interviewType: '',
 };
 
 function SelectField({ label, value, onChange, options }) {
@@ -162,8 +162,17 @@ function InterviewModal({ student, user, onClose, onSaved }) {
               <SelectField label="Mathematics Marks"    value={form.mathematicsMarks}    onChange={set('mathematicsMarks')}    options={RATING} />
               <SelectField label="Subjective Knowledge" value={form.subjectiveKnowledge} onChange={set('subjectiveKnowledge')} options={RATING} />
             </div>
-            <div className="mt-3 w-1/2 pr-1.5">
+            <div className="mt-3 grid grid-cols-2 gap-3">
               <SelectField label="Reasoning Marks" value={form.reasoningMarks} onChange={set('reasoningMarks')} options={RATING} />
+              <div className="relative">
+                <label className="absolute -top-2 left-3 bg-white px-1 text-xs text-gray-500">Interview Type</label>
+                <select value={form.interviewType} onChange={e => setForm(f => ({ ...f, interviewType: e.target.value }))}
+                  className="w-full border border-gray-300 rounded-lg px-3 pt-4 pb-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary appearance-none">
+                  <option value="">Select Type</option>
+                  <option value="Online">Online</option>
+                  <option value="On Campus">On Campus</option>
+                </select>
+              </div>
             </div>
           </div>
 
@@ -424,6 +433,7 @@ export default function Students() {
             subjectFilter: parsed.filters?.subjectFilter || '',
             village: parsed.filters?.village || '',
             schoolName: parsed.filters?.schoolName || '',
+            interviewType: parsed.filters?.interviewType || '',
           },
           showFilters: parsed.showFilters || false
         };
@@ -450,6 +460,7 @@ export default function Students() {
         subjectFilter: urlSubject || '',
         village: '',
         schoolName: '',
+        interviewType: '',
       },
       showFilters: !!(urlTrack || urlStatus || urlSubject || urlAdmissionType || urlInterviewFilter || urlFunnelStage || urlAdmittedNoFunnel)
     };
@@ -576,6 +587,7 @@ export default function Students() {
         subjectFilter: filters.subjectFilter,
         village: filters.village,
         schoolName: filters.schoolName,
+        interviewType: filters.interviewType,
         search: debouncedSearch,
         ...(tab === 'disabled' ? { status: 'Disabled' } : {}) 
       };
@@ -651,7 +663,7 @@ export default function Students() {
   const switchTab = (t) => { 
     setTab(t); 
     setPage(1); 
-    setFilters({ track: '', status: '', town: '', search: '', formSource: '', interviewFilter: '', funnelStage: '', admittedNoFunnel: '', noFunnelStage: '', admissionType: '', branch: '', subjectFilter: '', village: '', schoolName: '' }); 
+    setFilters({ track: '', status: '', town: '', search: '', formSource: '', interviewFilter: '', funnelStage: '', admittedNoFunnel: '', noFunnelStage: '', admissionType: '', branch: '', subjectFilter: '', village: '', schoolName: '', interviewType: '' }); 
     setSelected([]);
     setHasMore(false);
     setInterviewRound('');
@@ -1061,6 +1073,12 @@ export default function Students() {
                 <option key={r} value={`round_${r}`}>Round {r}</option>
               ))}
               <option value="finalCleared">Final Cleared</option>
+            </select>
+            <select value={filters.interviewType || ''} onChange={(e) => { setFilters({ ...filters, interviewType: e.target.value }); setPage(1); }}
+              className="flex-1 min-w-32 border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none">
+              <option value="">All Interview Types</option>
+              <option value="Online">Online</option>
+              <option value="On Campus">On Campus</option>
             </select>
             <select value={filters.funnelStage} onChange={(e) => { 
               const newFilters = { ...filters, funnelStage: e.target.value };

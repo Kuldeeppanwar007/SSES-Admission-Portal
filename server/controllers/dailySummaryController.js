@@ -121,7 +121,7 @@ const getDailySummary = async (req, res) => {
     // Interviews today
     const interviewsRaw = await Interview.find({
       createdAt: { $gte: start, $lte: end },
-    }).populate('student', 'name fatherName track subject branch mobileNo').populate('interviewer', 'name role').sort({ createdAt: -1 });
+    }).populate('student', 'name fatherName track subject branch mobileNo finalInterview').populate('interviewer', 'name role').sort({ createdAt: -1 });
 
     const interviewsFiltered = isTrackIncharge && userTrack
       ? interviewsRaw.filter(iv => iv.student?.track === userTrack)
@@ -140,6 +140,7 @@ const getDailySummary = async (req, res) => {
         by: byName,
         result: iv.result,
         totalMark: iv.totalMark,
+        finalCleared: iv.student?.finalInterview?.result === 'Pass',
         time: iv.createdAt,
       };
     });
@@ -284,7 +285,7 @@ const getDailySummary = async (req, res) => {
     }
 
     const receptionEntries = await ReceptionEntry.find(receptionQuery)
-      .populate('studentId', 'name track');
+      .populate('studentId', 'name track finalInterview');
 
     const receptionStats = receptionEntries.reduce((acc, e) => {
       const p = e.visitPurpose;
@@ -314,6 +315,7 @@ const getDailySummary = async (req, res) => {
           _id: e._id,
           admissionFormNo: e.admissionFormNo,
           studentName: e.studentId?.name || null,
+          finalInterview: e.studentId?.finalInterview || null,
           town: e.town,
           visitPurpose: e.visitPurpose,
           branch: e.branch,
