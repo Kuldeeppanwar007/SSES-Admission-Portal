@@ -131,7 +131,9 @@ const getStudents = async (req, res) => {
     }
 
     // Admission type filter
-    if (req.query.admissionType) filter.admissionType = req.query.admissionType;
+    if (req.query.admissionType) {
+      filter.admissionType = req.query.admissionType === 'PSRDMS' ? 'Shri Ram' : req.query.admissionType;
+    }
 
     // Subject filter (dashboard capacity cards se)
     if (req.query.subjectFilter) filter.subject = req.query.subjectFilter;
@@ -1433,7 +1435,10 @@ const getStats = async (req, res) => {
       { $group: { _id: '$admissionType', count: { $sum: 1 } } },
     ]);
     const admissionTypeBreakdown = {};
-    admissionTypeData.forEach(({ _id, count }) => { admissionTypeBreakdown[_id] = count; });
+    admissionTypeData.forEach(({ _id, count }) => {
+      const key = _id === 'Shri Ram' ? 'PSRDMS' : _id;
+      admissionTypeBreakdown[key] = count;
+    });
 
     // Track-wise admission type breakdown (subject-wise)
     const trackAdmissionTypeData = await Student.aggregate([
@@ -1444,9 +1449,10 @@ const getStats = async (req, res) => {
     const trackAdmissionTypeBreakdown = {};
     trackAdmissionTypeData.forEach(({ _id: { track, admissionType, subject }, count }) => {
       if (!track) return;
+      const typeKey = admissionType === 'Shri Ram' ? 'PSRDMS' : admissionType;
       if (!trackAdmissionTypeBreakdown[track]) trackAdmissionTypeBreakdown[track] = {};
-      if (!trackAdmissionTypeBreakdown[track][admissionType]) trackAdmissionTypeBreakdown[track][admissionType] = {};
-      trackAdmissionTypeBreakdown[track][admissionType][subject || 'Unknown'] = count;
+      if (!trackAdmissionTypeBreakdown[track][typeKey]) trackAdmissionTypeBreakdown[track][typeKey] = {};
+      trackAdmissionTypeBreakdown[track][typeKey][subject || 'Unknown'] = count;
     });
 
     res.json({ total, applied, calling, admitted, rejected, disabled, unassigned, admittedNoFunnelCount, finalCleared, interviewAttempts, trackWise, btechByBranch, finalClearedBySubject, admissionTypeBreakdown, trackAdmissionTypeBreakdown, funnelStageBreakdown, trackFunnelBreakdown });

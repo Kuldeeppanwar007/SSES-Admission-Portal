@@ -115,7 +115,7 @@ function BTechCapacityCards({ btechByBranch, finalClearedBySubject, navigate }) 
 const ADMISSION_TYPES = [
   { key: 'SNS',      color: 'text-blue-600',   bg: 'bg-blue-50',   border: 'border-blue-200' },
   { key: 'SVS',      color: 'text-violet-600', bg: 'bg-violet-50', border: 'border-violet-200' },
-  { key: 'Shri Ram', color: 'text-amber-600',  bg: 'bg-amber-50',  border: 'border-amber-200' },
+  { key: 'PSRDMS',     color: 'text-amber-600',  bg: 'bg-amber-50',  border: 'border-amber-200' },
   { key: 'Full Fees',color: 'text-emerald-600',bg: 'bg-emerald-50', border: 'border-emerald-200' },
 ];
 
@@ -141,11 +141,11 @@ function AdmissionTypeCards({ admissionTypeBreakdown, navigate }) {
   );
 }
 
-const SCHOLARSHIP_TYPES = ['SNS', 'SVS', 'Shri Ram'];
+const SCHOLARSHIP_TYPES = ['SNS', 'SVS', 'PSRDMS'];
 const SCHOLARSHIP_COLORS = {
   'SNS':      { text: 'text-blue-600',   bg: 'bg-blue-50',   border: 'border-blue-200',   badge: 'bg-blue-100 text-blue-700' },
   'SVS':      { text: 'text-violet-600', bg: 'bg-violet-50', border: 'border-violet-200', badge: 'bg-violet-100 text-violet-700' },
-  'Shri Ram': { text: 'text-amber-600',  bg: 'bg-amber-50',  border: 'border-amber-200',  badge: 'bg-amber-100 text-amber-700' },
+  'PSRDMS': { text: 'text-amber-600',  bg: 'bg-amber-50',  border: 'border-amber-200',  badge: 'bg-amber-100 text-amber-700' },
 };
 
 function TrackScholarshipBreakdown({ trackAdmissionTypeBreakdown, navigate }) {
