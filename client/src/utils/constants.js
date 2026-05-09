@@ -38,4 +38,4 @@ export const STATUS_COLORS = {
   Disabled: 'bg-gray-800 text-white',
 };
 
-export const ROLES = ['admin', 'manager', 'track_incharge', 'interviewer'];
+export const ROLES = ['admin', 'manager', 'track_incharge', 'interviewer', 'receptionist'];

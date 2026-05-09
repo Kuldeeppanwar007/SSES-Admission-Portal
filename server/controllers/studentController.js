@@ -205,6 +205,7 @@ const getStudents = async (req, res) => {
         { track: { $regex: safeSearch, $options: 'i' } },
         { remarks: { $regex: safeSearch, $options: 'i' } },
         { receiptNo: { $regex: safeSearch, $options: 'i' } },
+        { admissionFormNo: { $regex: safeSearch, $options: 'i' } },
       ];
       
       if (filter.$or) {
@@ -221,7 +222,7 @@ const getStudents = async (req, res) => {
     const [total, students] = await Promise.all([
       Student.countDocuments(filter),
       Student.find(filter)
-        .select('name fatherName track trackName village mobileNo formSource status finalInterview createdAt isTopper isPriority branch remarks') // Select only needed fields
+        .select('sn name fatherName track trackName village mobileNo formSource status finalInterview createdAt isTopper isPriority branch remarks admissionFormNo')
         .populate('addedBy', 'name')
         .sort({ createdAt: -1 })
         .skip((_page - 1) * _limit)

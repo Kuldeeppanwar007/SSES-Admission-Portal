@@ -3,6 +3,7 @@ const StatusHistory = require('../models/StatusHistory');
 const Interview = require('../models/Interview');
 const EditRequest = require('../models/EditRequest');
 const User = require('../models/User');
+const ReceptionEntry = require('../models/ReceptionEntry');
 
 const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
 
@@ -260,6 +261,21 @@ const getDailySummary = async (req, res) => {
       .map(([branch, count]) => ({ branch, count }))
       .sort((a, b) => b.count - a.count);
 
+    // ─── Reception Stats — real data from ReceptionEntry ───
+    const receptionEntries = await ReceptionEntry.find({
+      date: { $gte: start, $lte: end },
+    });
+
+    const receptionStats = receptionEntries.reduce((acc, e) => {
+      const p = e.visitPurpose;
+      acc.visit        += p === 'Visit'        ? 1 : 0;
+      acc.inquiry      += p === 'Inquiry'      ? 1 : 0;
+      acc.interview    += p === 'Interview'    ? 1 : 0;
+      acc.reInterview  += p === 'Re-Interview' ? 1 : 0;
+      acc.total        += 1;
+      return acc;
+    }, { visit: 0, inquiry: 0, interview: 0, reInterview: 0, total: 0 });
+
     res.json({
       date: displayDate,
       studentsAdded,
@@ -275,6 +291,7 @@ const getDailySummary = async (req, res) => {
       branchWiseAdmitted: branchWiseAdmittedArr,
       callingList,
       branchWiseCalling: branchWiseCallingArr,
+      receptionStats,
     });
   } catch (err) {
     res.status(500).json({ message: err.message });

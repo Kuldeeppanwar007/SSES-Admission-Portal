@@ -160,6 +160,7 @@ export default function DailySummary() {
   const [toDate, setToDate] = useState('');
   const [summary, setSummary] = useState(null);
   const [weeklyData, setWeeklyData] = useState(null);
+  const [receptionEntries, setReceptionEntries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('admitted');
   const [drawer, setDrawer] = useState({ open: false, title: '', subtitle: '', list: [], byField: '', emptyMsg: '' });
@@ -173,12 +174,15 @@ export default function DailySummary() {
     try {
       if (mode === 'range' && (!fromDate || !toDate)) { setLoading(false); return; }
       const params = mode === 'range' ? `from=${fromDate}&to=${toDate}` : `date=${date}`;
-      const [s, w] = await Promise.all([
+      const fetchDate = mode === 'range' ? (fromDate || today) : date;
+      const [s, w, r] = await Promise.all([
         api.get(`/daily-summary?${params}`),
         api.get('/daily-summary/weekly'),
+        api.get(`/reception?date=${fetchDate}`),
       ]);
       setSummary(s.data);
       setWeeklyData(w.data);
+      setReceptionEntries(r.data || []);
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to load summary');
     } finally {
@@ -303,6 +307,28 @@ export default function DailySummary() {
         <StatCard label="Edit Requests" value={summary?.editRequestsCount || 0} icon={FiEdit}
           iconBg="bg-purple-50" iconColor="text-purple-500" sub="Pending / done" />
       </div>
+
+      {/* ── Reception Stats Cards ── */}
+      {summary?.receptionStats && (
+        <div>
+          <div className="flex items-center gap-2 mb-3">
+            <span className="text-sm font-bold text-gray-700 uppercase tracking-wide">Reception Overview</span>
+            <div className="flex-1 h-px bg-gray-200" />
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+            <StatCard label="Total Visitors" value={summary.receptionStats.total || 0} icon={FiUsers}
+              iconBg="bg-sky-50" iconColor="text-sky-500" sub="Aaj ke total visitors" />
+            <StatCard label="Visit" value={summary.receptionStats.visit || 0} icon={FiActivity}
+              iconBg="bg-cyan-50" iconColor="text-cyan-500" sub="Purpose: Visit" />
+            <StatCard label="Inquiry" value={summary.receptionStats.inquiry || 0} icon={FiTrendingUp}
+              iconBg="bg-amber-50" iconColor="text-amber-500" sub="Purpose: Inquiry" />
+            <StatCard label="Interview" value={summary.receptionStats.interview || 0} icon={FiCheckCircle}
+              iconBg="bg-emerald-50" iconColor="text-emerald-500" sub="Purpose: Interview" />
+            <StatCard label="Re-Interview" value={summary.receptionStats.reInterview || 0} icon={FiEdit}
+              iconBg="bg-rose-50" iconColor="text-rose-500" sub="Purpose: Re-Interview" />
+          </div>
+        </div>
+      )}
 
       {/* ── Area Chart + Donut ── */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
@@ -514,15 +540,16 @@ export default function DailySummary() {
         </div>
       </div>
 
-      {/* ── Admitted / Calling Full Table ── */}
+      {/* ── Admitted / Calling / Reception Full Table ── */}
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm">
-        <div className="flex border-b border-gray-100 px-2 pt-2">
+        <div className="flex border-b border-gray-100 px-2 pt-2 overflow-x-auto">
           {[
-            { key: 'admitted', label: 'Admitted Students', count: summary?.admittedList?.length || 0, active: 'text-green-600 border-green-500' },
-            { key: 'calling',  label: 'Calling Students',  count: summary?.callingList?.length  || 0, active: 'text-yellow-600 border-yellow-500' },
+            { key: 'admitted',  label: 'Admitted Students', count: summary?.admittedList?.length || 0,  active: 'text-green-600 border-green-500' },
+            { key: 'calling',   label: 'Calling Students',  count: summary?.callingList?.length  || 0,  active: 'text-yellow-600 border-yellow-500' },
+            { key: 'reception', label: 'Reception Entries', count: receptionEntries.length,             active: 'text-sky-600 border-sky-500' },
           ].map(t => (
             <button key={t.key} onClick={() => setActiveTab(t.key)}
-              className={`flex items-center gap-2 px-5 py-3 text-sm font-medium border-b-2 transition-colors -mb-px ${
+              className={`flex items-center gap-2 px-5 py-3 text-sm font-medium border-b-2 transition-colors -mb-px whitespace-nowrap ${
                 activeTab === t.key ? t.active : 'border-transparent text-gray-400 hover:text-gray-600'
               }`}>
               {t.label}
@@ -533,11 +560,60 @@ export default function DailySummary() {
           ))}
         </div>
         <div className="overflow-x-auto">
-          <DrawerTable
-            list={activeList}
-            byField={activeTab === 'admitted' ? 'Admitted By' : 'Called By'}
-            emptyMsg={activeTab === 'admitted' ? 'No admissions today' : 'No calling today'}
-          />
+          {activeTab === 'reception' ? (
+            receptionEntries.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-20 text-gray-300 gap-2">
+                <FiUsers size={36} />
+                <p className="text-sm">Koi reception entry nahi mili</p>
+              </div>
+            ) : (
+              <table className="w-full text-sm">
+                <thead className="sticky top-0 bg-gray-50 z-10">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase">#</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase">Form No.</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase">Town</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase">Visit Purpose</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase">Branch</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase">Interviewer</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase">Entered By</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase">Time</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50">
+                  {receptionEntries.map((e, i) => (
+                    <tr key={e._id} className="hover:bg-sky-50/30 transition-colors">
+                      <td className="px-4 py-3 text-gray-400 text-xs">{i + 1}</td>
+                      <td className="px-4 py-3 font-semibold text-gray-800">{e.admissionFormNo}</td>
+                      <td className="px-4 py-3">
+                        <span className="text-xs bg-orange-50 text-orange-600 font-semibold px-2 py-0.5 rounded-full">{e.town}</span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                          e.visitPurpose === 'Interview'    ? 'bg-emerald-100 text-emerald-700' :
+                          e.visitPurpose === 'Re-Interview' ? 'bg-rose-100 text-rose-700' :
+                          e.visitPurpose === 'Inquiry'      ? 'bg-amber-100 text-amber-700' :
+                          'bg-sky-100 text-sky-700'
+                        }`}>{e.visitPurpose}</span>
+                      </td>
+                      <td className="px-4 py-3 text-gray-600 text-xs">{e.branch || '—'}</td>
+                      <td className="px-4 py-3 text-gray-600 text-xs">{e.interviewer?.name || '—'}</td>
+                      <td className="px-4 py-3 text-gray-500 text-xs">{e.enteredBy?.name || '—'}</td>
+                      <td className="px-4 py-3 text-gray-400 text-xs">
+                        {new Date(e.createdAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )
+          ) : (
+            <DrawerTable
+              list={activeTab === 'admitted' ? summary?.admittedList : summary?.callingList}
+              byField={activeTab === 'admitted' ? 'Admitted By' : 'Called By'}
+              emptyMsg={activeTab === 'admitted' ? 'No admissions today' : 'No calling today'}
+            />
+          )}
         </div>
       </div>
 

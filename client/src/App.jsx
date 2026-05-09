@@ -124,12 +124,12 @@ export default function App() {
           <Route path="/edit-requests" element={<EditRequests />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/activity-log" element={
-            <ProtectedRoute roles={['admin', 'track_incharge', 'interviewer']}>
+            <ProtectedRoute roles={['admin', 'track_incharge', 'interviewer', 'receptionist']}>
               <ActivityLog />
             </ProtectedRoute>
           } />
           <Route path="/daily-summary" element={
-            <ProtectedRoute roles={['admin', 'track_incharge', 'interviewer']}>
+            <ProtectedRoute roles={['admin', 'track_incharge', 'interviewer', 'receptionist']}>
               <DailySummary />
             </ProtectedRoute>
           } />

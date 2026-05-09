@@ -12,8 +12,10 @@ const navItems = [
   { to: '/edit-requests', Icon: FiEdit, label: 'Edit Requests', trackOnly: true },
   { to: '/activity-log', Icon: FiActivity, label: 'Activity Log', adminOnly: true },
   { to: '/activity-log', Icon: FiActivity, label: 'Activity Log', trackOnly: true },
+  { to: '/activity-log', Icon: FiActivity, label: 'Activity Log', receptionistOnly: true },
   { to: '/daily-summary', Icon: FiBarChart2, label: 'Daily Summary', adminOnly: true },
   { to: '/daily-summary', Icon: FiBarChart2, label: 'Daily Summary', trackOnly: true },
+  { to: '/daily-summary', Icon: FiBarChart2, label: 'Daily Summary', receptionistOnly: true },
   { to: '/targets', Icon: FiFlag, label: 'Targets', adminOnly: true },
   { to: '/track-manager', Icon: FiSettings, label: 'Track Manager', adminOnly: true },
   { to: '/users', Icon: FiUserCheck, label: 'Users', adminOnly: true },
@@ -28,6 +30,8 @@ export default function Sidebar({ open, onClose, collapsed, onToggle }) {
   const links = navItems.filter((i) => {
     if (i.adminOnly) return user?.role === 'admin';
     if (i.trackOnly) return user?.role === 'track_incharge' || user?.role === 'interviewer';
+    if (i.receptionistOnly) return user?.role === 'receptionist';
+    if (user?.role === 'receptionist') return i.to === '/dashboard' || i.to === '/students';
     if (user?.role === 'interviewer') return i.to === '/dashboard' || i.to === '/students' || i.to === '/track-dashboard' || i.to === '/activity-log' || i.to === '/daily-summary' || i.to === '/settings';
     return true;
   });

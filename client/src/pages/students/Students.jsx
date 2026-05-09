@@ -4,7 +4,7 @@ import api from '../../api/axios';
 import { TRACKS, STATUSES, STATUS_COLORS, TRACK_TOWNS, TOWN_TO_MAIN_TRACK } from '../../utils/constants';
 import useAuthStore from '../../store/authStore';
 import toast from 'react-hot-toast';
-import { FiPlus, FiUpload, FiSearch, FiEdit2, FiDownload, FiFilter, FiSlash, FiClipboard, FiExternalLink, FiChevronDown, FiSend, FiClock, FiX } from 'react-icons/fi';
+import { FiPlus, FiUpload, FiSearch, FiEdit2, FiDownload, FiFilter, FiSlash, FiClipboard, FiExternalLink, FiChevronDown, FiSend, FiClock, FiX, FiFileText } from 'react-icons/fi';
 import BottomSheet from '../../components/BottomSheet';
 import DatePicker from '../../components/DatePicker';
 import { isOnline, cacheStudents, getCachedStudents } from '../../utils/offlineQueue';
@@ -30,7 +30,7 @@ const emptyForm = {
   date: new Date().toISOString().slice(0, 10),
   mathematicsMarks: '', subjectiveKnowledge: '', reasoningMarks: '',
   goalClarity: '', sincerity: '', communicationLevel: '', confidenceLevel: '',
-  assignmentMarks: '', result: 'Pending', remarks: '',
+  assignmentMarks: '', result: 'Pending', remarks: '', visitPurpose: '',
 };
 
 function SelectField({ label, value, onChange, options }) {
@@ -46,6 +46,8 @@ function SelectField({ label, value, onChange, options }) {
   );
 }
 
+const VISIT_PURPOSES = ['Visit', 'Inquiry', 'Interview', 'Re-Interview'];
+
 function InterviewModal({ student, user, onClose, onSaved }) {
   const [form, setForm] = useState(emptyForm);
   const [loading, setLoading] = useState(false);
@@ -57,7 +59,13 @@ function InterviewModal({ student, user, onClose, onSaved }) {
       setNextRound(data.length + 1);
       if (data.length > 0) setPrevRound(data[data.length - 1]);
     }).catch(() => {});
-  }, [student._id]);
+
+    // Aaj ki latest reception entry se visitPurpose fetch karo (studentId se)
+    api.get(`/reception/by-student/${student._id}`)
+      .then(({ data }) => {
+        if (data?.visitPurpose) setForm(f => ({ ...f, visitPurpose: data.visitPurpose }));
+      }).catch(() => {});
+  }, [student._id, student.sn]);
 
   const totalMark =
     Number(form.mathematicsMarks || 0) + Number(form.subjectiveKnowledge || 0) +
@@ -135,6 +143,14 @@ function InterviewModal({ student, user, onClose, onSaved }) {
                   label="Select Date"
                   className="pt-3"
                 />
+              </div>
+              <div className="relative col-span-2">
+                <label className="absolute -top-2 left-3 bg-white px-1 text-xs text-gray-500">Visit Purpose</label>
+                <select value={form.visitPurpose} onChange={e => setForm({ ...form, visitPurpose: e.target.value })}
+                  className="w-full border border-gray-300 rounded-lg px-3 pt-4 pb-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary appearance-none">
+                  <option value="">Select Purpose</option>
+                  {VISIT_PURPOSES.map(p => <option key={p} value={p}>{p}</option>)}
+                </select>
               </div>
             </div>
           </div>
@@ -256,6 +272,118 @@ function SearchableSelect({ value, onChange, options, placeholder }) {
 
 const ACTIVE_STATUSES = STATUSES.filter((s) => s !== 'Disabled');
 
+const ALL_TOWNS = Object.values(TRACK_TOWNS).flat();
+
+const ALL_BRANCHES = [
+  // SSISM
+  'BCA', 'BBA', 'B.Com (CA)', 'BSC (BT)', 'BSC (MICRO)', 'ITEG Diploma',
+  // B.Tech
+  'B.Tech (CS)', 'B.Tech (IT)', 'B.Tech (ECE)', 'B.Tech (AI/ML)',
+];
+
+function ReceptionEntryModal({ onClose, student, onSaved }) {
+  const today = new Date().toISOString().slice(0, 10);
+  const [form, setForm] = useState({
+    date: today, town: student?.trackName || '', admissionFormNo: student?.admissionFormNo || '', visitPurpose: '', branch: '', interviewer: '',
+  });
+  const [loading, setLoading] = useState(false);
+  const [interviewers, setInterviewers] = useState([]);
+  const [formNoError, setFormNoError] = useState('');
+  const hasFormNo = !!student?.admissionFormNo;
+
+  useEffect(() => {
+    api.get('/reception/interviewers').then(({ data }) => setInterviewers(data)).catch(() => {});
+  }, []);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      await api.post('/reception', { ...form, studentId: student?._id || null });
+      toast.success('Reception entry saved!');
+      onSaved?.();
+      setFormNoError('');
+      setForm(f => ({ ...f, admissionFormNo: student?.admissionFormNo || f.admissionFormNo, visitPurpose: '', branch: '', interviewer: '' }));
+    } catch (err) {
+      const msg = err.response?.data?.message || 'Failed to save';
+      if (msg.includes('Form No.')) setFormNoError(msg);
+      else toast.error(msg);
+    } finally { setLoading(false); }
+  };
+
+  return (
+    <BottomSheet open onClose={onClose} title="Reception Entry" subtitle="Visitor ka data enter karo" maxWidth="max-w-md">
+      <form onSubmit={handleSubmit} className="space-y-4 pt-2">
+        <div>
+          <label className="block text-xs font-medium text-gray-500 mb-1">Date</label>
+          <input type="date" value={form.date} max={today}
+            onChange={e => setForm(f => ({ ...f, date: e.target.value }))}
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary" />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-500 mb-1">Town <span className="text-red-500">*</span></label>
+          <select required value={form.town} onChange={e => setForm(f => ({ ...f, town: e.target.value }))}
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary">
+            <option value="">Select Town</option>
+            {ALL_TOWNS.map(t => <option key={t} value={t}>{t}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-500 mb-1">Admission Form No. <span className="text-red-500">*</span></label>
+          <div className="relative">
+            <input required type="text" value={form.admissionFormNo} placeholder="e.g. 1023"
+              readOnly={hasFormNo}
+              onChange={e => { setForm(f => ({ ...f, admissionFormNo: e.target.value })); setFormNoError(''); }}
+              className={`w-full border rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 ${
+                formNoError ? 'border-red-400 focus:ring-red-300' :
+                hasFormNo ? 'bg-gray-50 border-gray-200 text-gray-500 cursor-not-allowed' :
+                'border-gray-300 focus:ring-primary'
+              }`} />
+            {hasFormNo && (
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-emerald-600 font-semibold">✓ Fixed</span>
+            )}
+          </div>
+          {formNoError && <p className="text-xs text-red-500 mt-1">⚠️ {formNoError}</p>}
+          {!formNoError && hasFormNo && <p className="text-xs text-gray-400 mt-1">Ye form no. is student ke liye permanently set hai</p>}
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-500 mb-1">Visit Purpose <span className="text-red-500">*</span></label>
+          <select required value={form.visitPurpose} onChange={e => setForm(f => ({ ...f, visitPurpose: e.target.value }))}
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary">
+            <option value="">Select Purpose</option>
+            {VISIT_PURPOSES.map(p => <option key={p} value={p}>{p}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-500 mb-1">Branch</label>
+          <select value={form.branch} onChange={e => setForm(f => ({ ...f, branch: e.target.value }))}
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary">
+            <option value="">Select Branch</option>
+            <optgroup label="SSISM">
+              {ALL_BRANCHES.slice(0, 6).map(b => <option key={b} value={b}>{b}</option>)}
+            </optgroup>
+            <optgroup label="B.Tech">
+              {ALL_BRANCHES.slice(6).map(b => <option key={b} value={b}>{b}</option>)}
+            </optgroup>
+          </select>
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-500 mb-1">Interviewer</label>
+          <select value={form.interviewer} onChange={e => setForm(f => ({ ...f, interviewer: e.target.value }))}
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary">
+            <option value="">Select Interviewer</option>
+            {interviewers.map(i => <option key={i._id} value={i._id}>{i.name}</option>)}
+          </select>
+        </div>
+        <button type="submit" disabled={loading}
+          className="w-full bg-primary text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-primary-dark disabled:opacity-60 transition-colors">
+          {loading ? 'Saving...' : 'Save Entry'}
+        </button>
+      </form>
+    </BottomSheet>
+  );
+}
+
 export default function Students() {
   const { user } = useAuthStore();
   const navigate = useNavigate();
@@ -343,6 +471,7 @@ export default function Students() {
   const [exporting, setExporting] = useState(false);
   const [interviewStudent, setInterviewStudent] = useState(null);
   const [historyStudent, setHistoryStudent] = useState(null);
+  const [receptionOpen, setReceptionOpen] = useState(null);
   const [history, setHistory] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [searchTimeout, setSearchTimeout] = useState(null);
@@ -633,6 +762,8 @@ export default function Students() {
         />
       )}
 
+      {receptionOpen && <ReceptionEntryModal onClose={() => setReceptionOpen(null)} student={receptionOpen} onSaved={fetchStudents} />}
+
       {/* History Modal */}
       {historyStudent && (
         <BottomSheet open onClose={() => setHistoryStudent(null)} title="Activity History" subtitle={`${historyStudent.name} — ${history.length} update${history.length !== 1 ? 's' : ''}`}>
@@ -692,6 +823,12 @@ export default function Students() {
         </h2>
         {/* Desktop buttons */}
         <div className="hidden md:flex gap-2">
+          {user?.role === 'receptionist' && (
+            <button onClick={() => setReceptionOpen({})}
+              className="flex items-center gap-1 bg-primary text-white px-3 py-1.5 rounded-lg text-sm">
+              <FiFileText size={13} /> Reception Entry
+            </button>
+          )}
           {selected.length > 0 ? (
             <button onClick={() => handleExport(selected)} disabled={exporting}
               className="flex items-center gap-1 bg-primary text-white px-3 py-1.5 rounded-lg text-sm disabled:opacity-60">
@@ -732,6 +869,12 @@ export default function Students() {
 
       {/* Mobile — Actions dropdown */}
       <div className="md:hidden mb-3 flex gap-2">
+        {user?.role === 'receptionist' && (
+          <button onClick={() => setReceptionOpen({})}
+            className="flex-1 flex items-center justify-center gap-1 bg-primary text-white py-2 rounded-lg text-sm font-medium">
+            <FiFileText size={13} /> Reception Entry
+          </button>
+        )}
         {selected.length > 0 ? (
           <button onClick={() => handleExport(selected)} disabled={exporting}
             className="flex-1 flex items-center justify-center gap-1 bg-primary text-white py-2 rounded-lg text-sm font-medium disabled:opacity-60">
@@ -1001,7 +1144,7 @@ export default function Students() {
                     <input type="checkbox" checked={allSelected} onChange={toggleAll}
                       className="rounded border-gray-300 text-primary focus:ring-primary cursor-pointer" />
                   </th>
-                  {['S.N.', 'Name', 'Father Name', 'Track', 'Town', 'Mobile', 'Form', 'Status', 'Attempt', 'History', 'Actions'].map((h) => (
+                  {['S.N.', 'Name', 'Father Name', 'Form No.', 'Town', 'Mobile', 'Form', 'Status', 'Attempt', 'History', 'Actions'].map((h) => (
                     <th key={h} className={`px-4 py-3 text-xs font-semibold uppercase text-gray-500 ${h === 'Attempt' ? 'text-center' : 'text-left'}`}>{h}</th>
                   ))}
                 </tr>
@@ -1033,7 +1176,11 @@ export default function Students() {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-gray-600">{s.fatherName}</td>
-                    <td className="px-4 py-3 text-gray-600">{s.displayTrack}</td>
+                    <td className="px-4 py-3">
+                      {s.admissionFormNo ? (
+                        <span className="text-xs font-semibold bg-orange-50 text-primary border border-orange-100 px-2 py-0.5 rounded-full">{s.admissionFormNo}</span>
+                      ) : <span className="text-gray-300 text-xs">—</span>}
+                    </td>
                     <td className="px-4 py-3 text-gray-500 text-xs">{s.trackName || '—'}</td>
                     <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                       {s.mobileNo ? (
@@ -1074,6 +1221,11 @@ export default function Students() {
                         <button onClick={(e) => { e.stopPropagation(); setInterviewStudent(s); }}
                           className="flex items-center gap-1 text-xs text-white font-medium px-2.5 py-1.5 bg-primary hover:bg-primary-dark rounded-lg transition-colors">
                           <FiClipboard size={12} /> Interview
+                        </button>
+                      ) : user?.role === 'receptionist' ? (
+                        <button onClick={(e) => { e.stopPropagation(); setReceptionOpen(s); }}
+                          className="flex items-center gap-1 text-xs text-white font-medium px-2.5 py-1.5 bg-primary hover:bg-primary-dark rounded-lg transition-colors">
+                          <FiFileText size={12} /> Entry
                         </button>
                       ) : (
                         <button onClick={(e) => { e.stopPropagation(); handleViewHistory(s); }}
@@ -1155,6 +1307,9 @@ export default function Students() {
 
             {/* Row 3: Track + Mobile + Badges — all in one line */}
             <div className="flex items-center gap-2 flex-wrap pl-6 mb-3">
+              {s.admissionFormNo && (
+                <span className="text-xs font-semibold bg-orange-50 text-primary border border-orange-100 px-2 py-0.5 rounded-full">Form #{s.admissionFormNo}</span>
+              )}
               {s.displayTrack && (
                 <span className="flex items-center gap-1 text-sm text-gray-500">
                   <span className="text-base">📍</span> {s.displayTrack}{s.trackName ? ` · ${s.trackName}` : ''}
@@ -1198,6 +1353,11 @@ export default function Students() {
                 <button onClick={(e) => { e.stopPropagation(); setInterviewStudent(s); }}
                   className="flex-1 flex items-center justify-center gap-1.5 text-sm text-white font-semibold py-2 bg-primary hover:bg-primary-dark rounded-lg transition-colors">
                   <FiClipboard size={14} /> Interview
+                </button>
+              ) : user?.role === 'receptionist' ? (
+                <button onClick={(e) => { e.stopPropagation(); setReceptionOpen(s); }}
+                  className="flex-1 flex items-center justify-center gap-1.5 text-sm text-white font-semibold py-2 bg-primary hover:bg-primary-dark rounded-lg transition-colors">
+                  <FiFileText size={14} /> Entry
                 </button>
               ) : (
                 <button onClick={(e) => { e.stopPropagation(); handleViewHistory(s); }}

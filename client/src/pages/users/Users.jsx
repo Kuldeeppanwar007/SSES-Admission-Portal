@@ -22,6 +22,7 @@ export default function Users() {
     { key: 'manager', label: 'Manager' },
     { key: 'track_incharge', label: 'Track Incharge' },
     { key: 'interviewer', label: 'Interviewer' },
+    { key: 'receptionist', label: 'Receptionist' },
   ];
   const filteredUsers = activeTab === 'all' ? users : users.filter((u) => u.role === activeTab);
 
@@ -122,7 +123,7 @@ export default function Users() {
         </form>
       </BottomSheet>
 
-      <div className="grid grid-cols-5 mb-4 border border-gray-200 rounded-xl overflow-hidden">
+      <div className="grid grid-cols-6 mb-4 border border-gray-200 rounded-xl overflow-hidden">
         {tabs.map((t) => (
           <button key={t.key} onClick={() => setActiveTab(t.key)}
             className={`flex flex-col items-center justify-center py-2 px-1 text-xs font-medium transition-colors border-r last:border-r-0 border-gray-200 ${

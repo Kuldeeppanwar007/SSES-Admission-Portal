@@ -1,5 +1,10 @@
 const Interview = require('../models/Interview');
 const Student = require('../models/Student');
+const ReceptionEntry = require('../models/ReceptionEntry');
+
+const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
+const getISTDateString = () =>
+  new Date(Date.now() + IST_OFFSET_MS).toISOString().slice(0, 10);
 
 const addInterview = async (req, res) => {
   try {
@@ -7,7 +12,7 @@ const addInterview = async (req, res) => {
       date,
       mathematicsMarks, subjectiveKnowledge, reasoningMarks,
       goalClarity, sincerity, communicationLevel, confidenceLevel,
-      assignmentMarks, result, remarks,
+      assignmentMarks, result, remarks, visitPurpose,
     } = req.body;
 
     const studentId = req.params.studentId;
@@ -36,6 +41,18 @@ const addInterview = async (req, res) => {
       result: result || 'Pending',
       remarks: remarks || '',
     });
+
+    // Agar visitPurpose diya hai to aaj ki latest ReceptionEntry update karo
+    if (visitPurpose) {
+      const today = getISTDateString();
+      const start = new Date(`${today}T00:00:00+05:30`);
+      const end   = new Date(`${today}T23:59:59.999+05:30`);
+      await ReceptionEntry.findOneAndUpdate(
+        { studentId, date: { $gte: start, $lte: end } },
+        { visitPurpose },
+        { sort: { createdAt: -1 } }
+      );
+    }
 
     const populated = await interview.populate('interviewer', 'name role');
     res.status(201).json(populated);

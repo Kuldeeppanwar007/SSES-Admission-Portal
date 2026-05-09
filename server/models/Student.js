@@ -87,6 +87,7 @@ const studentSchema = new mongoose.Schema({
   shiftedAt:            { type: Date, default: null },
   bookNo:               { type: String, default: null },
   receiptNo:            { type: String, default: null },
+  admissionFormNo:      { type: String, default: null },
   formSource:           { type: String, enum: ['btech', 'ssism', 'manual', null], default: null },
   admissionType: {
     type: String,
