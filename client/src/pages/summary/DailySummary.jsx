@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { FiCalendar, FiUsers, FiEdit, FiCheckCircle, FiActivity, FiPhone, FiAward, FiTrendingUp, FiRefreshCw, FiX, FiChevronDown } from 'react-icons/fi';
+import { FiCalendar, FiUsers, FiEdit, FiCheckCircle, FiActivity, FiPhone, FiAward, FiTrendingUp, FiRefreshCw, FiX, FiChevronDown, FiFilter } from 'react-icons/fi';
+import useAuthStore from '../../store/authStore';
 import {
   BarChart, Bar, AreaChart, Area, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -46,6 +47,50 @@ function Drawer({ open, onClose, title, subtitle, children }) {
         <div className="flex-1 overflow-y-auto">{children}</div>
       </div>
     </div>
+  );
+}
+
+/* ─── Reception Entries Table inside Drawer ─── */
+function ReceptionDrawerTable({ list, emptyMsg }) {
+  if (!list?.length) return (
+    <div className="flex flex-col items-center justify-center py-20 text-gray-300 gap-2">
+      <FiUsers size={36} />
+      <p className="text-sm">{emptyMsg}</p>
+    </div>
+  );
+  return (
+    <table className="w-full text-sm">
+      <thead className="sticky top-0 bg-gray-50 z-10">
+        <tr>
+          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase">#</th>
+          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase">Form No.</th>
+          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase">Student</th>
+          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase">Town</th>
+          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase">Branch</th>
+          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase">Interviewer</th>
+          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase">Entered By</th>
+          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase">Time</th>
+        </tr>
+      </thead>
+      <tbody className="divide-y divide-gray-50">
+        {list.map((e, i) => (
+          <tr key={e._id || i} className="hover:bg-sky-50/30 transition-colors">
+            <td className="px-4 py-3 text-gray-400 text-xs">{i + 1}</td>
+            <td className="px-4 py-3 font-semibold text-gray-800">{e.admissionFormNo}</td>
+            <td className="px-4 py-3 text-gray-700 text-xs font-medium">{e.studentId?.name || '—'}</td>
+            <td className="px-4 py-3">
+              <span className="text-xs bg-orange-50 text-orange-600 font-semibold px-2 py-0.5 rounded-full">{e.town}</span>
+            </td>
+            <td className="px-4 py-3 text-gray-600 text-xs">{e.branch || '—'}</td>
+            <td className="px-4 py-3 text-gray-600 text-xs">{e.interviewer?.name || '—'}</td>
+            <td className="px-4 py-3 text-gray-500 text-xs">{e.enteredBy?.name || '—'}</td>
+            <td className="px-4 py-3 text-gray-400 text-xs">
+              {new Date(e.createdAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
   );
 }
 
@@ -153,6 +198,7 @@ const CustomTooltip = ({ active, payload, label }) => {
 
 /* ══════════════════════════════════════════ */
 export default function DailySummary() {
+  const { user } = useAuthStore();
   const today = new Date().toISOString().slice(0, 10);
   const [mode, setMode] = useState('single'); // 'single' | 'range'
   const [date, setDate] = useState(today);
@@ -163,9 +209,10 @@ export default function DailySummary() {
   const [receptionEntries, setReceptionEntries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('admitted');
-  const [drawer, setDrawer] = useState({ open: false, title: '', subtitle: '', list: [], byField: '', emptyMsg: '' });
+  const [drawer, setDrawer] = useState({ open: false, title: '', subtitle: '', list: [], byField: '', emptyMsg: '', type: 'student' });
   const [admissionOpen, setAdmissionOpen] = useState(true);
   const [callingOpen, setCallingOpen] = useState(true);
+  const [branchFilter, setBranchFilter] = useState('');
 
   useEffect(() => { fetchData(); }, [date, fromDate, toDate, mode]);
 
@@ -175,14 +222,15 @@ export default function DailySummary() {
       if (mode === 'range' && (!fromDate || !toDate)) { setLoading(false); return; }
       const params = mode === 'range' ? `from=${fromDate}&to=${toDate}` : `date=${date}`;
       const fetchDate = mode === 'range' ? (fromDate || today) : date;
-      const [s, w, r] = await Promise.all([
+      const requests = [
         api.get(`/daily-summary?${params}`),
         api.get('/daily-summary/weekly'),
-        api.get(`/reception?date=${fetchDate}`),
-      ]);
+        api.get(`/reception?${params}`),
+      ];
+      const [s, w, r] = await Promise.all(requests);
       setSummary(s.data);
       setWeeklyData(w.data);
-      setReceptionEntries(r.data || []);
+      setReceptionEntries(r?.data || []);
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to load summary');
     } finally {
@@ -190,8 +238,8 @@ export default function DailySummary() {
     }
   };
 
-  const openDrawer = (title, subtitle, list, byField, emptyMsg) =>
-    setDrawer({ open: true, title, subtitle, list: list || [], byField, emptyMsg });
+  const openDrawer = (title, subtitle, list, byField, emptyMsg, type = 'student') =>
+    setDrawer({ open: true, title, subtitle, list: list || [], byField, emptyMsg, type });
   const closeDrawer = () => setDrawer(d => ({ ...d, open: false }));
 
   const weeklyChartData = weeklyData?.data?.map((d, i) => ({
@@ -206,6 +254,10 @@ export default function DailySummary() {
   const maxAdmitted = Math.max(...(summary?.branchWiseAdmitted?.map(b => b.count) || [1]), 1);
   const maxCalling  = Math.max(...(summary?.branchWiseCalling?.map(b => b.count) || [1]), 1);
   const activeList  = activeTab === 'admitted' ? summary?.admittedList : summary?.callingList;
+  const receptionBranches = [...new Set(receptionEntries.map(e => e.branch).filter(Boolean))].sort();
+  const filteredReceptionEntries = branchFilter
+    ? receptionEntries.filter(e => e.branch === branchFilter)
+    : receptionEntries;
   const displayDate = mode === 'range'
     ? (fromDate && toDate
         ? fromDate === toDate
@@ -226,14 +278,23 @@ export default function DailySummary() {
 
       {/* ── Drawer ── */}
       <Drawer open={drawer.open} onClose={closeDrawer} title={drawer.title} subtitle={drawer.subtitle}>
-        <DrawerTable list={drawer.list} byField={drawer.byField} emptyMsg={drawer.emptyMsg} />
+        {drawer.type === 'reception'
+          ? <ReceptionDrawerTable list={drawer.list} emptyMsg={drawer.emptyMsg} />
+          : <DrawerTable list={drawer.list} byField={drawer.byField} emptyMsg={drawer.emptyMsg} />}
       </Drawer>
 
       {/* ── Header ── */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h1 className="text-xl font-bold text-gray-800">Daily Summary</h1>
-          <p className="text-xs text-gray-400 mt-0.5">{displayDate}</p>
+          <p className="text-xs text-gray-400 mt-0.5">
+            {displayDate}
+            {user?.role === 'track_incharge' && user?.track && (
+              <span className="ml-2 bg-orange-50 text-primary border border-orange-100 font-semibold px-2 py-0.5 rounded-full">
+                {user.track} only
+              </span>
+            )}
+          </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <button onClick={fetchData} className="p-2 rounded-lg border border-gray-200 text-gray-500 hover:text-primary hover:border-primary transition-colors">
@@ -308,8 +369,38 @@ export default function DailySummary() {
           iconBg="bg-purple-50" iconColor="text-purple-500" sub="Pending / done" />
       </div>
 
+      {/* ── Track Incharge — My Track Reception ── */}
+      {user?.role === 'track_incharge' && summary?.receptionStats && (
+        <div>
+          <div className="flex items-center gap-2 mb-3">
+            <span className="text-sm font-bold text-gray-700 uppercase tracking-wide">My Track — Reception Visitors</span>
+            <div className="flex-1 h-px bg-gray-200" />
+            <span className="text-xs bg-sky-50 text-sky-600 font-semibold px-2.5 py-1 rounded-full border border-sky-100">{user.track}</span>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
+            {[
+              { label: 'Total Visitors', value: summary.receptionStats.total,       icon: FiUsers,       iconBg: 'bg-sky-50',     iconColor: 'text-sky-500',     purpose: null },
+              { label: 'Visit',          value: summary.receptionStats.visit,        icon: FiActivity,    iconBg: 'bg-cyan-50',    iconColor: 'text-cyan-500',    purpose: 'Visit' },
+              { label: 'Inquiry',        value: summary.receptionStats.inquiry,      icon: FiTrendingUp,  iconBg: 'bg-amber-50',   iconColor: 'text-amber-500',   purpose: 'Inquiry' },
+              { label: 'Interview',      value: summary.receptionStats.interview,    icon: FiCheckCircle, iconBg: 'bg-emerald-50', iconColor: 'text-emerald-500', purpose: 'Interview' },
+              { label: 'Re-Interview',   value: summary.receptionStats.reInterview,  icon: FiEdit,        iconBg: 'bg-rose-50',    iconColor: 'text-rose-500',    purpose: 'Re-Interview' },
+            ].map(({ label, value, icon: Icon, iconBg, iconColor, purpose }) => (
+              <StatCard key={label} label={label} value={value || 0} icon={Icon}
+                iconBg={iconBg} iconColor={iconColor}
+                onClick={() => openDrawer(
+                  `${label} — ${user.track}`,
+                  `${displayDate} — ${value || 0} entries`,
+                  receptionEntries.filter(e => purpose ? e.visitPurpose === purpose : true),
+                  '', 'Koi entry nahi mili', 'reception'
+                )}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* ── Reception Stats Cards ── */}
-      {summary?.receptionStats && (
+      {summary?.receptionStats && user?.role !== 'track_incharge' && (
         <div>
           <div className="flex items-center gap-2 mb-3">
             <span className="text-sm font-bold text-gray-700 uppercase tracking-wide">Reception Overview</span>
@@ -317,16 +408,82 @@ export default function DailySummary() {
           </div>
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
             <StatCard label="Total Visitors" value={summary.receptionStats.total || 0} icon={FiUsers}
-              iconBg="bg-sky-50" iconColor="text-sky-500" sub="Aaj ke total visitors" />
+              iconBg="bg-sky-50" iconColor="text-sky-500"
+              onClick={() => openDrawer('Total Visitors', `${displayDate} — ${summary.receptionStats.total || 0} visitors`, receptionEntries, '', 'Koi entry nahi mili', 'reception')}
+            />
             <StatCard label="Visit" value={summary.receptionStats.visit || 0} icon={FiActivity}
-              iconBg="bg-cyan-50" iconColor="text-cyan-500" sub="Purpose: Visit" />
+              iconBg="bg-cyan-50" iconColor="text-cyan-500"
+              onClick={() => openDrawer('Visit Entries', `${displayDate} — ${summary.receptionStats.visit || 0} visits`, receptionEntries.filter(e => e.visitPurpose === 'Visit'), '', 'Koi Visit entry nahi mili', 'reception')}
+            />
             <StatCard label="Inquiry" value={summary.receptionStats.inquiry || 0} icon={FiTrendingUp}
-              iconBg="bg-amber-50" iconColor="text-amber-500" sub="Purpose: Inquiry" />
+              iconBg="bg-amber-50" iconColor="text-amber-500"
+              onClick={() => openDrawer('Inquiry Entries', `${displayDate} — ${summary.receptionStats.inquiry || 0} inquiries`, receptionEntries.filter(e => e.visitPurpose === 'Inquiry'), '', 'Koi Inquiry entry nahi mili', 'reception')}
+            />
             <StatCard label="Interview" value={summary.receptionStats.interview || 0} icon={FiCheckCircle}
-              iconBg="bg-emerald-50" iconColor="text-emerald-500" sub="Purpose: Interview" />
+              iconBg="bg-emerald-50" iconColor="text-emerald-500"
+              onClick={() => openDrawer('Interview Entries', `${displayDate} — ${summary.receptionStats.interview || 0} interviews`, receptionEntries.filter(e => e.visitPurpose === 'Interview'), '', 'Koi Interview entry nahi mili', 'reception')}
+            />
             <StatCard label="Re-Interview" value={summary.receptionStats.reInterview || 0} icon={FiEdit}
-              iconBg="bg-rose-50" iconColor="text-rose-500" sub="Purpose: Re-Interview" />
+              iconBg="bg-rose-50" iconColor="text-rose-500"
+              onClick={() => openDrawer('Re-Interview Entries', `${displayDate} — ${summary.receptionStats.reInterview || 0} re-interviews`, receptionEntries.filter(e => e.visitPurpose === 'Re-Interview'), '', 'Koi Re-Interview entry nahi mili', 'reception')}
+            />
           </div>
+
+          {/* Track-wise Reception Breakdown (admin only) */}
+          {summary.trackWiseReception && Object.keys(summary.trackWiseReception).length > 0 && (
+            <div className="mt-5">
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-sm font-bold text-gray-700 uppercase tracking-wide">Track-wise Breakdown</span>
+                <div className="flex-1 h-px bg-gray-200" />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+                {Object.entries(summary.trackWiseReception).map(([track, data]) => (
+                  <div key={track} className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden hover:shadow-md hover:border-primary/20 transition-all">
+                    {/* Track header */}
+                    <div className="px-4 py-3 bg-gradient-to-r from-gray-50 to-white border-b border-gray-100 flex items-center justify-between">
+                      <span className="text-sm font-bold text-gray-800">{track}</span>
+                      <span className="text-xs bg-sky-50 text-sky-600 font-bold px-2.5 py-1 rounded-full border border-sky-100">
+                        {data.total} visitors
+                      </span>
+                    </div>
+                    {/* 4 purpose rows */}
+                    <div className="divide-y divide-gray-50">
+                      {[
+                        { label: 'Visit',        value: data.visit,       iconBg: 'bg-cyan-50',    iconColor: 'text-cyan-500',    icon: FiActivity,    purpose: 'Visit' },
+                        { label: 'Inquiry',      value: data.inquiry,     iconBg: 'bg-amber-50',   iconColor: 'text-amber-500',   icon: FiTrendingUp,  purpose: 'Inquiry' },
+                        { label: 'Interview',    value: data.interview,   iconBg: 'bg-emerald-50', iconColor: 'text-emerald-500', icon: FiCheckCircle, purpose: 'Interview' },
+                        { label: 'Re-Interview', value: data.reInterview, iconBg: 'bg-rose-50',    iconColor: 'text-rose-500',    icon: FiEdit,        purpose: 'Re-Interview' },
+                      ].map(({ label, value, iconBg, iconColor, icon: Icon, purpose }) => (
+                        <div key={label}
+                          onClick={value > 0 ? () => openDrawer(
+                            `${track} — ${label}`,
+                            `${displayDate} — ${value} entr${value === 1 ? 'y' : 'ies'}`,
+                            data.entries.filter(e => e.visitPurpose === purpose).map(e => ({
+                              _id: e._id, admissionFormNo: e.admissionFormNo,
+                              studentId: { name: e.studentName }, town: e.town,
+                              branch: e.branch, createdAt: e.createdAt,
+                            })),
+                            '', 'Koi entry nahi mili', 'reception'
+                          ) : undefined}
+                          className={`flex items-center gap-3 px-4 py-2.5 transition-colors ${
+                            value > 0 ? 'cursor-pointer hover:bg-gray-50 group' : ''
+                          }`}>
+                          <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${iconBg}`}>
+                            <Icon size={13} className={iconColor} />
+                          </div>
+                          <span className="flex-1 text-xs font-medium text-gray-600">{label}</span>
+                          <span className="text-sm font-bold text-gray-800 tabular-nums shrink-0">{value}</span>
+                          <span className={`text-[10px] text-primary font-semibold transition-opacity shrink-0 w-3 ${
+                            value > 0 ? 'opacity-0 group-hover:opacity-100' : 'opacity-0'
+                          }`}>→</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -546,7 +703,7 @@ export default function DailySummary() {
           {[
             { key: 'admitted',  label: 'Admitted Students', count: summary?.admittedList?.length || 0,  active: 'text-green-600 border-green-500' },
             { key: 'calling',   label: 'Calling Students',  count: summary?.callingList?.length  || 0,  active: 'text-yellow-600 border-yellow-500' },
-            { key: 'reception', label: 'Reception Entries', count: receptionEntries.length,             active: 'text-sky-600 border-sky-500' },
+            { key: 'reception', label: 'Reception Entries', count: filteredReceptionEntries.length,      active: 'text-sky-600 border-sky-500' },
           ].map(t => (
             <button key={t.key} onClick={() => setActiveTab(t.key)}
               className={`flex items-center gap-2 px-5 py-3 text-sm font-medium border-b-2 transition-colors -mb-px whitespace-nowrap ${
@@ -561,52 +718,73 @@ export default function DailySummary() {
         </div>
         <div className="overflow-x-auto">
           {activeTab === 'reception' ? (
-            receptionEntries.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-20 text-gray-300 gap-2">
-                <FiUsers size={36} />
-                <p className="text-sm">Koi reception entry nahi mili</p>
-              </div>
-            ) : (
-              <table className="w-full text-sm">
-                <thead className="sticky top-0 bg-gray-50 z-10">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase">#</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase">Form No.</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase">Town</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase">Visit Purpose</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase">Branch</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase">Interviewer</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase">Entered By</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase">Time</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-50">
-                  {receptionEntries.map((e, i) => (
-                    <tr key={e._id} className="hover:bg-sky-50/30 transition-colors">
-                      <td className="px-4 py-3 text-gray-400 text-xs">{i + 1}</td>
-                      <td className="px-4 py-3 font-semibold text-gray-800">{e.admissionFormNo}</td>
-                      <td className="px-4 py-3">
-                        <span className="text-xs bg-orange-50 text-orange-600 font-semibold px-2 py-0.5 rounded-full">{e.town}</span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
-                          e.visitPurpose === 'Interview'    ? 'bg-emerald-100 text-emerald-700' :
-                          e.visitPurpose === 'Re-Interview' ? 'bg-rose-100 text-rose-700' :
-                          e.visitPurpose === 'Inquiry'      ? 'bg-amber-100 text-amber-700' :
-                          'bg-sky-100 text-sky-700'
-                        }`}>{e.visitPurpose}</span>
-                      </td>
-                      <td className="px-4 py-3 text-gray-600 text-xs">{e.branch || '—'}</td>
-                      <td className="px-4 py-3 text-gray-600 text-xs">{e.interviewer?.name || '—'}</td>
-                      <td className="px-4 py-3 text-gray-500 text-xs">{e.enteredBy?.name || '—'}</td>
-                      <td className="px-4 py-3 text-gray-400 text-xs">
-                        {new Date(e.createdAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
-                      </td>
+            <>
+              {/* Branch Filter Bar */}
+                {receptionEntries.length > 0 && (
+                  <div className="flex items-center gap-2 px-4 py-2 border-b border-gray-100 flex-wrap">
+                    <FiFilter size={13} className="text-gray-400" />
+                    <span className="text-xs text-gray-400">Branch:</span>
+                    {['', ...receptionBranches].map(b => (
+                      <button key={b || 'all'} onClick={() => setBranchFilter(b)}
+                        className={`text-xs px-2.5 py-1 rounded-full font-semibold transition-colors ${
+                          branchFilter === b
+                            ? 'bg-primary text-white'
+                            : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                        }`}>
+                        {b || 'All'}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {filteredReceptionEntries.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-20 text-gray-300 gap-2">
+                    <FiUsers size={36} />
+                    <p className="text-sm">Koi reception entry nahi mili</p>
+                  </div>
+                ) : (
+                <table className="w-full text-sm">
+                  <thead className="sticky top-0 bg-gray-50 z-10">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase">#</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase">Form No.</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase">Student</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase">Town</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase">Visit Purpose</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase">Branch</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase">Interviewer</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase">Entered By</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase">Time</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            )
+                  </thead>
+                  <tbody className="divide-y divide-gray-50">
+                    {filteredReceptionEntries.map((e, i) => (
+                      <tr key={e._id} className="hover:bg-sky-50/30 transition-colors">
+                        <td className="px-4 py-3 text-gray-400 text-xs">{i + 1}</td>
+                        <td className="px-4 py-3 font-semibold text-gray-800">{e.admissionFormNo}</td>
+                        <td className="px-4 py-3 text-gray-700 text-xs font-medium">{e.studentId?.name || '—'}</td>
+                        <td className="px-4 py-3">
+                          <span className="text-xs bg-orange-50 text-orange-600 font-semibold px-2 py-0.5 rounded-full">{e.town}</span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                            e.visitPurpose === 'Interview'    ? 'bg-emerald-100 text-emerald-700' :
+                            e.visitPurpose === 'Re-Interview' ? 'bg-rose-100 text-rose-700' :
+                            e.visitPurpose === 'Inquiry'      ? 'bg-amber-100 text-amber-700' :
+                            'bg-sky-100 text-sky-700'
+                          }`}>{e.visitPurpose}</span>
+                        </td>
+                        <td className="px-4 py-3 text-gray-600 text-xs">{e.branch || '—'}</td>
+                        <td className="px-4 py-3 text-gray-600 text-xs">{e.interviewer?.name || '—'}</td>
+                        <td className="px-4 py-3 text-gray-500 text-xs">{e.enteredBy?.name || '—'}</td>
+                        <td className="px-4 py-3 text-gray-400 text-xs">
+                          {new Date(e.createdAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                )}
+              </>
           ) : (
             <DrawerTable
               list={activeTab === 'admitted' ? summary?.admittedList : summary?.callingList}

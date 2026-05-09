@@ -147,6 +147,7 @@ const getDailySummary = async (req, res) => {
     // Edit requests today
     const editRequestsCount = await EditRequest.countDocuments({
       createdAt: { $gte: start, $lte: end },
+      ...(isTrackIncharge && userTrack ? { track: userTrack } : {}),
     });
 
     // Track-wise student additions
@@ -157,8 +158,14 @@ const getDailySummary = async (req, res) => {
     ]);
 
     // User activity (who made changes)
+    const userActivityMatch = { createdAt: { $gte: start, $lte: end } };
+    if (isTrackIncharge && userTrack) {
+      // Only users belonging to this track
+      const trackUserIds = await User.find({ track: userTrack }).distinct('_id');
+      userActivityMatch.changedBy = { $in: trackUserIds };
+    }
     const userActivity = await StatusHistory.aggregate([
-      { $match: { createdAt: { $gte: start, $lte: end } } },
+      { $match: userActivityMatch },
       { $group: { _id: '$changedBy', changes: { $sum: 1 } } },
       { $sort: { changes: -1 } },
       { $limit: 10 },
@@ -262,9 +269,22 @@ const getDailySummary = async (req, res) => {
       .sort((a, b) => b.count - a.count);
 
     // ─── Reception Stats — real data from ReceptionEntry ───
-    const receptionEntries = await ReceptionEntry.find({
-      date: { $gte: start, $lte: end },
-    });
+    const TOWN_TO_TRACK = {
+      'Harda': 'Harda', 'Timarni': 'Harda', 'Seoni Malwa': 'Harda',
+      'Khategaon': 'Khategaon', 'Nemawar': 'Khategaon', 'Sandalpur': 'Khategaon',
+      'Rehti': 'Rehti', 'Gopalpur': 'Rehti', 'Bherunda': 'Rehti', 'Narmadapuram': 'Rehti',
+      'Satwas': 'Satwas & Kannod', 'Kannod': 'Satwas & Kannod',
+    };
+
+    const receptionQuery = { date: { $gte: start, $lte: end } };
+    if (isTrackIncharge && userTrack) {
+      const trackTowns = Object.entries(TOWN_TO_TRACK)
+        .filter(([, t]) => t === userTrack).map(([town]) => town);
+      receptionQuery.town = { $in: trackTowns };
+    }
+
+    const receptionEntries = await ReceptionEntry.find(receptionQuery)
+      .populate('studentId', 'name track');
 
     const receptionStats = receptionEntries.reduce((acc, e) => {
       const p = e.visitPurpose;
@@ -275,6 +295,32 @@ const getDailySummary = async (req, res) => {
       acc.total        += 1;
       return acc;
     }, { visit: 0, inquiry: 0, interview: 0, reInterview: 0, total: 0 });
+
+    // Track-wise reception breakdown (admin only — for each track)
+    const trackWiseReception = {};
+    if (!isTrackIncharge) {
+      receptionEntries.forEach(e => {
+        const track = TOWN_TO_TRACK[e.town] || 'Other';
+        if (!trackWiseReception[track]) {
+          trackWiseReception[track] = { total: 0, visit: 0, inquiry: 0, interview: 0, reInterview: 0, entries: [] };
+        }
+        const p = e.visitPurpose;
+        trackWiseReception[track].total += 1;
+        trackWiseReception[track].visit       += p === 'Visit'        ? 1 : 0;
+        trackWiseReception[track].inquiry     += p === 'Inquiry'      ? 1 : 0;
+        trackWiseReception[track].interview   += p === 'Interview'    ? 1 : 0;
+        trackWiseReception[track].reInterview += p === 'Re-Interview' ? 1 : 0;
+        trackWiseReception[track].entries.push({
+          _id: e._id,
+          admissionFormNo: e.admissionFormNo,
+          studentName: e.studentId?.name || null,
+          town: e.town,
+          visitPurpose: e.visitPurpose,
+          branch: e.branch,
+          createdAt: e.createdAt,
+        });
+      });
+    }
 
     res.json({
       date: displayDate,
@@ -292,6 +338,7 @@ const getDailySummary = async (req, res) => {
       callingList,
       branchWiseCalling: branchWiseCallingArr,
       receptionStats,
+      trackWiseReception: isTrackIncharge ? undefined : trackWiseReception,
     });
   } catch (err) {
     res.status(500).json({ message: err.message });

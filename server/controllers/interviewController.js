@@ -88,4 +88,20 @@ const addFinalInterview = async (req, res) => {
   }
 };
 
-module.exports = { addInterview, getInterviews, addFinalInterview };
+const getLastDates = async (req, res) => {
+  try {
+    const { studentIds } = req.body;
+    if (!studentIds?.length) return res.json([]);
+    const mongoose = require('mongoose');
+    const result = await Interview.aggregate([
+      { $match: { student: { $in: studentIds.map(id => new mongoose.Types.ObjectId(id)) } } },
+      { $sort: { date: -1 } },
+      { $group: { _id: '$student', lastDate: { $first: '$date' } } },
+    ]);
+    res.json(result.map(r => ({ studentId: r._id, lastDate: r.lastDate })));
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+module.exports = { addInterview, getInterviews, addFinalInterview, getLastDates };

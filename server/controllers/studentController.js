@@ -1094,6 +1094,16 @@ const getTrackStats = async (req, res) => {
 
     const disabled = await Student.countDocuments({ track, isDisabled: true });
 
+    // Interview attempts count — students with at least 1 interview
+    const Interview = require('../models/Interview');
+    const studentIdsWithInterviews = await Interview.distinct('student', {});
+    const interviewAttempts = await Student.countDocuments({
+      track,
+      _id: { $in: studentIdsWithInterviews },
+      'finalInterview.result': { $ne: 'Pass' },
+      isDisabled: { $ne: true },
+    });
+
     const BTECH_SUBJECTS_TRACK = ['B.Tech(CS)', 'B.Tech(IT)', 'B.Tech(ECE)', 'B.Tech(AI/ML)'];
     const subjectAdmitted = await Student.aggregate([
       { $match: { track, status: 'Admitted', isDisabled: { $ne: true } } },
@@ -1142,7 +1152,7 @@ const getTrackStats = async (req, res) => {
     const callingEfficiency = totalActive > 0 ? Math.round((callingCount / totalActive) * 100) : 0;
 
     res.json({
-      track, total, applied, calling, admitted, rejected, disabled, subjects,
+      track, total, applied, calling, admitted, rejected, disabled, interviewAttempts, subjects,
       points: trackPoints?.points || 0,
       statusBreakdown: statusBreakdown.map(({ _id, count }) => ({ status: _id, count })),
       funnelBreakdown: funnelData,

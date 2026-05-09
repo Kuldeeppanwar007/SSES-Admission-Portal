@@ -8,9 +8,10 @@ router.get('/interviewers', protect, getInterviewers);
 router.get('/by-form/:formNo', protect, getLatestByFormNo);
 router.get('/by-student/:studentId', protect, getLatestByStudentId);
 
+// Admin, receptionist aur track_incharge ke liye
+router.get('/', protect, authorizeRoles('admin', 'receptionist', 'track_incharge'), getEntries);
+
 // Sirf admin aur receptionist ke liye
-router.use(protect, authorizeRoles('admin', 'receptionist'));
-router.get('/', getEntries);
-router.post('/', createEntry);
+router.post('/', protect, authorizeRoles('admin', 'receptionist'), createEntry);
 
 module.exports = router;

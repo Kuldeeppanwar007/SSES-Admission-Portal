@@ -1144,7 +1144,7 @@ export default function Students() {
                     <input type="checkbox" checked={allSelected} onChange={toggleAll}
                       className="rounded border-gray-300 text-primary focus:ring-primary cursor-pointer" />
                   </th>
-                  {['S.N.', 'Name', 'Father Name', 'Form No.', 'Town', 'Mobile', 'Form', 'Status', 'Attempt', 'History', 'Actions'].map((h) => (
+                  {['S.N.', 'Form No.', 'Name', 'Father Name', 'Track', 'Town', 'Mobile', 'Form', 'Status', 'Attempt', 'History', 'Actions'].map((h) => (
                     <th key={h} className={`px-4 py-3 text-xs font-semibold uppercase text-gray-500 ${h === 'Attempt' ? 'text-center' : 'text-left'}`}>{h}</th>
                   ))}
                 </tr>
@@ -1167,6 +1167,11 @@ export default function Students() {
                         className="rounded border-gray-300 text-primary focus:ring-primary cursor-pointer" />
                     </td>
                     <td className="px-4 py-3 text-gray-500">{s.serialNumber}</td>
+                    <td className="px-4 py-3">
+                      {s.admissionFormNo ? (
+                        <span className="text-xs font-semibold bg-orange-50 text-primary border border-orange-100 px-2 py-0.5 rounded-full">{s.admissionFormNo}</span>
+                      ) : <span className="text-gray-300 text-xs">—</span>}
+                    </td>
                     <td className="px-4 py-3 font-medium text-gray-800">
                       <span className="flex items-center gap-1.5">
                         {s.isPriority && <span className="text-violet-500 text-xs font-bold" title="Priority">⚡</span>}
@@ -1176,11 +1181,7 @@ export default function Students() {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-gray-600">{s.fatherName}</td>
-                    <td className="px-4 py-3">
-                      {s.admissionFormNo ? (
-                        <span className="text-xs font-semibold bg-orange-50 text-primary border border-orange-100 px-2 py-0.5 rounded-full">{s.admissionFormNo}</span>
-                      ) : <span className="text-gray-300 text-xs">—</span>}
-                    </td>
+                    <td className="px-4 py-3 text-gray-500 text-xs">{s.displayTrack || '—'}</td>
                     <td className="px-4 py-3 text-gray-500 text-xs">{s.trackName || '—'}</td>
                     <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                       {s.mobileNo ? (

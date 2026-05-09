@@ -5,15 +5,39 @@ const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
 const getISTDateString = () =>
   new Date(Date.now() + IST_OFFSET_MS).toISOString().slice(0, 10);
 
-// GET /api/reception?date=YYYY-MM-DD
+// GET /api/reception?date=YYYY-MM-DD  OR  ?from=YYYY-MM-DD&to=YYYY-MM-DD
 const getEntries = async (req, res) => {
   try {
-    const date = req.query.date || getISTDateString();
-    const start = new Date(`${date}T00:00:00+05:30`);
-    const end   = new Date(`${date}T23:59:59.999+05:30`);
-    const entries = await ReceptionEntry.find({ date: { $gte: start, $lte: end } })
+    const { date, from, to } = req.query;
+
+    let start, end;
+    if (from && to) {
+      start = new Date(`${from}T00:00:00+05:30`);
+      end   = new Date(`${to}T23:59:59.999+05:30`);
+    } else {
+      const d = date || getISTDateString();
+      start = new Date(`${d}T00:00:00+05:30`);
+      end   = new Date(`${d}T23:59:59.999+05:30`);
+    }
+
+    const TOWN_TO_TRACK = {
+      'Harda': 'Harda', 'Timarni': 'Harda', 'Seoni Malwa': 'Harda',
+      'Khategaon': 'Khategaon', 'Nemawar': 'Khategaon', 'Sandalpur': 'Khategaon',
+      'Rehti': 'Rehti', 'Gopalpur': 'Rehti', 'Bherunda': 'Rehti', 'Narmadapuram': 'Rehti',
+      'Satwas': 'Satwas & Kannod', 'Kannod': 'Satwas & Kannod',
+    };
+
+    const query = { date: { $gte: start, $lte: end } };
+    if (req.user.role === 'track_incharge' && req.user.track) {
+      const towns = Object.entries(TOWN_TO_TRACK)
+        .filter(([, t]) => t === req.user.track).map(([town]) => town);
+      query.town = { $in: towns };
+    }
+
+    const entries = await ReceptionEntry.find(query)
       .populate('enteredBy', 'name')
       .populate('interviewer', 'name')
+      .populate('studentId', 'name')
       .sort({ createdAt: -1 });
     res.json(entries);
   } catch (err) {

@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import api from '../../api/axios';
 import toast from 'react-hot-toast';
 import useAuthStore from '../../store/authStore';
-import { FiUsers, FiFileText, FiAward, FiXCircle, FiTarget, FiSlash, FiTrendingUp, FiMapPin, FiPhone } from 'react-icons/fi';
+import { FiUsers, FiFileText, FiAward, FiXCircle, FiTarget, FiSlash, FiTrendingUp, FiMapPin, FiPhone, FiClipboard, FiExternalLink } from 'react-icons/fi';
 import { Geolocation } from '@capacitor/geolocation';
+import BottomSheet from '../../components/BottomSheet';
 
 const STATUS_COLORS = {
   Applied:  'bg-yellow-100 text-yellow-700',
@@ -38,12 +40,13 @@ const SUBJECT_COLORS = {
 };
 
 const STAT_META = [
-  { key: 'total',    label: 'Total',       icon: FiUsers,    iconBg: 'bg-blue-100',    iconColor: 'text-blue-500',   text: 'text-blue-600' },
-  { key: 'applied',  label: 'Not Calling', icon: FiFileText, iconBg: 'bg-amber-100',   iconColor: 'text-amber-500',  text: 'text-amber-600' },
-  { key: 'calling',  label: 'Calling',     icon: FiPhone,    iconBg: 'bg-sky-100',     iconColor: 'text-sky-500',    text: 'text-sky-600' },
-  { key: 'admitted', label: 'Admitted',    icon: FiAward,    iconBg: 'bg-emerald-100', iconColor: 'text-emerald-500',text: 'text-emerald-600' },
-  { key: 'rejected', label: 'Rejected',    icon: FiXCircle,  iconBg: 'bg-rose-100',    iconColor: 'text-rose-500',   text: 'text-rose-600' },
-  { key: 'disabled', label: 'Disabled',    icon: FiSlash,    iconBg: 'bg-gray-100',    iconColor: 'text-gray-400',   text: 'text-gray-500' },
+  { key: 'total',             label: 'Total',             icon: FiUsers,     iconBg: 'bg-blue-100',    iconColor: 'text-blue-500',   text: 'text-blue-600',    href: '/students' },
+  { key: 'applied',            label: 'Not Calling',       icon: FiFileText,  iconBg: 'bg-amber-100',   iconColor: 'text-amber-500',  text: 'text-amber-600',   href: '/students?status=Applied' },
+  { key: 'calling',            label: 'Calling',           icon: FiPhone,     iconBg: 'bg-sky-100',     iconColor: 'text-sky-500',    text: 'text-sky-600',     href: '/students?status=Calling' },
+  { key: 'interviewAttempts',  label: 'Interview Attempts',icon: FiClipboard, iconBg: 'bg-violet-100',  iconColor: 'text-violet-500', text: 'text-violet-600',  href: '/students?interviewFilter=hasAttempts' },
+  { key: 'admitted',           label: 'Admitted',          icon: FiAward,     iconBg: 'bg-emerald-100', iconColor: 'text-emerald-500',text: 'text-emerald-600', href: '/students?status=Admitted' },
+  { key: 'rejected',           label: 'Rejected',          icon: FiXCircle,   iconBg: 'bg-rose-100',    iconColor: 'text-rose-500',   text: 'text-rose-600',    href: '/students?status=Rejected' },
+  { key: 'disabled',           label: 'Disabled',          icon: FiSlash,     iconBg: 'bg-gray-100',    iconColor: 'text-gray-400',   text: 'text-gray-500',    href: '/students?tab=disabled' },
 ];
 
 async function fetchLiveLocation() {
@@ -130,7 +133,45 @@ function AttendanceButton() {
 
 export default function TrackDashboard() {
   const { user } = useAuthStore();
+  const navigate = useNavigate();
   const [stats, setStats] = useState(null);
+  const [interviewDrawer, setInterviewDrawer] = useState(false);
+  const [interviewStudents, setInterviewStudents] = useState([]);
+  const [interviewLoading, setInterviewLoading] = useState(false);
+
+  const openInterviewDrawer = async () => {
+    setInterviewDrawer(true);
+    if (interviewStudents.length > 0) return;
+    setInterviewLoading(true);
+    try {
+      const { data } = await api.get('/students', {
+        params: { interviewFilter: 'hasAttempts', limit: 50, page: 1 },
+      });
+      const students = data.students || [];
+
+      // Fetch last interview date for each student
+      if (students.length > 0) {
+        const ids = students.map(s => s._id);
+        const { data: lastDates } = await api.post('/interviews/last-dates', { studentIds: ids });
+        const dateMap = {};
+        (lastDates || []).forEach(({ studentId, lastDate }) => { dateMap[studentId] = lastDate; });
+        const today = new Date();
+        setInterviewStudents(students.map(s => {
+          const lastDate = dateMap[s._id];
+          const daysSince = lastDate
+            ? Math.floor((today - new Date(lastDate)) / (1000 * 60 * 60 * 24))
+            : null;
+          return { ...s, lastInterviewDate: lastDate || null, daysSince };
+        }));
+      } else {
+        setInterviewStudents([]);
+      }
+    } catch {
+      toast.error('Failed to load students');
+    } finally {
+      setInterviewLoading(false);
+    }
+  };
 
   useEffect(() => {
     api.get('/students/track-stats')
@@ -151,6 +192,62 @@ export default function TrackDashboard() {
 
   return (
     <div className="space-y-8">
+
+      {/* Interview Attempts Drawer */}
+      <BottomSheet
+        open={interviewDrawer}
+        onClose={() => setInterviewDrawer(false)}
+        title="Interview Attempts"
+        subtitle={`${stats.interviewAttempts || 0} students — ${user?.track}`}
+        maxWidth="max-w-2xl"
+      >
+        {interviewLoading ? (
+          <div className="flex justify-center py-10">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+          </div>
+        ) : interviewStudents.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12 text-gray-300 gap-2">
+            <FiClipboard size={36} />
+            <p className="text-sm">Koi student nahi mila</p>
+          </div>
+        ) : (
+          <div className="space-y-2 pt-1">
+            {interviewStudents.map((s, i) => (
+              <div key={s._id}
+                onClick={() => navigate(`/students/${s._id}`)}
+                className="flex items-center gap-3 p-3 rounded-xl border border-gray-100 hover:bg-orange-50/40 hover:border-orange-200 transition-colors cursor-pointer">
+                <div className="w-8 h-8 rounded-full bg-violet-100 flex items-center justify-center text-xs font-bold text-violet-600 shrink-0">
+                  {s.name?.[0]?.toUpperCase()}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-gray-800 truncate">{s.name}</p>
+                  <p className="text-xs text-gray-400 truncate">{s.fatherName} · {s.trackName || s.track}</p>
+                  {s.lastInterviewDate && (
+                    <p className="text-xs text-gray-400 mt-0.5">
+                      Last: {new Date(s.lastInterviewDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                      <span className={`ml-1.5 font-semibold ${
+                        s.daysSince <= 7 ? 'text-emerald-600' :
+                        s.daysSince <= 30 ? 'text-amber-600' : 'text-rose-500'
+                      }`}>({s.daysSince}d ago)</span>
+                    </p>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${STATUS_COLORS[s.status] || 'bg-gray-100 text-gray-600'}`}>
+                    {s.status}
+                  </span>
+                  {s.interviewCount > 0 && (
+                    <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-violet-50 text-violet-600 border border-violet-100">
+                      Round {s.interviewCount}
+                    </span>
+                  )}
+                  <FiExternalLink size={13} className="text-gray-300" />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </BottomSheet>
       {/* Header */}
       <div className="flex items-start justify-between flex-wrap gap-3">
         <div>
@@ -166,9 +263,11 @@ export default function TrackDashboard() {
       </div>
 
       {/* Stat Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
-        {STAT_META.map(({ key, label, icon: Icon, iconBg, iconColor, text }) => (
-          <div key={key} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex flex-col gap-3 hover:shadow-md transition-shadow">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-4">
+        {STAT_META.map(({ key, label, icon: Icon, iconBg, iconColor, text, href }) => (
+          <div key={key}
+            onClick={() => key === 'interviewAttempts' ? openInterviewDrawer() : navigate(href)}
+            className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex flex-col gap-3 hover:shadow-md hover:border-orange-200 transition-shadow cursor-pointer">
             <div className={`w-10 h-10 rounded-xl ${iconBg} flex items-center justify-center`}>
               <Icon size={18} className={iconColor} />
             </div>
