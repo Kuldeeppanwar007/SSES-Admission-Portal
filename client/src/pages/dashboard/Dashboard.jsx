@@ -575,6 +575,13 @@ export default function Dashboard() {
                   ⚠️ {stats.admittedNoFunnelCount}<br/>pending
                 </button>
               )}
+              {key === 'finalCleared' && (stats.finalClearedManual || 0) > 0 && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); navigate('/students?interviewFilter=finalCleared&formSource=manual'); }}
+                  className="text-[10px] font-semibold bg-blue-50 text-blue-600 border border-blue-200 px-1.5 py-1 rounded-lg hover:bg-blue-100 transition-colors text-center leading-tight shrink-0">
+                  📋 {stats.finalClearedManual}<br/>manual
+                </button>
+              )}
             </div>
           </div>
         ))}

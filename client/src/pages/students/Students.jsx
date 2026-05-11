@@ -408,10 +408,11 @@ export default function Students() {
     const urlSubject = searchParams.get('subjectFilter');
     const urlAdmissionType = searchParams.get('admissionType');
     const urlInterviewFilter = searchParams.get('interviewFilter');
+    const urlFormSource = searchParams.get('formSource');
     const urlFunnelStage = searchParams.get('funnelStage');
     const urlAdmittedNoFunnel = searchParams.get('admittedNoFunnel');
     const urlNoFunnelStage = searchParams.get('noFunnelStage');
-    const hasUrlOverride = !!(urlTab || urlTrack || urlStatus || urlSubject || urlAdmissionType || urlInterviewFilter || urlFunnelStage || urlAdmittedNoFunnel || urlNoFunnelStage);
+    const hasUrlOverride = !!(urlTab || urlTrack || urlStatus || urlSubject || urlAdmissionType || urlInterviewFilter || urlFormSource || urlFunnelStage || urlAdmittedNoFunnel || urlNoFunnelStage);
     
     if (savedState && !hasUrlOverride) {
       try {
@@ -450,7 +451,7 @@ export default function Students() {
         status: urlStatus || '',
         town: '',
         search: '',
-        formSource: '',
+        formSource: urlFormSource || '',
         interviewFilter: urlInterviewFilter || '',
         funnelStage: urlFunnelStage || '',
         admittedNoFunnel: urlAdmittedNoFunnel || '',
@@ -462,7 +463,7 @@ export default function Students() {
         schoolName: '',
         interviewType: '',
       },
-      showFilters: !!(urlTrack || urlStatus || urlSubject || urlAdmissionType || urlInterviewFilter || urlFunnelStage || urlAdmittedNoFunnel)
+      showFilters: !!(urlTrack || urlStatus || urlSubject || urlAdmissionType || urlInterviewFilter || urlFormSource || urlFunnelStage || urlAdmittedNoFunnel)
     };
   };
   
@@ -471,6 +472,16 @@ export default function Students() {
   const [page, setPage] = useState(initialState.page);
   const [filters, setFilters] = useState(initialState.filters);
   const [showFilters, setShowFilters] = useState(initialState.showFilters);
+  
+  // URL se aaye filters ko localStorage mein save mat karo — sirf clear karo
+  useEffect(() => {
+    const urlFormSource = searchParams.get('formSource');
+    const urlInterviewFilter = searchParams.get('interviewFilter');
+    if (urlFormSource || urlInterviewFilter) {
+      // URL params consume ho gaye, ab localStorage clean state save karo
+      return () => localStorage.removeItem('studentsPageState');
+    }
+  }, []); // eslint-disable-line
   
   const [students, setStudents] = useState([]);
   const [total, setTotal] = useState(0);

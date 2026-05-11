@@ -311,13 +311,15 @@ const handleViewHistory = async () => {
             <p className="font-semibold text-gray-800">Interview History</p>
             {user?.role === 'admin' && (() => {
               const technicalPassed = interviews.some(i => i.result === 'Pass');
+              const isValidFormSource = ['ssism', 'btech'].includes(student.formSource);
+              const canTakeFinal = technicalPassed && isValidFormSource;
               return (
                 <button
-                  onClick={() => technicalPassed && setFinalForm({ remarks: '', result: 'Pending' })}
-                  disabled={!technicalPassed}
-                  title={!technicalPassed ? 'Technical interview pass hone ke baad hi final interview le sakte hain' : ''}
+                  onClick={() => canTakeFinal && setFinalForm({ remarks: '', result: 'Pending' })}
+                  disabled={!canTakeFinal}
+                  title={!isValidFormSource ? 'Sirf SSISM ya B.Tech form wale students ka final interview ho sakta hai' : !technicalPassed ? 'Technical interview pass hone ke baad hi final interview le sakte hain' : ''}
                   className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors ${
-                    technicalPassed
+                    canTakeFinal
                       ? 'bg-primary text-white hover:bg-primary-dark'
                       : 'bg-gray-200 text-gray-400 cursor-not-allowed'
                   }`}>

@@ -61,7 +61,14 @@ const getStudents = async (req, res) => {
       if (status) filter.status = status;
     }
 
-    if (formSource) filter.formSource = formSource;
+    // formSource filter — interviewFilter=finalCleared ke saath handle hoga neeche
+    if (formSource && interviewFilter !== 'finalCleared') {
+      if (formSource === 'manual') {
+        filter.formSource = { $nin: ['ssism', 'btech'] };
+      } else {
+        filter.formSource = formSource;
+      }
+    }
 
     // Village filter
     if (req.query.village) filter.village = { $regex: `^${req.query.village.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, $options: 'i' };
@@ -152,6 +159,11 @@ const getStudents = async (req, res) => {
     if (interviewFilter === 'finalCleared') {
       filter['finalInterview.result'] = 'Pass';
       filter.status = { $ne: 'Admitted' };
+      if (formSource === 'manual') {
+        filter.formSource = { $nin: ['ssism', 'btech'] };
+      } else {
+        filter.formSource = { $in: ['ssism', 'btech'] };
+      }
       if (req.query.subjectFilter) {
         const sf = req.query.subjectFilter;
         const SUBJECT_TO_BRANCHES = {
@@ -1388,11 +1400,20 @@ const getStats = async (req, res) => {
       funnelStage: { $ne: 'Admission Closed' },
     });
 
-    // Total final cleared (not yet admitted)
+    // Total final cleared — sirf SSISM/B.Tech wale (manual exclude)
     const finalCleared = await Student.countDocuments({
       'finalInterview.result': 'Pass',
       status: { $ne: 'Admitted' },
       isDisabled: { $ne: true },
+      formSource: { $in: ['ssism', 'btech'] },
+    });
+
+    // Final cleared — sirf manual form source wale (SSISM/B.Tech nahi)
+    const finalClearedManual = await Student.countDocuments({
+      'finalInterview.result': 'Pass',
+      status: { $ne: 'Admitted' },
+      isDisabled: { $ne: true },
+      formSource: { $nin: ['ssism', 'btech'] },
     });
 
     // Funnel stage counts — dashboard ke liye (overall)
@@ -1455,7 +1476,7 @@ const getStats = async (req, res) => {
       trackAdmissionTypeBreakdown[track][typeKey][subject || 'Unknown'] = count;
     });
 
-    res.json({ total, applied, calling, admitted, rejected, disabled, unassigned, admittedNoFunnelCount, finalCleared, interviewAttempts, trackWise, btechByBranch, finalClearedBySubject, admissionTypeBreakdown, trackAdmissionTypeBreakdown, funnelStageBreakdown, trackFunnelBreakdown });
+    res.json({ total, applied, calling, admitted, rejected, disabled, unassigned, admittedNoFunnelCount, finalCleared, finalClearedManual, interviewAttempts, trackWise, btechByBranch, finalClearedBySubject, admissionTypeBreakdown, trackAdmissionTypeBreakdown, funnelStageBreakdown, trackFunnelBreakdown });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
