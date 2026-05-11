@@ -12,9 +12,9 @@ const getWeekStart = () => {
   const nowIST = new Date(Date.now() + IST_OFFSET_MS);
   // Sunday pe hain — previous week ka Monday chahiye (7 days peeche)
   const day  = nowIST.getUTCDay(); // 0 = Sunday
-  const diff = day === 0 ? -6 : 1 - day; // previous Monday
+  const diff = day === 0 ? -6 : 1 - day; // current week ka Monday (Sunday se 6 din peeche)
   const monday = new Date(nowIST);
-  monday.setUTCDate(nowIST.getUTCDate() + diff - 7); // ek aur week peeche
+  monday.setUTCDate(nowIST.getUTCDate() + diff);
   monday.setUTCHours(0, 0, 0, 0);
   return new Date(monday.getTime() - IST_OFFSET_MS);
 };
