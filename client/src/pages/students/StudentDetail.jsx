@@ -309,12 +309,22 @@ const handleViewHistory = async () => {
         <div className="bg-white rounded-xl shadow p-6 mt-4">
           <div className="flex items-center justify-between mb-4">
             <p className="font-semibold text-gray-800">Interview History</p>
-            {user?.role === 'admin' && (
-              <button onClick={() => setFinalForm({ remarks: '', result: 'Pending' })}
-                className="flex items-center gap-1.5 bg-primary text-white px-3 py-1.5 rounded-lg text-sm font-semibold hover:bg-primary-dark transition-colors">
-                ★ Take Final Interview
-              </button>
-            )}
+            {user?.role === 'admin' && (() => {
+              const technicalPassed = interviews.some(i => i.result === 'Pass');
+              return (
+                <button
+                  onClick={() => technicalPassed && setFinalForm({ remarks: '', result: 'Pending' })}
+                  disabled={!technicalPassed}
+                  title={!technicalPassed ? 'Technical interview pass hone ke baad hi final interview le sakte hain' : ''}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors ${
+                    technicalPassed
+                      ? 'bg-primary text-white hover:bg-primary-dark'
+                      : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                  }`}>
+                  ★ Take Final Interview
+                </button>
+              );
+            })()}
           </div>
           <div className="space-y-4">
             {interviews.map((h) => (
