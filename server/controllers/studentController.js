@@ -1205,11 +1205,11 @@ const getTrackStats = async (req, res) => {
 const getStats = async (req, res) => {
   try {
     const Target = require('../models/Target');
-    const total = await Student.countDocuments();
-    const applied = await Student.countDocuments({ status: 'Applied' });
-    const calling = await Student.countDocuments({ status: 'Calling' });
-    const admitted = await Student.countDocuments({ status: 'Admitted' });
-    const rejected = await Student.countDocuments({ status: 'Rejected' });
+    const total = await Student.countDocuments({ isDisabled: { $ne: true } });
+    const applied = await Student.countDocuments({ status: 'Applied', isDisabled: { $ne: true } });
+    const calling = await Student.countDocuments({ status: 'Calling', isDisabled: { $ne: true } });
+    const admitted = await Student.countDocuments({ status: 'Admitted', isDisabled: { $ne: true } });
+    const rejected = await Student.countDocuments({ status: 'Rejected', isDisabled: { $ne: true } });
     const disabled = await Student.countDocuments({ isDisabled: true });
     const unassigned = await Student.countDocuments({ $or: [{ track: '' }, { track: null }, { track: { $exists: false } }] });
 
