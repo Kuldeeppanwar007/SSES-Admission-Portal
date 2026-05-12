@@ -341,20 +341,21 @@ function PointsTable({ trackWise }) {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-100">
-                <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 whitespace-nowrap">#</th>
-                <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 whitespace-nowrap">Center ↓ / Course →</th>
+                <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500 whitespace-nowrap">#</th>
+                <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500 whitespace-nowrap">Center ↓ / Course →</th>
                 {SUBJECTS.map((s) => (
-                  <th key={s} className="px-5 py-3 text-left text-xs font-semibold text-gray-500 whitespace-nowrap">
+                  <th key={s} className="px-3 py-3 text-center text-xs font-semibold text-gray-500 whitespace-nowrap">
                     {SUBJECT_LABELS[s]}
                   </th>
                 ))}
-                <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 whitespace-nowrap">Adm. Pts</th>
-                <th className="px-5 py-3 text-left text-xs font-semibold text-amber-500 whitespace-nowrap">🎁 Bonus</th>
-                <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500">Total</th>
+                <th className="px-3 py-3 text-center text-xs font-semibold text-gray-500 whitespace-nowrap">Adm. Pts</th>
+                <th className="px-3 py-3 text-center text-xs font-semibold text-emerald-600 whitespace-nowrap">₹ Branch-wise Reward Earned</th>
+                <th className="px-3 py-3 text-center text-xs font-semibold text-amber-500 whitespace-nowrap">🎁 Bonus Pts</th>
+                <th className="px-3 py-3 text-center text-xs font-semibold text-gray-500 whitespace-nowrap">Total Pts</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {tracks.map(({ track, fullFeesSubjects, admissionPoints, weeklyBonus, points }, i) => {
+              {tracks.map(({ track, fullFeesSubjects, admissionPoints, weeklyBonus, points, totalAmount }, i) => {
                 const subjectMap = {};
                 (fullFeesSubjects || []).forEach(({ subject, admitted }) => {
                   if (BTECH_SUBJECTS.includes(subject)) {
@@ -366,31 +367,36 @@ function PointsTable({ trackWise }) {
                 const isTop3 = i < 3;
                 return (
                   <tr key={track} className={`transition-colors ${isTop3 ? 'bg-orange-50/40 hover:bg-orange-50/70' : 'hover:bg-gray-50/60'}`}>
-                    <td className="px-5 py-3 text-base">
+                    <td className="px-3 py-3 text-base">
                       {RANK_BADGE[i] || <span className="text-xs text-gray-400 font-semibold">{i + 1}</span>}
                     </td>
-                    <td className="px-5 py-3 font-bold text-gray-800 whitespace-nowrap">
+                    <td className="px-3 py-3 font-bold text-gray-800 whitespace-nowrap">
                       {track.toUpperCase()}
                     </td>
                     {SUBJECTS.map((s) => {
                       const admitted = subjectMap[s] || 0;
                       return (
-                        <td key={s} className="px-5 py-3 tabular-nums">
+                        <td key={s} className="px-3 py-3 tabular-nums text-center">
                           <span className={admitted > 0 ? 'font-bold text-gray-800' : 'text-gray-300'}>
                             {admitted > 0 ? admitted : '—'}
                           </span>
                         </td>
                       );
                     })}
-                    <td className="px-5 py-3 font-bold text-primary tabular-nums">
+                    <td className="px-3 py-3 font-bold text-primary tabular-nums text-center">
                       {admissionPoints || 0}
                     </td>
-                    <td className="px-5 py-3 tabular-nums">
+                    <td className="px-3 py-3 tabular-nums text-center">
+                      {totalAmount > 0
+                        ? <span className="font-bold text-emerald-600">₹{totalAmount.toLocaleString('en-IN')}</span>
+                        : <span className="text-gray-300">—</span>}
+                    </td>
+                    <td className="px-3 py-3 tabular-nums text-center">
                       {weeklyBonus > 0
                         ? <span className="font-bold text-amber-600">+{weeklyBonus}</span>
                         : <span className="text-gray-300">—</span>}
                     </td>
-                    <td className="px-5 py-3 font-bold text-primary tabular-nums">
+                    <td className="px-3 py-3 font-bold text-primary tabular-nums text-center">
                       {points || 0}
                     </td>
                   </tr>

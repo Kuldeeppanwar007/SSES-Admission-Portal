@@ -1263,11 +1263,14 @@ const getStats = async (req, res) => {
 
     const trackMap = {};
     const pointsPerSubject = {};
-    targets.forEach(({ track, subject, target, points: pts }) => {
+    const amountPerSubject = {}; // Full Fees amount per subject per track
+    targets.forEach(({ track, subject, target, points: pts, amount }) => {
       if (!trackMap[track]) trackMap[track] = { subjects: {} };
       trackMap[track].subjects[subject] = { target, admitted: 0 };
       if (!pointsPerSubject[track]) pointsPerSubject[track] = {};
       pointsPerSubject[track][subject] = pts || 0;
+      if (!amountPerSubject[track]) amountPerSubject[track] = {};
+      amountPerSubject[track][subject] = amount || 0;
     });
 
     trackSubjectAdmitted.forEach(({ _id, admitted }) => {
@@ -1338,8 +1341,18 @@ const getStats = async (req, res) => {
       const fullFeesSubjects = Object.entries(subjects).map(([subject, data]) => ({
         subject,
         target: data.target,
-        admitted: data.admitted || 0, // Full Fees only (trackSubjectAdmitted se)
+        admitted: data.admitted || 0,
       }));
+
+      // Full Fees admitted count per subject for amount calculation
+      const fullFeesAdmittedMap = {};
+      fullFeesSubjects.forEach(({ subject, admitted }) => {
+        const key = BTECH_SUBJECTS.includes(subject) ? 'B.Tech' : subject;
+        fullFeesAdmittedMap[key] = (fullFeesAdmittedMap[key] || 0) + (admitted || 0);
+      });
+      const totalAmount = Object.entries(fullFeesAdmittedMap).reduce((sum, [subject, admitted]) => {
+        return sum + (admitted || 0) * (amountPerSubject[track]?.[subject] || 0);
+      }, 0);
 
       return ({
         track,
@@ -1358,6 +1371,7 @@ const getStats = async (req, res) => {
         calledCount:       callingMap[track]?.calledCount  || 0,
         totalCount:        callingMap[track]?.totalCount   || 0,
         callingEfficiency: callingMap[track]?.efficiency   || 0,
+        totalAmount,
       });
     });
 

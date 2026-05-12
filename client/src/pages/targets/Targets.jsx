@@ -17,7 +17,7 @@ const SUBJECT_COLORS = {
 
 export default function Targets() {
   const [targets, setTargets] = useState([]);
-  const [form, setForm] = useState({ track: 'all', subject: SUBJECTS[0], target: '', points: '' });
+  const [form, setForm] = useState({ track: 'all', subject: SUBJECTS[0], target: '', points: '', amount: '' });
   const [saving, setSaving] = useState(false);
   const [selectedTrack, setSelectedTrack] = useState('');
   const [editCell, setEditCell] = useState(null);
@@ -30,19 +30,20 @@ export default function Targets() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!form.target && !form.points) return toast.error('Target ya Points mein se kuch to bharo');
+    if (!form.target && !form.points && !form.amount) return toast.error('Target, Points ya Amount mein se kuch to bharo');
     setSaving(true);
     try {
       const tracksToSet = form.track === 'all' ? MAIN_TRACKS : [form.track];
       const payload = { subject: form.subject };
       if (form.target !== '') payload.target = Number(form.target);
       if (form.points !== '') payload.points = Number(form.points);
+      if (form.amount !== '') payload.amount = Number(form.amount);
       await Promise.all(tracksToSet.map((track) =>
         api.post('/targets', { track, ...payload })
       ));
       toast.success(`Saved for ${form.track === 'all' ? 'all tracks' : form.track}!`);
       fetchTargets();
-      setForm({ ...form, target: '', points: '' });
+      setForm({ ...form, target: '', points: '', amount: '' });
     } catch { toast.error('Failed to save'); }
     finally { setSaving(false); }
   };
@@ -54,6 +55,7 @@ export default function Targets() {
         track, subject,
         target: field === 'target' ? Number(value) : (existing?.target || 0),
         points: field === 'points' ? Number(value) : (existing?.points || 0),
+        amount: field === 'amount' ? Number(value) : (existing?.amount || 0),
       });
       toast.success('Updated!');
       setEditCell(null);
@@ -82,7 +84,7 @@ export default function Targets() {
           </div>
           <p className="text-sm font-bold text-gray-800">Set Target</p>
         </div>
-        <form onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+        <form onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
           <div className="flex flex-col gap-1">
             <label className="text-xs font-medium text-gray-500">Track</label>
             <select value={form.track} onChange={(e) => setForm({ ...form, track: e.target.value })}
@@ -110,6 +112,13 @@ export default function Targets() {
             <input type="number" min="0" value={form.points}
               onChange={(e) => setForm({ ...form, points: e.target.value })}
               placeholder="e.g. 180"
+              className="border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition" />
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-medium text-gray-500">Amount ₹ (Full Fees)</label>
+            <input type="number" min="0" value={form.amount}
+              onChange={(e) => setForm({ ...form, amount: e.target.value })}
+              placeholder="e.g. 2000"
               className="border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition" />
           </div>
           <div className="flex flex-col gap-1">
@@ -172,12 +181,13 @@ export default function Targets() {
                   const found = items.find((i) => i.subject === subject);
                   const isEditingTarget = editCell?.track === track && editCell?.subject === subject && editCell?.field === 'target';
                   const isEditingPoints = editCell?.track === track && editCell?.subject === subject && editCell?.field === 'points';
+                  const isEditingAmount = editCell?.track === track && editCell?.subject === subject && editCell?.field === 'amount';
                   return (
-                    <div key={subject} className="flex items-center justify-between px-4 py-3 hover:bg-gray-50/70 transition-colors group">
-                      <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${SUBJECT_COLORS[subject] || 'bg-gray-100 text-gray-600'}`}>
-                        {subject}
-                      </span>
-                      <div className="flex items-center gap-3">
+                    <div key={subject} className="px-4 py-3 hover:bg-gray-50/70 transition-colors group">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${SUBJECT_COLORS[subject] || 'bg-gray-100 text-gray-600'}`}>
+                          {subject}
+                        </span>
                         {/* Target */}
                         <div className="flex items-center gap-1">
                           <span className="text-[10px] text-gray-400">Target:</span>
@@ -198,6 +208,9 @@ export default function Targets() {
                             </>
                           )}
                         </div>
+                      </div>
+                      {/* Points + Amount row */}
+                      <div className="flex items-center justify-between gap-2">
                         {/* Points */}
                         <div className="flex items-center gap-1">
                           <span className="text-[10px] text-gray-400">Pts:</span>
@@ -214,6 +227,28 @@ export default function Targets() {
                             <>
                               <span className={`text-sm font-bold tabular-nums ${found?.points ? 'text-primary' : 'text-gray-300'}`}>{found?.points || '—'}</span>
                               <button onClick={() => { setEditCell({ track, subject, field: 'points' }); setEditValue(found?.points ?? ''); }}
+                                className="w-5 h-5 rounded-full opacity-0 group-hover:opacity-100 bg-orange-50 flex items-center justify-center text-primary"><FiEdit2 size={10} /></button>
+                            </>
+                          )}
+                        </div>
+                        {/* Amount */}
+                        <div className="flex items-center gap-1">
+                          <span className="text-[10px] text-gray-400">₹:</span>
+                          {isEditingAmount ? (
+                            <>
+                              <input type="number" min="0" value={editValue} autoFocus
+                                onChange={(e) => setEditValue(e.target.value)}
+                                onKeyDown={(e) => { if (e.key === 'Enter') handleEditSave(track, subject, 'amount', editValue); if (e.key === 'Escape') setEditCell(null); }}
+                                className="w-16 border border-primary/40 rounded-lg px-2 py-0.5 text-sm outline-none" />
+                              <button onClick={() => handleEditSave(track, subject, 'amount', editValue)} className="w-5 h-5 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600"><FiCheck size={11} /></button>
+                              <button onClick={() => setEditCell(null)} className="w-5 h-5 rounded-full bg-gray-100 flex items-center justify-center text-gray-400"><FiX size={11} /></button>
+                            </>
+                          ) : (
+                            <>
+                              <span className={`text-sm font-bold tabular-nums ${found?.amount ? 'text-emerald-600' : 'text-gray-300'}`}>
+                                {found?.amount ? `₹${found.amount}` : '—'}
+                              </span>
+                              <button onClick={() => { setEditCell({ track, subject, field: 'amount' }); setEditValue(found?.amount ?? ''); }}
                                 className="w-5 h-5 rounded-full opacity-0 group-hover:opacity-100 bg-orange-50 flex items-center justify-center text-primary"><FiEdit2 size={10} /></button>
                             </>
                           )}
