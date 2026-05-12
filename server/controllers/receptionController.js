@@ -130,6 +130,19 @@ const getLatestByFormNo = async (req, res) => {
   }
 };
 
+// GET /api/reception/all-by-student/:studentId — student ki saari entries
+const getAllByStudentId = async (req, res) => {
+  try {
+    const entries = await ReceptionEntry.find({ studentId: req.params.studentId })
+      .populate('enteredBy', 'name')
+      .populate('interviewer', 'name')
+      .sort({ createdAt: -1 });
+    res.json(entries);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
 // DELETE /api/reception/:id
 const deleteEntry = async (req, res) => {
   try {
@@ -142,4 +155,4 @@ const deleteEntry = async (req, res) => {
   }
 };
 
-module.exports = { getEntries, getInterviewers, createEntry, getLatestByFormNo, getLatestByStudentId, deleteEntry };
+module.exports = { getEntries, getInterviewers, createEntry, getLatestByFormNo, getLatestByStudentId, getAllByStudentId, deleteEntry };

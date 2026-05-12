@@ -46,7 +46,7 @@ function SelectField({ label, value, onChange, options }) {
   );
 }
 
-const VISIT_PURPOSES = ['Visit', 'Inquiry', 'Interview', 'Re-Interview'];
+const VISIT_PURPOSES = ['Inquiry', 'Interview', 'Re-Interview'];
 
 function InterviewModal({ student, user, onClose, onSaved }) {
   const [form, setForm] = useState(emptyForm);
