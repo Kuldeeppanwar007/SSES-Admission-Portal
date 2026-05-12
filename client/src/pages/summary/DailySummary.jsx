@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { FiCalendar, FiUsers, FiEdit, FiCheckCircle, FiActivity, FiPhone, FiAward, FiTrendingUp, FiRefreshCw, FiX, FiChevronDown, FiFilter } from 'react-icons/fi';
+import { FiCalendar, FiUsers, FiEdit, FiCheckCircle, FiActivity, FiPhone, FiAward, FiTrendingUp, FiRefreshCw, FiX, FiChevronDown, FiFilter, FiTrash2 } from 'react-icons/fi';
 import useAuthStore from '../../store/authStore';
 import {
   BarChart, Bar, AreaChart, Area, PieChart, Pie, Cell,
@@ -7,6 +7,7 @@ import {
 } from 'recharts';
 import api from '../../api/axios';
 import toast from 'react-hot-toast';
+import BottomSheet from '../../components/BottomSheet';
 
 const PRIMARY = '#f97316';
 const COLORS = ['#f97316', '#3b82f6', '#10b981', '#8b5cf6', '#ef4444', '#f59e0b'];
@@ -213,6 +214,7 @@ export default function DailySummary() {
   const [admissionOpen, setAdmissionOpen] = useState(true);
   const [callingOpen, setCallingOpen] = useState(true);
   const [branchFilter, setBranchFilter] = useState('');
+  const [deleteConfirm, setDeleteConfirm] = useState(null); // entry object jo delete hogi
 
   useEffect(() => { fetchData(); }, [date, fromDate, toDate, mode]);
 
@@ -275,6 +277,36 @@ export default function DailySummary() {
 
   return (
     <div className="space-y-5">
+
+      {/* ── Delete Confirmation Popup ── */}
+      {deleteConfirm && (
+        <BottomSheet open onClose={() => setDeleteConfirm(null)} title="Entry Delete Karo" maxWidth="max-w-sm">
+          <div className="py-2 space-y-4">
+            <p className="text-sm text-gray-600">
+              <span className="font-semibold text-gray-800">Form #{deleteConfirm.admissionFormNo}</span> —{' '}
+              {deleteConfirm.studentId?.name || 'Unknown'} ki ye entry permanently delete ho jaayegi.
+            </p>
+            <div className="flex gap-3">
+              <button onClick={() => setDeleteConfirm(null)}
+                className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors">
+                Cancel
+              </button>
+              <button
+                onClick={async () => {
+                  try {
+                    await api.delete(`/reception/${deleteConfirm._id}`);
+                    setReceptionEntries(prev => prev.filter(x => x._id !== deleteConfirm._id));
+                    toast.success('Entry delete ho gayi!');
+                  } catch { toast.error('Delete failed'); }
+                  finally { setDeleteConfirm(null); }
+                }}
+                className="flex-1 py-2.5 rounded-xl bg-primary text-white text-sm font-semibold hover:bg-primary-dark transition-colors flex items-center justify-center gap-2">
+                <FiTrash2 size={14} /> Delete
+              </button>
+            </div>
+          </div>
+        </BottomSheet>
+      )}
 
       {/* ── Drawer ── */}
       <Drawer open={drawer.open} onClose={closeDrawer} title={drawer.title} subtitle={drawer.subtitle}>
@@ -754,6 +786,9 @@ export default function DailySummary() {
                       <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase">Interviewer</th>
                       <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase">Entered By</th>
                       <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase">Time</th>
+                      {(user?.role === 'admin' || user?.role === 'receptionist') && (
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase">Action</th>
+                      )}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-50">
@@ -779,6 +814,15 @@ export default function DailySummary() {
                         <td className="px-4 py-3 text-gray-400 text-xs">
                           {new Date(e.createdAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
                         </td>
+                        {(user?.role === 'admin' || user?.role === 'receptionist') && (
+                          <td className="px-4 py-3">
+                            <button
+                              onClick={() => setDeleteConfirm(e)}
+                              className="flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 border border-orange-200 text-primary bg-orange-50 hover:bg-primary hover:text-white rounded-lg transition-colors">
+                              <FiTrash2 size={12} /> Delete
+                            </button>
+                          </td>
+                        )}
                       </tr>
                     ))}
                   </tbody>

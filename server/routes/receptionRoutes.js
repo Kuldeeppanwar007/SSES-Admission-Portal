@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { protect, authorizeRoles } = require('../middleware/authMiddleware');
-const { getEntries, getInterviewers, createEntry, getLatestByFormNo, getLatestByStudentId } = require('../controllers/receptionController');
+const { getEntries, getInterviewers, createEntry, getLatestByFormNo, getLatestByStudentId, deleteEntry } = require('../controllers/receptionController');
 
 // Sabhi logged-in users ke liye — interviewer bhi access kar sake
 router.get('/interviewers', protect, getInterviewers);
@@ -13,5 +13,6 @@ router.get('/', protect, authorizeRoles('admin', 'receptionist', 'track_incharge
 
 // Sirf admin aur receptionist ke liye
 router.post('/', protect, authorizeRoles('admin', 'receptionist'), createEntry);
+router.delete('/:id', protect, authorizeRoles('admin', 'receptionist'), deleteEntry);
 
 module.exports = router;

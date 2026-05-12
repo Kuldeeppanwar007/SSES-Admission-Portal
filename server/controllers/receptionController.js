@@ -130,4 +130,16 @@ const getLatestByFormNo = async (req, res) => {
   }
 };
 
-module.exports = { getEntries, getInterviewers, createEntry, getLatestByFormNo, getLatestByStudentId };
+// DELETE /api/reception/:id
+const deleteEntry = async (req, res) => {
+  try {
+    const entry = await ReceptionEntry.findById(req.params.id);
+    if (!entry) return res.status(404).json({ message: 'Entry not found' });
+    await entry.deleteOne();
+    res.json({ message: 'Entry deleted' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+module.exports = { getEntries, getInterviewers, createEntry, getLatestByFormNo, getLatestByStudentId, deleteEntry };
