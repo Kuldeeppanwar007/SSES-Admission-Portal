@@ -59,7 +59,7 @@ const getInterviewers = async (req, res) => {
 // POST /api/reception — create new entry
 const createEntry = async (req, res) => {
   try {
-    const { date, town, admissionFormNo, visitPurpose, branch, interviewer, studentId } = req.body;
+    const { date, town, admissionFormNo, visitPurpose, branch, interviewer, studentId, entryType } = req.body;
     if (!date || !town || !admissionFormNo || !visitPurpose)
       return res.status(400).json({ message: 'date, town, admissionFormNo aur visitPurpose required hain' });
 
@@ -82,6 +82,7 @@ const createEntry = async (req, res) => {
       interviewer: interviewer || null,
       studentId: studentId || null,
       enteredBy: req.user._id,
+      entryType: entryType || 'Offline',
     });
 
     // Student ke record mein admissionFormNo permanently save karo (sirf pehli baar)

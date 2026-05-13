@@ -10,6 +10,7 @@ import {
   FiCalendar, FiBook, FiAward, FiCheckCircle, FiAlertCircle,
 } from 'react-icons/fi';
 import BottomSheet from '../../components/BottomSheet';
+import ReceptionEntryModal from '../../components/ReceptionEntryModal';
 
 export default function StudentDetail() {
   const { id } = useParams();
@@ -27,6 +28,7 @@ export default function StudentDetail() {
   const [flagLoading, setFlagLoading] = useState(false);
   const [receptionEntries, setReceptionEntries] = useState([]);
   const [receptionLoading, setReceptionLoading] = useState(true);
+  const [receptionOpen, setReceptionOpen] = useState(false);
 
   const handleExport = async () => {
     setExporting(true);
@@ -41,6 +43,13 @@ export default function StudentDetail() {
     finally { setExporting(false); }
   };
 
+  const fetchReceptionEntries = () => {
+    api.get(`/reception/all-by-student/${id}`)
+      .then(({ data }) => setReceptionEntries(data))
+      .catch(() => {})
+      .finally(() => setReceptionLoading(false));
+  };
+
   useEffect(() => {
     api.get(`/students/${id}`)
       .then(({ data }) => setStudent(data))
@@ -48,10 +57,7 @@ export default function StudentDetail() {
     api.get(`/interviews/${id}`)
       .then(({ data }) => setInterviews(data))
       .catch(() => {});
-    api.get(`/reception/all-by-student/${id}`)
-      .then(({ data }) => setReceptionEntries(data))
-      .catch(() => {})
-      .finally(() => setReceptionLoading(false));
+    fetchReceptionEntries();
   }, [id]);
 
   const handleFinalInterview = async (e) => {
@@ -520,11 +526,19 @@ export default function StudentDetail() {
           </div>
           <p className="text-sm font-semibold text-gray-800">Reception Entries</p>
         </div>
-        {receptionEntries.length > 0 && (
-          <span className="text-xs font-semibold bg-violet-50 text-violet-700 border border-violet-100 px-2.5 py-1 rounded-full">
-            {receptionEntries.length} visit{receptionEntries.length !== 1 ? 's' : ''}
-          </span>
-        )}
+        <div className="flex items-center gap-2">
+          {receptionEntries.length > 0 && (
+            <span className="text-xs font-semibold bg-violet-50 text-violet-700 border border-violet-100 px-2.5 py-1 rounded-full">
+              {receptionEntries.length} visit{receptionEntries.length !== 1 ? 's' : ''}
+            </span>
+          )}
+          {(user?.role === 'admin' || user?.role === 'receptionist') && (
+            <button onClick={() => setReceptionOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-primary text-white hover:bg-primary-dark transition-colors">
+              <FiFileText size={13} /> Entry
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="p-5">
@@ -574,6 +588,13 @@ export default function StudentDetail() {
                       <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full border ${purposeColor[entry.visitPurpose]}`}>
                         {entry.visitPurpose}
                       </span>
+                      {entry.entryType && (
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
+                          entry.entryType === 'Online' ? 'bg-sky-100 text-sky-700' : 'bg-gray-200 text-gray-600'
+                        }`}>
+                          {entry.entryType.toUpperCase()}
+                        </span>
+                      )}
                       {entry.town && (
                         <span className="flex items-center gap-1 text-xs text-gray-500">
                           <FiMapPin size={10} /> {entry.town}
@@ -585,15 +606,24 @@ export default function StudentDetail() {
                     </span>
                   </div>
 
-                  <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2">
+                  <div className="mt-3 space-y-1.5 pt-2 border-t border-gray-200">
                     {entry.branch && (
-                      <span className="text-xs text-gray-500">Branch: <span className="font-medium text-gray-700">{entry.branch}</span></span>
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] text-gray-500 uppercase tracking-wide">Branch</span>
+                        <span className="text-xs font-semibold text-gray-700">{entry.branch}</span>
+                      </div>
                     )}
                     {entry.interviewer?.name && (
-                      <span className="text-xs text-gray-500">Interviewer: <span className="font-medium text-gray-700">{entry.interviewer.name}</span></span>
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] text-gray-500 uppercase tracking-wide">Interviewer</span>
+                        <span className="text-xs font-semibold text-gray-700">{entry.interviewer.name}</span>
+                      </div>
                     )}
                     {entry.enteredBy?.name && (
-                      <span className="text-xs text-gray-500">By: <span className="font-medium text-gray-700">{entry.enteredBy.name}</span></span>
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] text-gray-500 uppercase tracking-wide">Entered By</span>
+                        <span className="text-xs font-semibold text-gray-700">{entry.enteredBy.name}</span>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -712,6 +742,14 @@ export default function StudentDetail() {
       <InterviewCard />
 
       {/* ── Modals ── */}
+      {receptionOpen && (
+        <ReceptionEntryModal
+          student={student}
+          onClose={() => setReceptionOpen(false)}
+          onSaved={fetchReceptionEntries}
+        />
+      )}
+
       {finalForm && (
         <BottomSheet open onClose={() => setFinalForm(null)} title="Take Final Interview" maxWidth="max-w-sm">
           <form onSubmit={handleFinalInterview} className="space-y-4 pt-2">

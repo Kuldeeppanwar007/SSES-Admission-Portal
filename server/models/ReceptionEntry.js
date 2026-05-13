@@ -13,6 +13,7 @@ const receptionEntrySchema = new mongoose.Schema({
   interviewer: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
   studentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Student', default: null },
   enteredBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  entryType: { type: String, enum: ['Online', 'Offline'], default: 'Offline' },
 }, { timestamps: true });
 
 // Index for faster queries (non-unique — multiple entries per date+town allowed)
