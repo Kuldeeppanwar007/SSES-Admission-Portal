@@ -50,6 +50,9 @@ const STAT_META = [
   { key: 'disabled',           label: 'Disabled',          icon: FiSlash,     iconBg: 'bg-gray-100',    iconColor: 'text-gray-400',   text: 'text-gray-500',    href: '/students?tab=disabled' },
 ];
 
+const MAX_ACCURACY_M = 500; // 500m se zyada inaccurate reading reject
+const MAX_RETRIES = 3;
+
 async function fetchLiveLocation() {
   // Step 1: Request permission explicitly
   try {
@@ -58,29 +61,49 @@ async function fetchLiveLocation() {
       throw new Error('GPS permission denied. Please allow location access.');
     }
   } catch (permErr) {
-    // On web/browser, requestPermissions may not exist — continue anyway
     if (permErr.message?.includes('denied')) throw permErr;
   }
 
-  // Step 2: First call to wake up GPS
+  // Step 2: Warm-up call
   try {
     await Geolocation.getCurrentPosition({ enableHighAccuracy: true, timeout: 5000, maximumAge: 0 });
-  } catch (_) { /* warm-up attempt, ignore error */ }
+  } catch (_) { /* ignore */ }
 
-  // Step 3: Second call — actual accurate reading
-  try {
-    const pos = await Geolocation.getCurrentPosition({
-      enableHighAccuracy: true,
-      timeout: 15000,
-      maximumAge: 0,
-    });
-    return { latitude: pos.coords.latitude, longitude: pos.coords.longitude, source: 'GPS' };
-  } catch (_) { /* fall through to browser */ }
+  // Step 3: Retry loop — accurate reading milne tak try karo
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      const pos = await Geolocation.getCurrentPosition({
+        enableHighAccuracy: true,
+        timeout: 15000,
+        maximumAge: 0,
+      });
+      const accuracy = pos.coords.accuracy;
+      if (accuracy <= MAX_ACCURACY_M) {
+        return { latitude: pos.coords.latitude, longitude: pos.coords.longitude, accuracy, source: 'GPS' };
+      }
+      // Last attempt pe bhi inaccurate — reject karo
+      if (attempt === MAX_RETRIES) {
+        throw new Error(`GPS accuracy bahut kam hai (${Math.round(accuracy)}m). Khule jagah jaayein aur dobara try karein.`);
+      }
+      // Thoda wait karo GPS settle hone ke liye
+      await new Promise(r => setTimeout(r, 2000));
+    } catch (err) {
+      if (err.message?.includes('GPS accuracy')) throw err;
+      if (attempt === MAX_RETRIES) break; // fall through to browser
+    }
+  }
 
-  // Step 4: Browser fallback (for web)
+  // Step 4: Browser fallback (web ke liye)
   return new Promise((resolve, reject) => {
     navigator.geolocation.getCurrentPosition(
-      (p) => resolve({ latitude: p.coords.latitude, longitude: p.coords.longitude, source: 'Browser' }),
+      (p) => {
+        const accuracy = p.coords.accuracy;
+        if (accuracy > MAX_ACCURACY_M) {
+          reject(new Error(`Location accuracy bahut kam hai (${Math.round(accuracy)}m). Khule jagah jaayein aur dobara try karein.`));
+        } else {
+          resolve({ latitude: p.coords.latitude, longitude: p.coords.longitude, accuracy, source: 'Browser' });
+        }
+      },
       () => reject(new Error('Location permission denied. Please enable GPS.')),
       { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
     );
@@ -91,15 +114,22 @@ function AttendanceButton() {
   const [loading, setLoading] = useState(false);
   const [marked, setMarked] = useState(false);
   const [locInfo, setLocInfo] = useState(null);
+  const [attempt, setAttempt] = useState(0);
 
   const handleAttendance = async () => {
     setLoading(true);
+    setAttempt(0);
     try {
       const loc = await fetchLiveLocation();
-      await api.post('/attendance/mark', { latitude: loc.latitude, longitude: loc.longitude, locationSource: loc.source });
+      await api.post('/attendance/mark', {
+        latitude: loc.latitude,
+        longitude: loc.longitude,
+        locationSource: loc.source,
+        accuracy: loc.accuracy,
+      });
       setMarked(true);
       setLocInfo(loc);
-      toast.success(`Attendance marked! (via ${loc.source})`);
+      toast.success(`Attendance marked! (±${Math.round(loc.accuracy)}m accuracy)`);
     } catch (err) {
       toast.error(err.response?.data?.message || err.message || 'Failed to mark attendance');
     } finally {

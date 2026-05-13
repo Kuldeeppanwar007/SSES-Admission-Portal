@@ -234,6 +234,10 @@ const markAttendance = async (req, res) => {
   if (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180)
     return res.status(400).json({ message: 'Invalid coordinates' });
 
+  // Accuracy check — 500m se zyada inaccurate reading reject karo
+  const MAX_ACCURACY_M = 500;
+  if (accuracy != null && accuracy > 0 && accuracy > MAX_ACCURACY_M)
+    return res.status(400).json({ message: `Attendance blocked: GPS accuracy bahut kam hai (${Math.round(accuracy)}m). Khule jagah jaayein aur dobara try karein.` });
   const date  = getISTDateString();
   const time  = getISTTimeString();
 
@@ -253,13 +257,9 @@ const markAttendance = async (req, res) => {
     timestamp: { $gte: todayStart, $lte: todayEnd },
   });
   if (todayLogs.length > 0) {
-    const unavailableCount = todayLogs.filter(l => l.status === 'unavailable').length;
-    const okCount = todayLogs.filter(l => l.status === 'ok').length;
     const mockCount = todayLogs.filter(l => l.isMock).length;
     if (mockCount > 0)
       return res.status(400).json({ message: 'Attendance blocked: Fake location detected. Admin se contact karein.' });
-    if (okCount === 0 && unavailableCount > 0)
-      return res.status(400).json({ message: 'Attendance blocked: Location was disabled for most of today. Please contact admin.' });
   }
 
   const record = await Attendance.create({
