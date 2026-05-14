@@ -8,18 +8,18 @@ import { TRACK_TOWNS } from '../../utils/constants';
 
 // SSISM branch capacity limits
 const SSISM_BRANCHES = [
-  { label: 'BCA',           subject: 'BCA',   limit: 120, color: 'text-violet-600', bg: 'bg-violet-50', border: 'border-violet-200', bar: 'bg-violet-500' },
-  { label: 'BBA',           subject: 'BBA',   limit: 120, color: 'text-amber-600',  bg: 'bg-amber-50',  border: 'border-amber-200',  bar: 'bg-amber-500'  },
-  { label: 'BSC (BT)',      subject: 'Bio',   limit: 60,  color: 'text-rose-600',   bg: 'bg-rose-50',   border: 'border-rose-200',   bar: 'bg-rose-500'   },
-  { label: 'BSC (MICRO)',   subject: 'Micro', limit: 60,  color: 'text-cyan-600',   bg: 'bg-cyan-50',   border: 'border-cyan-200',   bar: 'bg-cyan-500'   },
-  { label: 'B.COM (CA)',    subject: 'Bcom',  limit: 60,  color: 'text-emerald-600',bg: 'bg-emerald-50',border: 'border-emerald-200',bar: 'bg-emerald-500'},
-  { label: 'ITEG DIPLOMA',  subject: 'ITEG Diploma', limit: null,color: 'text-blue-600',   bg: 'bg-blue-50',   border: 'border-blue-200',   bar: 'bg-blue-500'   },
+  { label: 'BCA', subject: 'BCA', limit: 120, color: 'text-violet-600', bg: 'bg-violet-50', border: 'border-violet-200', bar: 'bg-violet-500' },
+  { label: 'BBA', subject: 'BBA', limit: 120, color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-200', bar: 'bg-amber-500' },
+  { label: 'BSC (BT)', subject: 'Bio', limit: 60, color: 'text-rose-600', bg: 'bg-rose-50', border: 'border-rose-200', bar: 'bg-rose-500' },
+  { label: 'BSC (MICRO)', subject: 'Micro', limit: 60, color: 'text-cyan-600', bg: 'bg-cyan-50', border: 'border-cyan-200', bar: 'bg-cyan-500' },
+  { label: 'B.COM (CA)', subject: 'Bcom', limit: 60, color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-200', bar: 'bg-emerald-500' },
+  { label: 'ITEG DIPLOMA', subject: 'ITEG Diploma', limit: null, color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-200', bar: 'bg-blue-500' },
 ];
 
 function CapacityCard({ label, admitted, finalCleared, limit, color, bg, border, bar, onClick, onPendingClick }) {
   const remaining = limit !== null ? Math.max(0, limit - admitted) : null;
-  const pct       = limit ? Math.min(Math.round((admitted / limit) * 100), 100) : null;
-  const isFull    = limit !== null && remaining === 0;
+  const pct = limit ? Math.min(Math.round((admitted / limit) * 100), 100) : null;
+  const isFull = limit !== null && remaining === 0;
   return (
     <div onClick={onClick} className={`bg-white rounded-2xl border ${border} shadow-sm p-4 flex flex-col gap-2 ${onClick ? 'cursor-pointer hover:shadow-md hover:border-orange-200 transition-shadow' : ''}`}>
       <p className={`text-xs font-bold uppercase tracking-wide ${color}`}>{label}</p>
@@ -86,9 +86,9 @@ function SSISMCapacityCards({ trackWise, finalClearedBySubject, navigate }) {
 }
 
 const BTECH_BRANCHES = [
-  { label: 'B.Tech (CS)',    subject: 'B.Tech(CS)',    limit: 60, color: 'text-blue-600',   bg: 'bg-blue-50',   border: 'border-blue-200',   bar: 'bg-blue-500'   },
-  { label: 'B.Tech (IT)',    subject: 'B.Tech(IT)',    limit: 60, color: 'text-indigo-600', bg: 'bg-indigo-50', border: 'border-indigo-200', bar: 'bg-indigo-500' },
-  { label: 'B.Tech (ECE)',   subject: 'B.Tech(ECE)',   limit: 60, color: 'text-teal-600',   bg: 'bg-teal-50',   border: 'border-teal-200',   bar: 'bg-teal-500'   },
+  { label: 'B.Tech (CS)', subject: 'B.Tech(CS)', limit: 60, color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-200', bar: 'bg-blue-500' },
+  { label: 'B.Tech (IT)', subject: 'B.Tech(IT)', limit: 60, color: 'text-indigo-600', bg: 'bg-indigo-50', border: 'border-indigo-200', bar: 'bg-indigo-500' },
+  { label: 'B.Tech (ECE)', subject: 'B.Tech(ECE)', limit: 60, color: 'text-teal-600', bg: 'bg-teal-50', border: 'border-teal-200', bar: 'bg-teal-500' },
   { label: 'B.Tech (AI/ML)', subject: 'B.Tech(AI/ML)', limit: 60, color: 'text-purple-600', bg: 'bg-purple-50', border: 'border-purple-200', bar: 'bg-purple-500' },
 ];
 
@@ -113,10 +113,10 @@ function BTechCapacityCards({ btechByBranch, finalClearedBySubject, navigate }) 
 }
 
 const ADMISSION_TYPES = [
-  { key: 'SNS',      color: 'text-blue-600',   bg: 'bg-blue-50',   border: 'border-blue-200' },
-  { key: 'SVS',      color: 'text-violet-600', bg: 'bg-violet-50', border: 'border-violet-200' },
-  { key: 'PSRDMS',     color: 'text-amber-600',  bg: 'bg-amber-50',  border: 'border-amber-200' },
-  { key: 'Full Fees',color: 'text-emerald-600',bg: 'bg-emerald-50', border: 'border-emerald-200' },
+  { key: 'SNS', color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-200' },
+  { key: 'SVS', color: 'text-violet-600', bg: 'bg-violet-50', border: 'border-violet-200' },
+  { key: 'PSRDMS', color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-200' },
+  { key: 'Full Fees', color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-200' },
 ];
 
 function AdmissionTypeCards({ admissionTypeBreakdown, navigate }) {
@@ -143,9 +143,9 @@ function AdmissionTypeCards({ admissionTypeBreakdown, navigate }) {
 
 const SCHOLARSHIP_TYPES = ['SNS', 'SVS', 'PSRDMS'];
 const SCHOLARSHIP_COLORS = {
-  'SNS':      { text: 'text-blue-600',   bg: 'bg-blue-50',   border: 'border-blue-200',   badge: 'bg-blue-100 text-blue-700' },
-  'SVS':      { text: 'text-violet-600', bg: 'bg-violet-50', border: 'border-violet-200', badge: 'bg-violet-100 text-violet-700' },
-  'PSRDMS': { text: 'text-amber-600',  bg: 'bg-amber-50',  border: 'border-amber-200',  badge: 'bg-amber-100 text-amber-700' },
+  'SNS': { text: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-200', badge: 'bg-blue-100 text-blue-700' },
+  'SVS': { text: 'text-violet-600', bg: 'bg-violet-50', border: 'border-violet-200', badge: 'bg-violet-100 text-violet-700' },
+  'PSRDMS': { text: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-200', badge: 'bg-amber-100 text-amber-700' },
 };
 
 function TrackScholarshipBreakdown({ trackAdmissionTypeBreakdown, navigate }) {
@@ -209,37 +209,37 @@ function TrackScholarshipBreakdown({ trackAdmissionTypeBreakdown, navigate }) {
 
 const SUBJECT_COLORS = {
   'B.Tech(IT)': 'bg-indigo-100 text-indigo-700',
-  'B.Tech(ECE)':'bg-teal-100 text-teal-700',
+  'B.Tech(ECE)': 'bg-teal-100 text-teal-700',
   'B.Tech(AI/ML)': 'bg-purple-100 text-purple-700',
-  'BCA':        'bg-violet-100 text-violet-700',
-  'BBA':        'bg-amber-100 text-amber-700',
-  'Bcom':       'bg-emerald-100 text-emerald-700',
-  'Bio':        'bg-rose-100 text-rose-700',
-  'Micro':      'bg-cyan-100 text-cyan-700',
+  'BCA': 'bg-violet-100 text-violet-700',
+  'BBA': 'bg-amber-100 text-amber-700',
+  'Bcom': 'bg-emerald-100 text-emerald-700',
+  'Bio': 'bg-rose-100 text-rose-700',
+  'Micro': 'bg-cyan-100 text-cyan-700',
 };
 
 const STAT_META = [
-  { key: 'total',    label: 'Total Students', icon: FiUsers,       iconBg: 'bg-blue-100',    iconColor: 'text-blue-500',   text: 'text-blue-600',   href: '/students' },
-  { key: 'applied',  label: 'Not Calling',    icon: FiFileText,    iconBg: 'bg-amber-100',   iconColor: 'text-amber-500',  text: 'text-amber-600',  href: '/students?status=Applied' },
-  { key: 'calling',  label: 'Calling',        icon: FiPhone,       iconBg: 'bg-sky-100',     iconColor: 'text-sky-500',    text: 'text-sky-600',    href: '/students?status=Calling' },
+  { key: 'total', label: 'Total Students', icon: FiUsers, iconBg: 'bg-blue-100', iconColor: 'text-blue-500', text: 'text-blue-600', href: '/students' },
+  { key: 'applied', label: 'Not Calling', icon: FiFileText, iconBg: 'bg-amber-100', iconColor: 'text-amber-500', text: 'text-amber-600', href: '/students?status=Applied' },
+  { key: 'calling', label: 'Calling', icon: FiPhone, iconBg: 'bg-sky-100', iconColor: 'text-sky-500', text: 'text-sky-600', href: '/students?status=Calling' },
   { key: 'interviewAttempts', label: 'Interview Attempts', icon: FiCheckCircle, iconBg: 'bg-violet-100', iconColor: 'text-violet-500', text: 'text-violet-600', href: '/students?interviewFilter=hasAttempts' },
-  { key: 'finalCleared', label: 'Final Cleared', icon: FiCheckCircle, iconBg: 'bg-green-100',   iconColor: 'text-green-500',  text: 'text-green-600',  href: '/students?interviewFilter=finalCleared' },
-  { key: 'admitted', label: 'Admitted',        icon: FiAward,       iconBg: 'bg-emerald-100', iconColor: 'text-emerald-500',text: 'text-emerald-600',href: '/students?status=Admitted' },
-  { key: 'rejected', label: 'Rejected',        icon: FiXCircle,     iconBg: 'bg-rose-100',    iconColor: 'text-rose-500',   text: 'text-rose-600',   href: '/students?status=Rejected' },
-  { key: 'disabled', label: 'Disabled',        icon: FiSlash,       iconBg: 'bg-gray-100',    iconColor: 'text-gray-400',   text: 'text-gray-500',   href: '/students?tab=disabled' },
+  { key: 'finalCleared', label: 'Final Cleared', icon: FiCheckCircle, iconBg: 'bg-green-100', iconColor: 'text-green-500', text: 'text-green-600', href: '/students?interviewFilter=finalCleared' },
+  { key: 'admitted', label: 'Admitted', icon: FiAward, iconBg: 'bg-emerald-100', iconColor: 'text-emerald-500', text: 'text-emerald-600', href: '/students?status=Admitted' },
+  { key: 'rejected', label: 'Rejected', icon: FiXCircle, iconBg: 'bg-rose-100', iconColor: 'text-rose-500', text: 'text-rose-600', href: '/students?status=Rejected' },
+  { key: 'disabled', label: 'Disabled', icon: FiSlash, iconBg: 'bg-gray-100', iconColor: 'text-gray-400', text: 'text-gray-500', href: '/students?tab=disabled' },
 ];
 
 const FUNNEL_STAGE_META = [
-  { key: 'Call Not Received', label: 'Call Not Received', icon: FiPhoneMissed, iconBg: 'bg-rose-100',    iconColor: 'text-rose-500',    text: 'text-rose-600',    border: 'border-rose-100' },
-  { key: 'Call Completed',    label: 'Call Completed',    icon: FiCheckCircle, iconBg: 'bg-emerald-100', iconColor: 'text-emerald-500', text: 'text-emerald-600', border: 'border-emerald-100' },
-  { key: 'Lead Interested',   label: 'Lead Interested',   icon: FiTrendingUp,  iconBg: 'bg-blue-100',    iconColor: 'text-blue-500',    text: 'text-blue-600',    border: 'border-blue-100' },
-  { key: 'Wrong Number',      label: 'Wrong Number',      icon: FiAlertCircle, iconBg: 'bg-amber-100',   iconColor: 'text-amber-500',   text: 'text-amber-600',   border: 'border-amber-100' },
-  { key: 'Switch Off',        label: 'Switch Off',        icon: FiPhoneOff,    iconBg: 'bg-gray-100',    iconColor: 'text-gray-400',    text: 'text-gray-500',    border: 'border-gray-100' },
-  { key: 'Admission Closed',  label: 'Admission Closed',  icon: FiLock,        iconBg: 'bg-violet-100',  iconColor: 'text-violet-500',  text: 'text-violet-600',  border: 'border-violet-100' },
-  { key: 'Repeated No Response', label: 'No Response',    icon: FiPhoneMissed, iconBg: 'bg-orange-100',  iconColor: 'text-orange-500',  text: 'text-orange-600',  border: 'border-orange-100' },
-  { key: 'Not Interested',    label: 'Not Interested',    icon: FiXCircle,     iconBg: 'bg-red-100',     iconColor: 'text-red-500',     text: 'text-red-600',     border: 'border-red-100' },
-  { key: 'Joined Elsewhere',  label: 'Joined Elsewhere',  icon: FiSlash,       iconBg: 'bg-slate-100',   iconColor: 'text-slate-500',   text: 'text-slate-600',   border: 'border-slate-100' },
-  { key: 'No Stage',          label: 'No Stage Set',      icon: FiSlash,       iconBg: 'bg-gray-100',    iconColor: 'text-gray-400',    text: 'text-gray-500',    border: 'border-gray-100' },
+  { key: 'Call Not Received', label: 'Call Not Received', icon: FiPhoneMissed, iconBg: 'bg-rose-100', iconColor: 'text-rose-500', text: 'text-rose-600', border: 'border-rose-100' },
+  { key: 'Call Completed', label: 'Call Completed', icon: FiCheckCircle, iconBg: 'bg-emerald-100', iconColor: 'text-emerald-500', text: 'text-emerald-600', border: 'border-emerald-100' },
+  { key: 'Lead Interested', label: 'Lead Interested', icon: FiTrendingUp, iconBg: 'bg-blue-100', iconColor: 'text-blue-500', text: 'text-blue-600', border: 'border-blue-100' },
+  { key: 'Wrong Number', label: 'Wrong Number', icon: FiAlertCircle, iconBg: 'bg-amber-100', iconColor: 'text-amber-500', text: 'text-amber-600', border: 'border-amber-100' },
+  { key: 'Switch Off', label: 'Switch Off', icon: FiPhoneOff, iconBg: 'bg-gray-100', iconColor: 'text-gray-400', text: 'text-gray-500', border: 'border-gray-100' },
+  { key: 'Admission Closed', label: 'Admission Closed', icon: FiLock, iconBg: 'bg-violet-100', iconColor: 'text-violet-500', text: 'text-violet-600', border: 'border-violet-100' },
+  { key: 'Repeated No Response', label: 'No Response', icon: FiPhoneMissed, iconBg: 'bg-orange-100', iconColor: 'text-orange-500', text: 'text-orange-600', border: 'border-orange-100' },
+  { key: 'Not Interested', label: 'Not Interested', icon: FiXCircle, iconBg: 'bg-red-100', iconColor: 'text-red-500', text: 'text-red-600', border: 'border-red-100' },
+  { key: 'Joined Elsewhere', label: 'Joined Elsewhere', icon: FiSlash, iconBg: 'bg-slate-100', iconColor: 'text-slate-500', text: 'text-slate-600', border: 'border-slate-100' },
+  { key: 'No Stage', label: 'No Stage Set', icon: FiSlash, iconBg: 'bg-gray-100', iconColor: 'text-gray-400', text: 'text-gray-500', border: 'border-gray-100' },
 ];
 
 function FunnelStageCards({ funnelStageBreakdown, trackFunnelBreakdown, navigate, user }) {
@@ -307,11 +307,11 @@ const TRACK_GROUP = {
 };
 const SUBJECT_POINTS_BY_GROUP = {
   'B.Tech': [180, 198, 225],
-  'BCA':    [120, 132, 150],
-  'BBA':    [130, 143, 163],
-  'Bcom':   [130, 143, 163],
-  'Bio':    [120, 132, 150],
-  'Micro':  [120, 132, 150],
+  'BCA': [120, 132, 150],
+  'BBA': [130, 143, 163],
+  'Bcom': [130, 143, 163],
+  'Bio': [120, 132, 150],
+  'Micro': [120, 132, 150],
 };
 const getSubjectPoints = (track, subject) => {
   const g = (TRACK_GROUP[track] || 1) - 1;
@@ -411,8 +411,8 @@ function PointsTable({ trackWise }) {
 }
 
 const RANK_STYLES = [
-  { bg: 'bg-amber-400',  text: 'text-white', emoji: '🥇' },
-  { bg: 'bg-gray-300',   text: 'text-white', emoji: '🥈' },
+  { bg: 'bg-amber-400', text: 'text-white', emoji: '🥇' },
+  { bg: 'bg-gray-300', text: 'text-white', emoji: '🥈' },
   { bg: 'bg-orange-400', text: 'text-white', emoji: '🥉' },
 ];
 
@@ -449,13 +449,12 @@ function LeaderboardSection({ stats, user }) {
             // breakdown from stats
             const tw = stats.trackWise.find(t => t.track === track) || {};
             const admissionPts = tw.admissionPoints || 0;
-            const callingPts   = tw.callingPoints   || 0;
-            const funnelPts    = tw.funnelPoints    || 0;
+            const callingPts = tw.callingPoints || 0;
+            const funnelPts = tw.funnelPoints || 0;
             return (
               <div key={track}
-                className={`px-5 py-3 border-b border-gray-50 last:border-0 transition-colors ${
-                  isMe ? 'bg-orange-50/60' : 'hover:bg-gray-50/60'
-                }`}>
+                className={`px-5 py-3 border-b border-gray-50 last:border-0 transition-colors ${isMe ? 'bg-orange-50/60' : 'hover:bg-gray-50/60'
+                  }`}>
                 <div className="flex items-center gap-4">
                   <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 text-xs font-bold ${rank.bg} ${rank.text}`}>
                     {rank.emoji || i + 1}
@@ -512,7 +511,7 @@ export default function Dashboard() {
     api.get('/students/stats').then((r) => setStats(r.data)).catch(() => toast.error('Failed to load stats'));
 
   const fetchBonusHistory = () =>
-    api.get('/students/weekly-bonus-history').then((r) => setBonusHistory(r.data)).catch(() => {});
+    api.get('/students/weekly-bonus-history').then((r) => setBonusHistory(r.data)).catch(() => { });
 
   useEffect(() => {
     fetchStats();
@@ -550,14 +549,51 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-8">
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900">Dashboard</h2>
-          <p className="text-sm text-gray-500 mt-0.5">Overview of all admissions</p>
+      <div className="flex flex-row items-center justify-between gap-2 w-full">
+        <div className="min-w-0 flex-shrink">
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-900 truncate">Dashboard</h2>
+          <p className="text-[10px] sm:text-sm text-gray-500 mt-0.5 truncate">Overview of all admissions</p>
         </div>
-        {user?.role === 'admin' && (
-          <div />
-        )}
+        
+        <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+          {(() => {
+            const totalReward = (stats.trackWise || []).reduce((sum, track) => sum + (track.totalAmount || 0), 0);
+            if (totalReward <= 0) return null;
+            return (
+              <div className="relative rounded-[16px] sm:rounded-[24px] overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-300 group cursor-default border border-orange-100/50">
+                {/* Simulated light vibrant background (the 'wallpaper') strictly matching primary theme */}
+                <div className="absolute inset-0 bg-white"></div>
+                <div className="absolute -top-8 -right-8 w-20 h-20 sm:w-32 sm:h-32 bg-orange-400 rounded-full blur-[20px] sm:blur-[30px] opacity-20 group-hover:scale-110 group-hover:opacity-30 transition-all duration-700"></div>
+                <div className="absolute -bottom-8 -left-8 w-20 h-20 sm:w-32 sm:h-32 bg-primary rounded-full blur-[20px] sm:blur-[30px] opacity-10 group-hover:scale-110 group-hover:opacity-20 transition-all duration-700"></div>
+                
+                {/* The frosted light glass layer */}
+                <div className="relative px-3 py-1.5 sm:px-5 sm:py-2.5 bg-white/60 backdrop-blur-[16px] sm:backdrop-blur-[24px] border border-white flex items-center gap-2 sm:gap-4 h-full w-full">
+                  
+                  {/* Subtle sheen gradient overlay */}
+                  <div className="absolute inset-0 bg-gradient-to-br from-white/80 via-transparent to-transparent opacity-80 pointer-events-none"></div>
+
+                  <div className="relative w-8 h-8 sm:w-11 sm:h-11 rounded-[10px] sm:rounded-[16px] bg-white/90 flex items-center justify-center shrink-0 shadow-[0_2px_10px_rgba(249,115,22,0.1)] border border-orange-100/60"
+                       style={{ boxShadow: 'inset 0 1px 2px rgba(255,255,255,1)' }}>
+                    <span className="text-primary text-sm sm:text-xl font-black drop-shadow-sm">₹</span>
+                  </div>
+                  
+                  <div className="relative">
+                    <p className="text-[8px] sm:text-[10px] text-gray-500 font-bold uppercase tracking-widest leading-none sm:mb-0.5 sm:leading-normal">Total Reward</p>
+                    <div className="flex items-baseline gap-0.5 sm:gap-1 mt-0.5 sm:mt-0">
+                      <span className="text-primary/80 font-bold text-[10px] sm:text-sm">₹</span>
+                      <p className="text-sm sm:text-2xl font-black text-primary leading-none tracking-tight">
+                        {totalReward.toLocaleString('en-IN')}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+          {user?.role === 'admin' && (
+            <div />
+          )}
+        </div>
       </div>
 
       {/* Stat Cards */}
@@ -578,14 +614,14 @@ export default function Dashboard() {
                 <button
                   onClick={(e) => { e.stopPropagation(); navigate('/students?admittedNoFunnel=1'); }}
                   className="text-[10px] font-semibold bg-rose-50 text-rose-600 border border-rose-200 px-1.5 py-1 rounded-lg hover:bg-rose-100 transition-colors text-center leading-tight shrink-0">
-                  ⚠️ {stats.admittedNoFunnelCount}<br/>pending
+                  ⚠️ {stats.admittedNoFunnelCount}<br />pending
                 </button>
               )}
               {key === 'finalCleared' && (stats.finalClearedManual || 0) > 0 && (
                 <button
                   onClick={(e) => { e.stopPropagation(); navigate('/students?interviewFilter=finalCleared&formSource=manual'); }}
                   className="text-[10px] font-semibold bg-blue-50 text-blue-600 border border-blue-200 px-1.5 py-1 rounded-lg hover:bg-blue-100 transition-colors text-center leading-tight shrink-0">
-                  📋 {stats.finalClearedManual}<br/>manual
+                  📋 {stats.finalClearedManual}<br />manual
                 </button>
               )}
             </div>
@@ -619,7 +655,7 @@ export default function Dashboard() {
           const now = new Date();
           const day = now.getDay();
           const diff = now.getDate() - day + (day === 0 ? -6 : 1);
-          const m = new Date(now); m.setDate(diff); m.setHours(0,0,0,0);
+          const m = new Date(now); m.setDate(diff); m.setHours(0, 0, 0, 0);
           return m.toDateString();
         })();
         const alreadyDone = bonusHistory.some((w) => new Date(w.weekStart).toDateString() === thisWeekStart);
@@ -638,11 +674,10 @@ export default function Dashboard() {
               </div>
               <div className="flex items-center gap-2">
                 <button onClick={(e) => { e.stopPropagation(); handleManualBonus(); }} disabled={distributing || alreadyDone}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-colors shadow-sm shrink-0 ${
-                    alreadyDone
+                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-colors shadow-sm shrink-0 ${alreadyDone
                       ? 'bg-gray-100 text-gray-400 cursor-not-allowed shadow-none'
                       : 'bg-primary text-white hover:bg-primary-dark shadow-orange-200 disabled:opacity-60'
-                  }`}>
+                    }`}>
                   <FiGift size={14} />
                   <span className="hidden sm:inline">{alreadyDone ? 'Already Distributed This Week' : distributing ? 'Distributing...' : 'Distribute Now'}</span>
                   <span className="sm:hidden">{alreadyDone ? 'Done' : distributing ? '...' : 'Distribute'}</span>
@@ -757,11 +792,10 @@ export default function Dashboard() {
                                 style={{ width: `${Math.min(sPct, 100)}%` }} />
                             </div>
                             <span className="text-xs font-bold tabular-nums text-gray-700">{admitted}/{target}</span>
-                            <span className={`text-xs font-bold tabular-nums px-1.5 py-0.5 rounded-md ${
-                              sPct >= 75 ? 'bg-emerald-50 text-emerald-600' :
-                              sPct >= 40 ? 'bg-amber-50 text-amber-600' :
-                              'bg-rose-50 text-rose-500'
-                            }`}>{sPct}%</span>
+                            <span className={`text-xs font-bold tabular-nums px-1.5 py-0.5 rounded-md ${sPct >= 75 ? 'bg-emerald-50 text-emerald-600' :
+                                sPct >= 40 ? 'bg-amber-50 text-amber-600' :
+                                  'bg-rose-50 text-rose-500'
+                              }`}>{sPct}%</span>
                           </div>
                         </div>
                       );
