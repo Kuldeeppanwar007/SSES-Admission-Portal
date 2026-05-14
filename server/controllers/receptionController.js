@@ -28,7 +28,7 @@ const getEntries = async (req, res) => {
     };
 
     const query = { date: { $gte: start, $lte: end } };
-    if (req.user.role === 'track_incharge' && req.user.track) {
+    if ((req.user.role === 'track_incharge' || req.user.role === 'interviewer') && req.user.track) {
       const towns = Object.entries(TOWN_TO_TRACK)
         .filter(([, t]) => t === req.user.track).map(([town]) => town);
       query.town = { $in: towns };

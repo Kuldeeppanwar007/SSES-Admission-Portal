@@ -9,11 +9,11 @@ router.get('/by-form/:formNo', protect, getLatestByFormNo);
 router.get('/by-student/:studentId', protect, getLatestByStudentId);
 router.get('/all-by-student/:studentId', protect, getAllByStudentId);
 
-// Admin, receptionist aur track_incharge ke liye
-router.get('/', protect, authorizeRoles('admin', 'receptionist', 'track_incharge'), getEntries);
+// Admin, receptionist, track_incharge aur interviewer ke liye
+router.get('/', protect, authorizeRoles('admin', 'receptionist', 'track_incharge', 'interviewer'), getEntries);
 
-// Sirf admin aur receptionist ke liye
-router.post('/', protect, authorizeRoles('admin', 'receptionist'), createEntry);
+// Sirf admin, receptionist aur interviewer ke liye
+router.post('/', protect, authorizeRoles('admin', 'receptionist', 'interviewer'), createEntry);
 router.delete('/:id', protect, authorizeRoles('admin', 'receptionist'), deleteEntry);
 
 module.exports = router;

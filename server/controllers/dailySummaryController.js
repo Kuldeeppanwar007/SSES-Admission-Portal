@@ -67,8 +67,8 @@ const getDailySummary = async (req, res) => {
       displayDate = d;
     }
 
-    // track_incharge ke liye sirf apna track
-    const isTrackIncharge = req.user.role === 'track_incharge';
+    // track_incharge aur interviewer ke liye sirf apna track
+    const isTrackIncharge = req.user.role === 'track_incharge' || req.user.role === 'interviewer';
     const userTrack = req.user.track;
     const trackFilter = isTrackIncharge && userTrack ? { track: userTrack } : {};
 
@@ -357,7 +357,7 @@ const getWeeklySummary = async (req, res) => {
       days.push(d.toISOString().slice(0, 10));
     }
 
-    const isTrackIncharge = req.user.role === 'track_incharge';
+    const isTrackIncharge = req.user.role === 'track_incharge' || req.user.role === 'interviewer';
     const userTrack = req.user.track;
     const trackFilter = isTrackIncharge && userTrack
       ? { track: userTrack }

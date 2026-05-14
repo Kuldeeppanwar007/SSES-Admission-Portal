@@ -532,7 +532,7 @@ export default function StudentDetail() {
               {receptionEntries.length} visit{receptionEntries.length !== 1 ? 's' : ''}
             </span>
           )}
-          {(user?.role === 'admin' || user?.role === 'receptionist') && (
+          {(user?.role === 'admin' || user?.role === 'receptionist' || user?.role === 'interviewer') && (
             <button onClick={() => setReceptionOpen(true)}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-primary text-white hover:bg-primary-dark transition-colors">
               <FiFileText size={13} /> Entry
