@@ -33,7 +33,7 @@ const normalizeBranch = (val) => {
 // Get all students (admin/manager = all, track_incharge = own track)
 const getStudents = async (req, res) => {
   try {
-    const { track, town, status, search, formSource, interviewFilter, page = 1, limit = 20 } = req.query;
+    const { track, town, status, search, formSource, interviewFilter, hasFormNo, sortByFormNo, page = 1, limit = 20 } = req.query;
     const filter = {};
     const _limit = Math.min(Number(limit), 50); // Increased default limit
     const _page = Number(page);
@@ -67,6 +67,25 @@ const getStudents = async (req, res) => {
         filter.formSource = { $nin: ['ssism', 'btech'] };
       } else {
         filter.formSource = formSource;
+      }
+    }
+
+    // Form No filter
+    if (hasFormNo === 'true') {
+      filter.admissionFormNo = { $nin: [null, ''] };
+    } else if (hasFormNo === 'false') {
+      const noFormCondition = { $or: [
+        { admissionFormNo: '' },
+        { admissionFormNo: null },
+        { admissionFormNo: { $exists: false } },
+      ]};
+      if (filter.$or) {
+        filter.$and = [...(filter.$and || []), { $or: filter.$or }, noFormCondition];
+        delete filter.$or;
+      } else if (filter.$and) {
+        filter.$and.push(noFormCondition);
+      } else {
+        Object.assign(filter, noFormCondition);
       }
     }
 
@@ -253,7 +272,8 @@ const getStudents = async (req, res) => {
       Student.find(filter)
         .select('sn name fatherName track trackName village mobileNo formSource status finalInterview createdAt isTopper isPriority branch remarks admissionFormNo')
         .populate('addedBy', 'name')
-        .sort({ createdAt: -1 })
+        .collation({ locale: 'en_US', numericOrdering: true })
+        .sort(sortByFormNo === 'asc' ? { admissionFormNo: 1, createdAt: -1 } : sortByFormNo === 'desc' ? { admissionFormNo: -1, createdAt: -1 } : { createdAt: -1 })
         .skip((_page - 1) * _limit)
         .limit(_limit)
         .lean() // Use lean for better performance

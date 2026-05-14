@@ -333,6 +333,8 @@ export default function Students() {
             village: parsed.filters?.village || '',
             schoolName: parsed.filters?.schoolName || '',
             interviewType: parsed.filters?.interviewType || '',
+            hasFormNo: parsed.filters?.hasFormNo || '',
+            sortByFormNo: parsed.filters?.sortByFormNo || '',
           },
           showFilters: parsed.showFilters || false
         };
@@ -360,6 +362,8 @@ export default function Students() {
         village: '',
         schoolName: '',
         interviewType: '',
+        hasFormNo: '',
+        sortByFormNo: '',
       },
       showFilters: !!(urlTrack || urlStatus || urlSubject || urlAdmissionType || urlInterviewFilter || urlFormSource || urlFunnelStage || urlAdmittedNoFunnel)
     };
@@ -497,6 +501,8 @@ export default function Students() {
         village: filters.village,
         schoolName: filters.schoolName,
         interviewType: filters.interviewType,
+        hasFormNo: filters.hasFormNo,
+        sortByFormNo: filters.sortByFormNo,
         search: debouncedSearch,
         ...(tab === 'disabled' ? { status: 'Disabled' } : {}) 
       };
@@ -572,7 +578,7 @@ export default function Students() {
   const switchTab = (t) => { 
     setTab(t); 
     setPage(1); 
-    setFilters({ track: '', status: '', town: '', search: '', formSource: '', interviewFilter: '', funnelStage: '', admittedNoFunnel: '', noFunnelStage: '', admissionType: '', branch: '', subjectFilter: '', village: '', schoolName: '', interviewType: '' }); 
+    setFilters({ track: '', status: '', town: '', search: '', formSource: '', interviewFilter: '', funnelStage: '', admittedNoFunnel: '', noFunnelStage: '', admissionType: '', branch: '', subjectFilter: '', village: '', schoolName: '', interviewType: '', hasFormNo: '', sortByFormNo: '' }); 
     setSelected([]);
     setHasMore(false);
     setInterviewRound('');
@@ -958,6 +964,12 @@ export default function Students() {
               <option value="">All Status</option>
               {ACTIVE_STATUSES.map((s) => <option key={s}>{s}</option>)}
             </select>
+            <select value={filters.hasFormNo || ''} onChange={(e) => { setFilters({ ...filters, hasFormNo: e.target.value }); setPage(1); }}
+              className="flex-1 min-w-32 border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none">
+              <option value="">All Form Status</option>
+              <option value="true">Has Form No</option>
+              <option value="false">No Form No</option>
+            </select>
             <select value={filters.formSource} onChange={(e) => { 
               const newFilters = { ...filters, formSource: e.target.value };
               setFilters(newFilters); 
@@ -1072,7 +1084,17 @@ export default function Students() {
                       className="rounded border-gray-300 text-primary focus:ring-primary cursor-pointer" />
                   </th>
                   {['S.N.', 'Form No.', 'Name', 'Father Name', 'Track', 'Town', 'Mobile', 'Form', 'Status', 'Attempt', 'History', 'Actions'].map((h) => (
-                    <th key={h} className={`px-4 py-3 text-xs font-semibold uppercase text-gray-500 ${h === 'Attempt' ? 'text-center' : 'text-left'}`}>{h}</th>
+                    <th key={h} className={`px-4 py-3 text-xs font-semibold uppercase text-gray-500 ${h === 'Attempt' ? 'text-center' : 'text-left'}`}>
+                      {h === 'Form No.' ? (
+                        <div className="flex items-center gap-1 cursor-pointer hover:text-primary transition-colors select-none" onClick={() => {
+                          setFilters(f => ({ ...f, sortByFormNo: f.sortByFormNo === 'asc' ? 'desc' : (f.sortByFormNo === 'desc' ? '' : 'asc') }));
+                          setPage(1);
+                        }}>
+                          {h}
+                          {filters.sortByFormNo === 'asc' ? <span className="text-primary text-sm leading-none">↑</span> : filters.sortByFormNo === 'desc' ? <span className="text-primary text-sm leading-none">↓</span> : <span className="text-gray-300 text-sm leading-none">↕</span>}
+                        </div>
+                      ) : h}
+                    </th>
                   ))}
                 </tr>
               </thead>
