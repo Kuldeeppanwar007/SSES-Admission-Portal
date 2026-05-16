@@ -382,7 +382,7 @@ export default function Attendance() {
           {recordsView === 'present' && (
             <>
               {/* Filters */}
-              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm">
                 <button onClick={() => setShowPresentFilters(p => !p)}
                   className="w-full flex items-center justify-between px-4 py-3 text-sm font-semibold text-gray-700">
                   <span className="flex items-center gap-2"><FiFilter size={14} className="text-primary" /> Filters</span>
@@ -506,7 +506,7 @@ export default function Attendance() {
           {recordsView === 'absent' && (
             <>
               {/* Filters */}
-              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm">
                 <button onClick={() => setShowAbsentFilters(p => !p)}
                   className="w-full flex items-center justify-between px-4 py-3 text-sm font-semibold text-gray-700">
                   <span className="flex items-center gap-2"><FiFilter size={14} className="text-primary" /> Filters</span>
