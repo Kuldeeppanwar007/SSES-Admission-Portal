@@ -745,8 +745,8 @@ export default function Students() {
       )}
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-        <h2 className="text-xl md:text-2xl font-bold text-gray-800">
-          Students <span className="text-gray-400 text-base">({total})</span>
+        <h2 className="text-xl md:text-2xl font-bold text-[#f3f4f6]">
+          Students <span className="text-[#6b7280] text-base">({total})</span>
         </h2>
         {/* Desktop buttons */}
         <div className="hidden md:flex gap-2">
@@ -942,17 +942,18 @@ export default function Students() {
       </div>
 
       {/* Search + Filters */}
-      <div className="bg-white rounded-xl shadow p-3 mb-4 space-y-2">
+      <div className="hud-card rounded-xl p-3 mb-4 space-y-2">
         <div className="flex gap-2">
-          <div className="flex items-center gap-2 flex-1 border border-gray-300 rounded-lg px-3">
-            <FiSearch className="text-gray-400 shrink-0" size={15} />
+          <div className="flex items-center gap-2 flex-1 rounded-lg px-3" style={{background:'rgba(255,255,255,0.05)',border:'1px solid rgba(255,255,255,0.1)'}}>
+            <FiSearch className="text-[#6b7280] shrink-0" size={15} />
             <input placeholder="Search name, father, mobile, track..." value={filters.search}
               onChange={handleSearchChange}
-              className="flex-1 py-2 outline-none text-sm" />
+              className="flex-1 py-2 outline-none text-sm bg-transparent text-[#f3f4f6]" style={{border:'none',boxShadow:'none'}} />
           </div>
           {!isDisabledTab && (
             <button onClick={() => setShowFilters(!showFilters)}
-              className={`flex items-center gap-1 px-3 py-2 rounded-lg border text-sm transition-colors ${showFilters ? 'bg-primary text-white border-primary' : 'border-gray-300 text-gray-600'}`}>
+              className="flex items-center gap-1 px-3 py-2 rounded-lg text-sm transition-colors"
+              style={showFilters ? {background:'var(--color-primary)',border:'1px solid var(--color-primary)',color:'white'} : {border:'1px solid rgba(255,255,255,0.1)',color:'#9ca3af'}}>
               <FiFilter size={14} /> <span className="hidden sm:inline">Filter</span>
             </button>
           )}
@@ -1040,12 +1041,12 @@ export default function Students() {
 
       {/* Selection bar */}
       {selected.length > 0 && (
-        <div className="flex items-center justify-between bg-orange-50 border border-orange-200 rounded-xl px-4 py-2.5 mb-3">
-          <span className="text-sm font-semibold text-primary">{selected.length} student{selected.length > 1 ? 's' : ''} selected</span>
+        <div className="flex items-center justify-between rounded-xl px-4 py-2.5 mb-3" style={{background:'rgba(6,182,212,0.1)',border:'1px solid rgba(6,182,212,0.25)'}}>
+          <span className="text-sm font-semibold" style={{color:'var(--color-primary)'}}>{selected.length} student{selected.length > 1 ? 's' : ''} selected</span>
           <div className="flex gap-2">
-            <button onClick={() => setSelected([])} className="text-xs text-gray-500 hover:text-gray-700 px-2 py-1 rounded border border-gray-200 bg-white">Clear</button>
+            <button onClick={() => setSelected([])} className="text-xs text-[#9ca3af] hover:text-[#f3f4f6] px-2 py-1 rounded" style={{border:'1px solid rgba(255,255,255,0.1)'}}>Clear</button>
             <button onClick={() => handleExport(selected)} disabled={exporting}
-              className="text-xs text-white bg-primary hover:bg-primary-dark px-3 py-1 rounded font-semibold disabled:opacity-60 flex items-center gap-1">
+              className="hud-btn-primary text-xs px-3 py-1 disabled:opacity-60">
               <FiDownload size={12} /> Export Selected
             </button>
           </div>
@@ -1053,101 +1054,81 @@ export default function Students() {
       )}
 
       {/* Table — desktop */}
-      <div className="hidden md:block bg-white rounded-xl shadow overflow-hidden">
+      <div className="hidden md:block hud-card rounded-xl overflow-hidden">
         {loading && students.length === 0 ? (
-          // Loading skeleton
-          <div className="animate-pulse">
-            <div className="bg-gray-50 border-b px-4 py-3">
-              <div className="flex gap-4">
-                {Array.from({ length: 11 }).map((_, i) => (
-                  <div key={i} className="h-4 bg-gray-200 rounded flex-1"></div>
-                ))}
-              </div>
+          <div>
+            <div className="px-4 py-3" style={{borderBottom:'1px solid rgba(255,255,255,0.06)'}}>
+              <div className="flex gap-4">{Array.from({length:11}).map((_,i)=><div key={i} className="h-4 skeleton rounded flex-1"/>)}</div>
             </div>
-            {Array.from({ length: 10 }).map((_, i) => (
-              <div key={i} className="border-b px-4 py-3">
-                <div className="flex gap-4">
-                  {Array.from({ length: 11 }).map((_, j) => (
-                    <div key={j} className="h-4 bg-gray-100 rounded flex-1"></div>
-                  ))}
-                </div>
+            {Array.from({length:10}).map((_,i)=>(
+              <div key={i} className="px-4 py-3" style={{borderBottom:'1px solid rgba(255,255,255,0.04)'}}>
+                <div className="flex gap-4">{Array.from({length:11}).map((_,j)=><div key={j} className="h-4 skeleton rounded flex-1"/>)}</div>
               </div>
             ))}
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-gray-50 border-b">
+            <table className="w-full text-sm hud-table">
+              <thead>
                 <tr>
                   <th className="px-4 py-3 w-10">
-                    <input type="checkbox" checked={allSelected} onChange={toggleAll}
-                      className="rounded border-gray-300 text-primary focus:ring-primary cursor-pointer" />
+                    <input type="checkbox" checked={allSelected} onChange={toggleAll} className="rounded cursor-pointer" />
                   </th>
                   {['S.N.', 'Form No.', 'Name', 'Father Name', 'Track', 'Town', 'Mobile', 'Form', 'Status', 'Attempt', 'History', 'Actions'].map((h) => (
-                    <th key={h} className={`px-4 py-3 text-xs font-semibold uppercase text-gray-500 ${h === 'Attempt' ? 'text-center' : 'text-left'}`}>
+                    <th key={h} className={h === 'Attempt' ? 'text-center' : 'text-left'}>
                       {h === 'Form No.' ? (
-                        <div className="flex items-center gap-1 cursor-pointer hover:text-primary transition-colors select-none" onClick={() => {
+                        <div className="flex items-center gap-1 cursor-pointer hover:text-[var(--color-primary)] transition-colors select-none" onClick={() => {
                           setFilters(f => ({ ...f, sortByFormNo: f.sortByFormNo === 'asc' ? 'desc' : (f.sortByFormNo === 'desc' ? '' : 'asc') }));
                           setPage(1);
                         }}>
                           {h}
-                          {filters.sortByFormNo === 'asc' ? <span className="text-primary text-sm leading-none">↑</span> : filters.sortByFormNo === 'desc' ? <span className="text-primary text-sm leading-none">↓</span> : <span className="text-gray-300 text-sm leading-none">↕</span>}
+                          {filters.sortByFormNo === 'asc' ? <span className="text-sm leading-none" style={{color:'var(--color-primary)'}}>↑</span> : filters.sortByFormNo === 'desc' ? <span className="text-sm leading-none" style={{color:'var(--color-primary)'}}>↓</span> : <span className="text-[#4b5563] text-sm leading-none">↕</span>}
                         </div>
                       ) : h}
                     </th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody>
                 {students.length === 0 ? (
-                  <tr><td colSpan={11} className="text-center py-10 text-gray-400">No students found</td></tr>
+                  <tr><td colSpan={11} className="text-center py-10 text-[#6b7280]">No students found</td></tr>
                 ) : displayStudents.map((s, i) => (
                   <tr key={s._id} onClick={() => {
-                    // Save current scroll position
-                    const scrollPosition = window.pageYOffset;
-                    localStorage.setItem('studentsScrollPosition', scrollPosition.toString());
+                    localStorage.setItem('studentsScrollPosition', window.pageYOffset.toString());
                     navigate(`/students/${s._id}`);
-                  }} className={`hover:bg-gray-50 transition-colors cursor-pointer ${
-                    s.isPriority ? 'bg-violet-50 border-l-4 border-l-violet-400' :
-                    selected.includes(s._id) ? 'bg-orange-50/50' : ''
-                  }`}>
+                  }} className="transition-colors cursor-pointer"
+                  style={s.isPriority ? {background:'rgba(139,92,246,0.08)',borderLeft:'3px solid #a78bfa'} : selected.includes(s._id) ? {background:'rgba(6,182,212,0.06)'} : {}}>
                     <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
-                      <input type="checkbox" checked={selected.includes(s._id)} onChange={() => toggleSelect(s._id)}
-                        className="rounded border-gray-300 text-primary focus:ring-primary cursor-pointer" />
+                      <input type="checkbox" checked={selected.includes(s._id)} onChange={() => toggleSelect(s._id)} className="rounded cursor-pointer" />
                     </td>
-                    <td className="px-4 py-3 text-gray-500">{s.serialNumber}</td>
+                    <td className="px-4 py-3 text-[#6b7280]">{s.serialNumber}</td>
                     <td className="px-4 py-3">
                       {s.admissionFormNo ? (
-                        <span className="text-xs font-semibold bg-orange-50 text-primary border border-orange-100 px-2 py-0.5 rounded-full">{s.admissionFormNo}</span>
-                      ) : <span className="text-gray-300 text-xs">—</span>}
+                        <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{background:'rgba(6,182,212,0.1)',color:'var(--color-primary)',border:'1px solid rgba(6,182,212,0.2)'}}>{s.admissionFormNo}</span>
+                      ) : <span className="text-[#4b5563] text-xs">—</span>}
                     </td>
-                    <td className="px-4 py-3 font-medium text-gray-800">
+                    <td className="px-4 py-3 font-medium text-[#f3f4f6]">
                       <span className="flex items-center gap-1.5">
-                        {s.isPriority && <span className="text-violet-500 text-xs font-bold" title="Priority">⚡</span>}
-                        {s.isTopper && <span className="text-yellow-500 text-xs" title="Topper">🏆</span>}
-                        {s.finalInterview?.result && <span className="text-emerald-500 text-base leading-none" title="Final Interview Done">★</span>}
+                        {s.isPriority && <span className="text-violet-400 text-xs font-bold">⚡</span>}
+                        {s.isTopper && <span className="text-yellow-400 text-xs">🏆</span>}
+                        {s.finalInterview?.result && <span className="text-emerald-400 text-base leading-none">★</span>}
                         {s.name}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-gray-600">{s.fatherName}</td>
-                    <td className="px-4 py-3 text-gray-500 text-xs">{s.displayTrack || '—'}</td>
-                    <td className="px-4 py-3 text-gray-500 text-xs">{s.trackName || '—'}</td>
+                    <td className="px-4 py-3 text-[#9ca3af]">{s.fatherName}</td>
+                    <td className="px-4 py-3 text-[#6b7280] text-xs">{s.displayTrack || '—'}</td>
+                    <td className="px-4 py-3 text-[#6b7280] text-xs">{s.trackName || '—'}</td>
                     <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                       {s.mobileNo ? (
-                        <a href={`tel:${s.mobileNo}`} className="text-gray-600 hover:text-primary hover:underline">
-                          {s.mobileNo}
-                        </a>
+                        <a href={`tel:${s.mobileNo}`} className="hover:underline" style={{color:'var(--color-primary)'}}>{s.mobileNo}</a>
                       ) : null}
                     </td>
                     <td className="px-4 py-3">
                       {s.formSource && (
                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                           s.formSource === 'btech' ? 'bg-blue-100 text-blue-700' :
-                          s.formSource === 'ssism' ? 'bg-purple-100 text-purple-700' :
-                          'bg-gray-100 text-gray-600'
-                        }`}>
-                          {s.formSource === 'btech' ? 'B.Tech' : s.formSource === 'ssism' ? 'SSISM' : 'Manual'}
-                        </span>
+                          s.formSource === 'ssism' ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-600'
+                        }`}>{s.formSource === 'btech' ? 'B.Tech' : s.formSource === 'ssism' ? 'SSISM' : 'Manual'}</span>
                       )}
                     </td>
                     <td className="px-4 py-3">
@@ -1157,41 +1138,33 @@ export default function Students() {
                       {s.finalInterview?.result === 'Pass' ? (
                         <span className="text-xs font-bold px-2 py-1 rounded-full bg-emerald-100 text-emerald-700">✓ Cleared</span>
                       ) : s.finalInterview?.result === 'Fail' ? (
-                        <span className="text-xs font-bold px-2 py-1 rounded-full bg-rose-100 text-rose-600">✗ Final Failed</span>
+                        <span className="text-xs font-bold px-2 py-1 rounded-full bg-rose-100 text-rose-600">✗ Failed</span>
                       ) : s.finalInterview?.result === 'Pending' ? (
-                        <span className="text-xs font-bold px-2 py-1 rounded-full bg-amber-100 text-amber-700">⏳ Final Pending</span>
+                        <span className="text-xs font-bold px-2 py-1 rounded-full bg-amber-100 text-amber-700">⏳ Pending</span>
                       ) : s.interviewCount > 0 ? (
-                        <span className="text-xs font-bold px-2 py-1 rounded-full bg-orange-50 text-primary border border-orange-200">Round {s.interviewCount}</span>
+                        <span className="text-xs font-bold px-2 py-1 rounded-full" style={{background:'rgba(6,182,212,0.1)',color:'var(--color-primary)',border:'1px solid rgba(6,182,212,0.2)'}}>Round {s.interviewCount}</span>
                       ) : (
-                        <span className="text-xs text-gray-300">—</span>
+                        <span className="text-xs text-[#4b5563]">—</span>
                       )}
                     </td>
                     <td className="px-4 py-3">
                       {(user?.role === 'admin' || user?.role === 'interviewer') ? (
-                        <button onClick={(e) => { e.stopPropagation(); setInterviewStudent(s); }}
-                          className="flex items-center gap-1 text-xs text-white font-medium px-2.5 py-1.5 bg-primary hover:bg-primary-dark rounded-lg transition-colors">
+                        <button onClick={(e) => { e.stopPropagation(); setInterviewStudent(s); }} className="hud-btn-primary text-xs px-2.5 py-1.5">
                           <FiClipboard size={12} /> Interview
                         </button>
                       ) : user?.role === 'receptionist' ? (
-                        <button onClick={(e) => { e.stopPropagation(); setReceptionOpen(s); }}
-                          className="flex items-center gap-1 text-xs text-white font-medium px-2.5 py-1.5 bg-primary hover:bg-primary-dark rounded-lg transition-colors">
+                        <button onClick={(e) => { e.stopPropagation(); setReceptionOpen(s); }} className="hud-btn-primary text-xs px-2.5 py-1.5">
                           <FiFileText size={12} /> Entry
                         </button>
                       ) : (
-                        <button onClick={(e) => { e.stopPropagation(); handleViewHistory(s); }}
-                          className="flex items-center gap-1 text-xs text-white font-medium px-2.5 py-1.5 bg-primary hover:bg-primary-dark rounded-lg transition-colors">
+                        <button onClick={(e) => { e.stopPropagation(); handleViewHistory(s); }} className="hud-btn-primary text-xs px-2.5 py-1.5">
                           <FiClock size={12} /> History
                         </button>
                       )}
                     </td>
                     <td className="px-4 py-3">
-                      <button onClick={(e) => { 
-                        e.stopPropagation(); 
-                        const scrollPosition = window.pageYOffset;
-                        localStorage.setItem('studentsScrollPosition', scrollPosition.toString());
-                        navigate(`/students/${s._id}/edit`); 
-                      }}
-                        className="flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 bg-primary hover:bg-primary-dark text-white rounded-lg transition-colors">
+                      <button onClick={(e) => { e.stopPropagation(); localStorage.setItem('studentsScrollPosition', window.pageYOffset.toString()); navigate(`/students/${s._id}/edit`); }}
+                        className="hud-btn-primary text-xs px-2.5 py-1.5">
                         <FiEdit2 size={11} /> Edit
                       </button>
                     </td>
@@ -1206,68 +1179,52 @@ export default function Students() {
       {/* Cards — mobile */}
       <div className="md:hidden space-y-3">
         {loading && students.length === 0 ? (
-          // Mobile loading skeleton
           <div className="space-y-3">
             {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 animate-pulse">
+              <div key={i} className="hud-card rounded-xl p-4">
                 <div className="flex items-center gap-2 mb-3">
-                  <div className="w-4 h-4 bg-gray-200 rounded"></div>
-                  <div className="h-4 bg-gray-200 rounded flex-1"></div>
-                  <div className="w-16 h-6 bg-gray-200 rounded-full"></div>
+                  <div className="w-4 h-4 skeleton rounded"></div>
+                  <div className="h-4 skeleton rounded flex-1"></div>
+                  <div className="w-16 h-6 skeleton rounded-full"></div>
                 </div>
-                <div className="h-3 bg-gray-100 rounded mb-3 w-3/4"></div>
-                <div className="flex gap-2 mb-3">
-                  <div className="h-3 bg-gray-100 rounded flex-1"></div>
-                  <div className="h-3 bg-gray-100 rounded flex-1"></div>
-                </div>
-                <div className="flex gap-2 pt-3 border-t border-gray-100">
-                  <div className="h-8 bg-gray-200 rounded flex-1"></div>
-                  <div className="h-8 bg-gray-200 rounded flex-1"></div>
+                <div className="h-3 skeleton rounded mb-3 w-3/4"></div>
+                <div className="flex gap-2 pt-3" style={{borderTop:'1px solid rgba(255,255,255,0.07)'}}>
+                  <div className="h-8 skeleton rounded flex-1"></div>
+                  <div className="h-8 skeleton rounded flex-1"></div>
                 </div>
               </div>
             ))}
           </div>
         ) : students.length === 0 ? (
-          <div className="text-center py-10 text-gray-400 bg-white rounded-xl shadow">No students found</div>
+          <div className="text-center py-10 text-[#6b7280] hud-card rounded-xl">No students found</div>
         ) : displayStudents.map((s, i) => (
           <div key={s._id} onClick={() => {
-            const scrollPosition = window.pageYOffset;
-            localStorage.setItem('studentsScrollPosition', scrollPosition.toString());
+            localStorage.setItem('studentsScrollPosition', window.pageYOffset.toString());
             navigate(`/students/${s._id}`);
-          }} className={`bg-white rounded-xl shadow-sm border cursor-pointer ${
-            s.isPriority ? 'border-l-4 border-l-violet-400 border-violet-200 bg-violet-50/30' :
-            selected.includes(s._id) ? 'ring-2 ring-primary border-gray-100' : 'border-gray-100'
-          } p-4`}>
-
-            {/* Row 1: Checkbox + Name + Status */}
+          }} className="hud-card hud-card-lift rounded-xl p-4 cursor-pointer"
+          style={s.isPriority ? {borderLeft:'3px solid #a78bfa'} : selected.includes(s._id) ? {borderColor:'var(--color-primary)'} : {}}>
             <div className="flex items-center gap-2 mb-1">
               <input type="checkbox" checked={selected.includes(s._id)} onChange={(e) => { e.stopPropagation(); toggleSelect(s._id); }}
-                onClick={(e) => e.stopPropagation()}
-                className="rounded border-gray-300 text-primary focus:ring-primary cursor-pointer shrink-0" />
-              <p className="font-semibold text-gray-800 flex-1 min-w-0 truncate">
+                onClick={(e) => e.stopPropagation()} className="rounded cursor-pointer shrink-0" />
+              <p className="font-semibold text-[#f3f4f6] flex-1 min-w-0 truncate">
                 {s.isPriority && <span className="mr-1">⚡</span>}
                 {s.isTopper && <span className="mr-1">🏆</span>}
-                {s.serialNumber}. {s.name}{s.finalInterview?.result && <span className="text-emerald-500 ml-1">★</span>}
+                {s.serialNumber}. {s.name}{s.finalInterview?.result && <span className="text-emerald-400 ml-1">★</span>}
               </p>
               <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold shrink-0 ${STATUS_COLORS[s.status]}`}>{s.status}</span>
             </div>
-
-            {/* Row 2: Father name */}
-            {s.fatherName && <p className="text-sm text-gray-400 mb-3 pl-6">{s.fatherName}</p>}
-
-            {/* Row 3: Track + Mobile + Badges — all in one line */}
+            {s.fatherName && <p className="text-sm text-[#6b7280] mb-3 pl-6">{s.fatherName}</p>}
             <div className="flex items-center gap-2 flex-wrap pl-6 mb-3">
               {s.admissionFormNo && (
-                <span className="text-xs font-semibold bg-orange-50 text-primary border border-orange-100 px-2 py-0.5 rounded-full">Form #{s.admissionFormNo}</span>
+                <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{background:'rgba(6,182,212,0.1)',color:'var(--color-primary)',border:'1px solid rgba(6,182,212,0.2)'}}>Form #{s.admissionFormNo}</span>
               )}
               {s.displayTrack && (
-                <span className="flex items-center gap-1 text-sm text-gray-500">
+                <span className="flex items-center gap-1 text-sm text-[#9ca3af]">
                   <span className="text-base">📍</span> {s.displayTrack}{s.trackName ? ` · ${s.trackName}` : ''}
                 </span>
               )}
               {s.mobileNo && (
-                <a href={`tel:${s.mobileNo}`} onClick={(e) => e.stopPropagation()}
-                  className="flex items-center gap-1 text-sm text-gray-500">
+                <a href={`tel:${s.mobileNo}`} onClick={(e) => e.stopPropagation()} className="flex items-center gap-1 text-sm text-[#9ca3af]">
                   <span className="text-base">📞</span> {s.mobileNo}
                 </a>
               )}
@@ -1280,38 +1237,28 @@ export default function Students() {
               {s.finalInterview?.result === 'Pass' ? (
                 <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700">✓ Cleared</span>
               ) : s.finalInterview?.result === 'Fail' ? (
-                <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-rose-100 text-rose-600">✗ Final Failed</span>
+                <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-rose-100 text-rose-600">✗ Failed</span>
               ) : s.finalInterview?.result === 'Pending' ? (
                 <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-700">⏳ Pending</span>
               ) : s.interviewCount > 0 ? (
-                <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-orange-50 text-primary border border-orange-200">Round {s.interviewCount}</span>
+                <span className="px-2 py-0.5 rounded-full text-xs font-semibold" style={{background:'rgba(6,182,212,0.1)',color:'var(--color-primary)',border:'1px solid rgba(6,182,212,0.2)'}}>Round {s.interviewCount}</span>
               ) : null}
             </div>
-
-            {/* Row 4: Buttons */}
-            <div className="flex gap-2 pt-3 border-t border-gray-100">
-              <button onClick={(e) => { 
-                e.stopPropagation(); 
-                const scrollPosition = window.pageYOffset;
-                localStorage.setItem('studentsScrollPosition', scrollPosition.toString());
-                navigate(`/students/${s._id}/edit`); 
-              }}
-                className="flex-1 flex items-center justify-center gap-1.5 text-sm text-white font-semibold py-2 bg-primary hover:bg-primary-dark rounded-lg transition-colors">
+            <div className="flex gap-2 pt-3" style={{borderTop:'1px solid rgba(255,255,255,0.07)'}}>
+              <button onClick={(e) => { e.stopPropagation(); localStorage.setItem('studentsScrollPosition', window.pageYOffset.toString()); navigate(`/students/${s._id}/edit`); }}
+                className="hud-btn-primary flex-1 text-sm py-2">
                 <FiEdit2 size={14} /> Edit
               </button>
               {(user?.role === 'admin' || user?.role === 'interviewer') ? (
-                <button onClick={(e) => { e.stopPropagation(); setInterviewStudent(s); }}
-                  className="flex-1 flex items-center justify-center gap-1.5 text-sm text-white font-semibold py-2 bg-primary hover:bg-primary-dark rounded-lg transition-colors">
+                <button onClick={(e) => { e.stopPropagation(); setInterviewStudent(s); }} className="hud-btn-primary flex-1 text-sm py-2">
                   <FiClipboard size={14} /> Interview
                 </button>
               ) : user?.role === 'receptionist' ? (
-                <button onClick={(e) => { e.stopPropagation(); setReceptionOpen(s); }}
-                  className="flex-1 flex items-center justify-center gap-1.5 text-sm text-white font-semibold py-2 bg-primary hover:bg-primary-dark rounded-lg transition-colors">
+                <button onClick={(e) => { e.stopPropagation(); setReceptionOpen(s); }} className="hud-btn-primary flex-1 text-sm py-2">
                   <FiFileText size={14} /> Entry
                 </button>
               ) : (
-                <button onClick={(e) => { e.stopPropagation(); handleViewHistory(s); }}
-                  className="flex-1 flex items-center justify-center gap-1.5 text-sm text-white font-semibold py-2 bg-primary hover:bg-primary-dark rounded-lg transition-colors">
+                <button onClick={(e) => { e.stopPropagation(); handleViewHistory(s); }} className="hud-btn-primary flex-1 text-sm py-2">
                   <FiClock size={14} /> History
                 </button>
               )}
@@ -1324,53 +1271,29 @@ export default function Students() {
       {pages > 1 && (
         <div className="flex justify-center items-center gap-2 mt-4 flex-wrap">
           <button onClick={() => setPage(p => Math.max(p - 1, 1))} disabled={page === 1}
-            className="px-3 py-1.5 rounded text-sm border bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-40">‹</button>
-          
+            className="px-3 py-1.5 rounded text-sm text-[#9ca3af] disabled:opacity-40" style={{border:'1px solid rgba(255,255,255,0.1)'}}>‹</button>
           {(() => {
-            const delta = 1;
-            const range = [];
-            const rangeWithDots = [];
-            
-            for (let i = Math.max(2, page - delta); i <= Math.min(pages - 1, page + delta); i++) {
-              range.push(i);
-            }
-            
-            if (range[0] > 2) {
-              rangeWithDots.push(1, '...');
-            } else {
-              rangeWithDots.push(1);
-            }
-            
+            const delta = 1, range = [], rangeWithDots = [];
+            for (let i = Math.max(2, page - delta); i <= Math.min(pages - 1, page + delta); i++) range.push(i);
+            if (range[0] > 2) rangeWithDots.push(1, '...'); else rangeWithDots.push(1);
             rangeWithDots.push(...range);
-            
-            if (range[range.length - 1] < pages - 1) {
-              rangeWithDots.push('...', pages);
-            } else if (pages > 1) {
-              rangeWithDots.push(pages);
-            }
-            
+            if (range[range.length - 1] < pages - 1) rangeWithDots.push('...', pages); else if (pages > 1) rangeWithDots.push(pages);
             return rangeWithDots.map((p, idx) =>
               p === '...' ? (
-                <span key={`d${idx}`} className="px-2 py-1.5 text-sm text-gray-400">...</span>
+                <span key={`d${idx}`} className="px-2 py-1.5 text-sm text-[#6b7280]">...</span>
               ) : (
                 <button key={p} onClick={() => setPage(p)}
-                  className={`px-3 py-1.5 rounded text-sm border transition-colors ${
-                    p === page 
-                      ? 'bg-primary text-white border-primary' 
-                      : 'bg-white text-gray-600 hover:bg-gray-50'
-                  }`}>
+                  className="px-3 py-1.5 rounded text-sm transition-colors"
+                  style={p === page ? {background:'var(--color-primary)',color:'white',border:'1px solid var(--color-primary)',boxShadow:'0 0 10px var(--color-primary-glow)'} : {border:'1px solid rgba(255,255,255,0.1)',color:'#9ca3af'}}>
                   {p}
                 </button>
               )
             );
           })()}
-          
           <button onClick={() => setPage(p => Math.min(p + 1, pages))} disabled={page === pages}
-            className="px-3 py-1.5 rounded text-sm border bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-40">›</button>
-          
+            className="px-3 py-1.5 rounded text-sm text-[#9ca3af] disabled:opacity-40" style={{border:'1px solid rgba(255,255,255,0.1)'}}>›</button>
           {hasMore && (
-            <button onClick={() => fetchStudents(true)} disabled={loading}
-              className="ml-2 px-4 py-1.5 bg-primary text-white rounded text-sm hover:bg-primary-dark disabled:opacity-60">
+            <button onClick={() => fetchStudents(true)} disabled={loading} className="hud-btn-primary ml-2 px-4 py-1.5 text-sm">
               {loading ? 'Loading...' : 'Load More'}
             </button>
           )}

@@ -7,10 +7,10 @@ import { useTheme } from '../../hooks/useTheme';
 export default function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
-  useTheme(); // apply saved theme on load
+  useTheme();
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[#0b0f19]">
       <Navbar onMenuClick={() => setSidebarOpen(true)} />
       <Sidebar
         open={sidebarOpen}
@@ -18,8 +18,10 @@ export default function Layout() {
         collapsed={collapsed}
         onToggle={() => setCollapsed(!collapsed)}
       />
-      <main className={`px-4 pb-4 md:px-6 md:pb-6 transition-all duration-300 ${collapsed ? 'md:ml-16' : 'md:ml-64'}`}
-        style={{ paddingTop: 'calc(56px + env(safe-area-inset-top, 20px) + 16px)' }}>
+      <main
+        className={`px-4 pb-6 md:px-6 transition-all duration-300 ${collapsed ? 'md:ml-16' : 'md:ml-64'}`}
+        style={{ paddingTop: 'calc(60px + env(safe-area-inset-top, 20px) + 20px)' }}
+      >
         <Outlet />
       </main>
     </div>

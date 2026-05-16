@@ -113,28 +113,21 @@ export default function StudentDetail() {
 
   // ─── Profile Header Card ───────────────────────────────────────────────────
   const ProfileHeader = () => (
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-4">
-      {/* Top color strip */}
-      <div className="h-2 bg-gradient-to-r from-primary to-orange-400" />
-
+    <div className="hud-card hud-card-accent rounded-2xl overflow-hidden mb-4">
       <div className="p-5">
         <div className="flex items-start gap-4">
-          {/* Avatar */}
           {s.photo ? (
-            <img src={s.photo} alt="Photo"
-              className="w-20 h-20 rounded-2xl object-cover border-2 border-orange-100 shrink-0" />
+            <img src={s.photo} alt="Photo" className="w-20 h-20 rounded-2xl object-cover shrink-0" style={{border:'2px solid rgba(6,182,212,0.3)'}} />
           ) : (
-            <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-primary to-orange-400 flex items-center justify-center text-white text-3xl font-bold shrink-0 shadow-sm">
+            <div className="w-20 h-20 rounded-2xl flex items-center justify-center text-white text-3xl font-bold shrink-0" style={{background:'linear-gradient(135deg,var(--color-primary),var(--color-primary-dark))',boxShadow:'0 0 20px var(--color-primary-glow)'}}>
               {s.name?.[0]?.toUpperCase()}
             </div>
           )}
-
-          {/* Name + meta */}
           <div className="flex-1 min-w-0">
             <div className="flex items-start justify-between gap-2 flex-wrap">
               <div>
-                <h2 className="text-xl font-bold text-gray-900 leading-tight">{s.name}</h2>
-                <p className="text-sm text-gray-500 mt-0.5">S/O {s.fatherName || '—'}</p>
+                <h2 className="text-xl font-bold text-[#f3f4f6] leading-tight">{s.name}</h2>
+                <p className="text-sm text-[#6b7280] mt-0.5">S/O {s.fatherName || '—'}</p>
               </div>
               <span className={`text-xs font-semibold px-3 py-1 rounded-full shrink-0 ${STATUS_COLORS[s.status]}`}>
                 {s.status}
@@ -173,63 +166,46 @@ export default function StudentDetail() {
           </div>
         </div>
 
-        {/* Contact row */}
-        <div className="flex flex-wrap gap-3 mt-4 pt-4 border-t border-gray-100">
+        <div className="flex flex-wrap gap-3 mt-4 pt-4" style={{borderTop:'1px solid rgba(255,255,255,0.07)'}}>
           {s.mobileNo && (
-            <a href={`tel:${s.mobileNo}`}
-              className="flex items-center gap-2 text-sm text-gray-700 bg-gray-50 hover:bg-orange-50 hover:text-primary border border-gray-200 px-3 py-1.5 rounded-xl transition-colors">
-              <FiPhone size={13} className="text-primary" /> {s.mobileNo}
+            <a href={`tel:${s.mobileNo}`} className="flex items-center gap-2 text-sm text-[#d1d5db] px-3 py-1.5 rounded-xl transition-colors" style={{background:'rgba(255,255,255,0.05)',border:'1px solid rgba(255,255,255,0.1)'}}>
+              <FiPhone size={13} style={{color:'var(--color-primary)'}} /> {s.mobileNo}
             </a>
           )}
           {(s.whatsappNo || s.whatsappNumber) && (
-            <a href={`https://wa.me/91${s.whatsappNo || s.whatsappNumber}`} target="_blank" rel="noreferrer"
-              className="flex items-center gap-2 text-sm text-gray-700 bg-gray-50 hover:bg-green-50 hover:text-green-700 border border-gray-200 px-3 py-1.5 rounded-xl transition-colors">
-              <span className="text-green-600 text-xs font-bold">WA</span> {s.whatsappNo || s.whatsappNumber}
+            <a href={`https://wa.me/91${s.whatsappNo || s.whatsappNumber}`} target="_blank" rel="noreferrer" className="flex items-center gap-2 text-sm text-[#d1d5db] px-3 py-1.5 rounded-xl transition-colors" style={{background:'rgba(255,255,255,0.05)',border:'1px solid rgba(255,255,255,0.1)'}}>
+              <span className="text-emerald-400 text-xs font-bold">WA</span> {s.whatsappNo || s.whatsappNumber}
             </a>
           )}
           {s.email && (
-            <span className="flex items-center gap-2 text-sm text-gray-600 bg-gray-50 border border-gray-200 px-3 py-1.5 rounded-xl">
-              ✉️ {s.email}
-            </span>
+            <span className="flex items-center gap-2 text-sm text-[#9ca3af] px-3 py-1.5 rounded-xl" style={{background:'rgba(255,255,255,0.05)',border:'1px solid rgba(255,255,255,0.1)'}}>✉️ {s.email}</span>
           )}
         </div>
 
-        {/* Flags toggle — admin/manager/track_incharge */}
         {(user?.role === 'admin' || user?.role === 'manager' || user?.role === 'track_incharge') && (
-          <div className="flex gap-3 mt-4 pt-4 border-t border-gray-100">
-            <label className={`flex items-center gap-2 cursor-pointer select-none px-3 py-1.5 rounded-xl border-2 transition-all text-sm ${
-              s.isTopper ? 'border-yellow-400 bg-yellow-50' : 'border-gray-200 bg-gray-50'
-            } ${flagLoading ? 'opacity-60 pointer-events-none' : ''}`}>
-              <input type="checkbox" checked={!!s.isTopper} onChange={() => handleFlagToggle('isTopper')}
-                className="w-4 h-4 accent-yellow-500 cursor-pointer" />
-              <span className="font-semibold text-yellow-700">🏆 Topper</span>
+          <div className="flex gap-3 mt-4 pt-4" style={{borderTop:'1px solid rgba(255,255,255,0.07)'}}>
+            <label className="flex items-center gap-2 cursor-pointer select-none px-3 py-1.5 rounded-xl border-2 transition-all text-sm" style={s.isTopper ? {borderColor:'#fbbf24',background:'rgba(234,179,8,0.1)'} : {borderColor:'rgba(255,255,255,0.1)',background:'rgba(255,255,255,0.04)'}}>
+              <input type="checkbox" checked={!!s.isTopper} onChange={() => handleFlagToggle('isTopper')} className="w-4 h-4 cursor-pointer" />
+              <span className="font-semibold text-amber-400">🏆 Topper</span>
             </label>
-            <label className={`flex items-center gap-2 cursor-pointer select-none px-3 py-1.5 rounded-xl border-2 transition-all text-sm ${
-              s.isPriority ? 'border-violet-400 bg-violet-50' : 'border-gray-200 bg-gray-50'
-            } ${flagLoading ? 'opacity-60 pointer-events-none' : ''}`}>
-              <input type="checkbox" checked={!!s.isPriority} onChange={() => handleFlagToggle('isPriority')}
-                className="w-4 h-4 accent-violet-500 cursor-pointer" />
-              <span className="font-semibold text-violet-700">⚡ Priority</span>
+            <label className="flex items-center gap-2 cursor-pointer select-none px-3 py-1.5 rounded-xl border-2 transition-all text-sm" style={s.isPriority ? {borderColor:'#a78bfa',background:'rgba(139,92,246,0.1)'} : {borderColor:'rgba(255,255,255,0.1)',background:'rgba(255,255,255,0.04)'}}>
+              <input type="checkbox" checked={!!s.isPriority} onChange={() => handleFlagToggle('isPriority')} className="w-4 h-4 cursor-pointer" />
+              <span className="font-semibold text-violet-400">⚡ Priority</span>
             </label>
           </div>
         )}
 
-        {/* Remarks */}
         {s.remarks && (
-          <div className="mt-4 pt-4 border-t border-gray-100">
-            <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">Remarks</p>
-            <p className="text-sm text-gray-700 bg-amber-50 border border-amber-100 rounded-xl px-3 py-2">
-              💬 {s.remarks}
-            </p>
+          <div className="mt-4 pt-4" style={{borderTop:'1px solid rgba(255,255,255,0.07)'}}>
+            <p className="text-xs text-[#6b7280] uppercase tracking-wide mb-1">Remarks</p>
+            <p className="text-sm text-[#d1d5db] rounded-xl px-3 py-2" style={{background:'rgba(245,158,11,0.08)',border:'1px solid rgba(245,158,11,0.2)'}}>💬 {s.remarks}</p>
           </div>
         )}
-
-        {/* Meta footer */}
-        <div className="flex flex-wrap gap-x-4 gap-y-1 mt-4 pt-3 border-t border-gray-100">
-          {s.sn && <span className="text-xs text-gray-400">S.N. <span className="font-semibold text-gray-600">#{s.sn}</span></span>}
-          {s.addedBy?.name && <span className="text-xs text-gray-400">Added by <span className="font-semibold text-gray-600">{s.addedBy.name}</span></span>}
-          {s.createdAt && <span className="text-xs text-gray-400">On <span className="font-semibold text-gray-600">{new Date(s.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</span></span>}
-          {s.admissionFormNo && <span className="text-xs text-gray-400">Form No. <span className="font-semibold text-gray-600">{s.admissionFormNo}</span></span>}
+        <div className="flex flex-wrap gap-x-4 gap-y-1 mt-4 pt-3" style={{borderTop:'1px solid rgba(255,255,255,0.07)'}}>
+          {s.sn && <span className="text-xs text-[#6b7280]">S.N. <span className="font-semibold text-[#9ca3af]">#{s.sn}</span></span>}
+          {s.addedBy?.name && <span className="text-xs text-[#6b7280]">Added by <span className="font-semibold text-[#9ca3af]">{s.addedBy.name}</span></span>}
+          {s.createdAt && <span className="text-xs text-[#6b7280]">On <span className="font-semibold text-[#9ca3af]">{new Date(s.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</span></span>}
+          {s.admissionFormNo && <span className="text-xs text-[#6b7280]">Form No. <span className="font-semibold text-[#9ca3af]">{s.admissionFormNo}</span></span>}
         </div>
       </div>
     </div>
@@ -239,9 +215,9 @@ export default function StudentDetail() {
   const InfoField = ({ label, value, full = false }) => {
     if (!value) return null;
     return (
-      <div className={`bg-gray-50 rounded-xl p-3 ${full ? 'col-span-2' : ''}`}>
-        <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-0.5">{label}</p>
-        <p className="text-sm font-medium text-gray-800 break-words">{value}</p>
+      <div className={`rounded-xl p-3 ${full ? 'col-span-2' : ''}`} style={{background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,255,255,0.07)'}}>
+        <p className="text-[10px] text-[#6b7280] uppercase tracking-wide mb-0.5">{label}</p>
+        <p className="text-sm font-medium text-[#f3f4f6] break-words">{value}</p>
       </div>
     );
   };
@@ -253,18 +229,18 @@ export default function StudentDetail() {
   const PersonalDetailsCard = () => {
     if (!hasPersonal && !hasFather) return null;
     return (
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="px-5 pt-4 pb-3 flex items-center gap-2 border-b border-gray-100 sticky top-0 bg-white z-10">
-          <div className="w-7 h-7 rounded-lg bg-blue-50 flex items-center justify-center">
-            <FiUser size={14} className="text-blue-600" />
+      <div className="hud-card rounded-2xl overflow-hidden">
+        <div className="px-5 pt-4 pb-3 flex items-center gap-2 sticky top-0 z-10" style={{borderBottom:'1px solid rgba(255,255,255,0.07)',background:'rgba(17,24,39,0.95)'}}>
+          <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{background:'rgba(59,130,246,0.15)'}}>
+            <FiUser size={14} className="text-blue-400" />
           </div>
-          <p className="text-sm font-semibold text-gray-800">Personal Details</p>
+          <p className="text-sm font-semibold text-[#f3f4f6]">Personal Details</p>
         </div>
 
         <div className="p-5 space-y-5">
           {hasPersonal && (
             <div>
-              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-3">Personal Info</p>
+          <p className="text-[10px] font-semibold text-[#6b7280] uppercase tracking-widest mb-3">Personal Info</p>
               <div className="grid grid-cols-2 gap-2">
                 <InfoField label="Gender"        value={fmt(s.gender)} />
                 <InfoField label="Date of Birth" value={fmt(s.dob)} />
@@ -276,16 +252,16 @@ export default function StudentDetail() {
 
           {(s.district || s.village || s.tehsil || s.pincode || s.fullAddress) && (
             <div>
-              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-3">Address</p>
+          <p className="text-[10px] font-semibold text-[#6b7280] uppercase tracking-widest mb-3">Address</p>
               <div className="grid grid-cols-2 gap-2">
                 <InfoField label="District"      value={fmt(s.district)} />
                 <InfoField label="Village / City" value={fmt(s.village)} />
                 <InfoField label="Tehsil"         value={fmt(s.tehsil)} />
                 <InfoField label="Pincode"        value={fmt(s.pincode)} />
                 {s.fullAddress && (
-                  <div className="col-span-2 bg-gray-50 rounded-xl p-3">
-                    <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-0.5">Full Address</p>
-                    <p className="text-sm font-medium text-gray-800 break-words">{s.fullAddress}</p>
+                  <div className="col-span-2 rounded-xl p-3" style={{background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,255,255,0.07)'}}>
+                    <p className="text-[10px] text-[#6b7280] uppercase tracking-wide mb-0.5">Full Address</p>
+                    <p className="text-sm font-medium text-[#f3f4f6] break-words">{s.fullAddress}</p>
                   </div>
                 )}
               </div>
@@ -294,7 +270,7 @@ export default function StudentDetail() {
 
           {hasFather && (
             <div>
-              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-3">Father / Family</p>
+          <p className="text-[10px] font-semibold text-[#6b7280] uppercase tracking-widest mb-3">Father / Family</p>
               <div className="grid grid-cols-2 gap-2">
                 <InfoField label="Occupation"     value={fmt(s.fatherOccupation)} />
                 <InfoField label="Annual Income"  value={s.fatherIncome ? `\u20B9 ${s.fatherIncome}` : null} />
@@ -316,12 +292,12 @@ export default function StudentDetail() {
     const pct = (val) => val != null && val !== '' ? `${val}%` : null;
 
     return (
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="px-5 pt-4 pb-3 flex items-center gap-2 border-b border-gray-100 sticky top-0 bg-white z-10">
-          <div className="w-7 h-7 rounded-lg bg-emerald-50 flex items-center justify-center">
-            <FiBook size={14} className="text-emerald-600" />
+      <div className="hud-card rounded-2xl overflow-hidden">
+        <div className="px-5 pt-4 pb-3 flex items-center gap-2 sticky top-0 z-10" style={{borderBottom:'1px solid rgba(255,255,255,0.07)',background:'rgba(17,24,39,0.95)'}}>
+          <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{background:'rgba(16,185,129,0.15)'}}>
+            <FiBook size={14} className="text-emerald-400" />
           </div>
-          <p className="text-sm font-semibold text-gray-800">Academic Details</p>
+          <p className="text-sm font-semibold text-[#f3f4f6]">Academic Details</p>
         </div>
 
         <div className="p-5 space-y-5">
@@ -329,12 +305,12 @@ export default function StudentDetail() {
           {/* School & Marks */}
           {(s.schoolName || s.school12Sub || s.persentage10 || s.persentage11 || s.persentage12 || s.rollNumber10 || s.rollNumber12 || s.passout12) && (
             <div>
-              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-3">School & Marks</p>
+              <p className="text-[10px] font-semibold text-[#6b7280] uppercase tracking-widest mb-3">School & Marks</p>
               <div className="grid grid-cols-2 gap-2">
                 {s.schoolName && (
-                  <div className="col-span-2 bg-gray-50 rounded-xl p-3">
-                    <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-0.5">School Name</p>
-                    <p className="text-sm font-medium text-gray-800">{s.schoolName}</p>
+                  <div className="col-span-2 rounded-xl p-3" style={{background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,255,255,0.07)'}}>
+                    <p className="text-[10px] text-[#6b7280] uppercase tracking-wide mb-0.5">School Name</p>
+                    <p className="text-sm font-medium text-[#f3f4f6]">{s.schoolName}</p>
                   </div>
                 )}
                 <InfoField label="12th Subject"      value={fmt(s.school12Sub)} />
@@ -353,10 +329,10 @@ export default function StudentDetail() {
                   ].filter(x => x.val != null && x.val !== '').map(({ label, val }) => (
                     <div key={label}>
                       <div className="flex justify-between text-xs mb-1">
-                        <span className="text-gray-500">{label}</span>
-                        <span className="font-semibold text-gray-700">{val}%</span>
+                        <span className="text-[#9ca3af]">{label}</span>
+                        <span className="font-semibold text-[#f3f4f6]">{val}%</span>
                       </div>
-                      <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                      <div className="h-2 rounded-full overflow-hidden" style={{background:'rgba(255,255,255,0.06)'}}>
                         <div
                           className={`h-full rounded-full ${
                             Number(val) >= 75 ? 'bg-emerald-400' :
@@ -375,7 +351,7 @@ export default function StudentDetail() {
           {/* JEE Score */}
           {s.jeeScore != null && (
             <div>
-              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-3">Entrance</p>
+              <p className="text-[10px] font-semibold text-[#6b7280] uppercase tracking-widest mb-3">Entrance</p>
               <div className="bg-blue-50 border border-blue-100 rounded-xl p-3 flex items-center justify-between">
                 <span className="text-sm text-blue-700 font-medium">JEE Score</span>
                 <span className="text-lg font-bold text-blue-700">{s.jeeScore}</span>
@@ -386,7 +362,7 @@ export default function StudentDetail() {
           {/* Course / Branch Preferences */}
           {(s.branch || s.priority1 || s.priority2 || s.priority3) && (
             <div>
-              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-3">Branch / Preferences</p>
+              <p className="text-[10px] font-semibold text-[#6b7280] uppercase tracking-widest mb-3">Branch / Preferences</p>
               <div className="grid grid-cols-2 gap-2">
                 <InfoField label="Branch"      value={fmt(s.branch)} />
                 <InfoField label="Priority 1"  value={fmt(s.priority1)} />
@@ -399,7 +375,7 @@ export default function StudentDetail() {
           {/* SSISM Details */}
           {(s.year || s.joinBatch || s.feesScheme || s.trackName || s.isTop20) && (
             <div>
-              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-3">SSISM Details</p>
+              <p className="text-[10px] font-semibold text-[#6b7280] uppercase tracking-widest mb-3">SSISM Details</p>
               <div className="grid grid-cols-2 gap-2">
                 <InfoField label="Year"        value={fmt(s.year)} />
                 <InfoField label="Join Batch"  value={fmt(s.joinBatch)} />
@@ -436,12 +412,12 @@ export default function StudentDetail() {
       ? 'bg-emerald-100 text-emerald-700 border-emerald-200'
       : 'bg-rose-100 text-rose-700 border-rose-200';
     return (
-      <div className="bg-white rounded-2xl">
-        <div className="px-5 pt-4 pb-3 flex items-center gap-2 border-b border-gray-100 sticky top-0 bg-white z-10">
-          <div className="w-7 h-7 rounded-lg bg-emerald-50 flex items-center justify-center">
-            <FiAward size={14} className="text-emerald-600" />
+      <div className="hud-card rounded-2xl overflow-hidden">
+        <div className="px-5 pt-4 pb-3 flex items-center gap-2 sticky top-0 z-10" style={{borderBottom:'1px solid rgba(255,255,255,0.07)',background:'rgba(17,24,39,0.95)'}}>
+          <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{background:'rgba(16,185,129,0.15)'}}>
+            <FiAward size={14} className="text-emerald-400" />
           </div>
-          <p className="text-sm font-semibold text-gray-800">Payment & Registration</p>
+          <p className="text-sm font-semibold text-[#f3f4f6]">Payment & Registration</p>
         </div>
         <div className="p-5 space-y-5">
 
@@ -473,7 +449,7 @@ export default function StudentDetail() {
           {/* Form & Application */}
           {(s.applicationType || s.admissionFormNo || s.bookNo || s.receiptNo) && (
             <div>
-              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-3">Form & Application</p>
+              <p className="text-[10px] font-semibold text-[#6b7280] uppercase tracking-widest mb-3">Form & Application</p>
               <div className="grid grid-cols-2 gap-2">
                 <InfoField label="Application Type"  value={fmt(s.applicationType)} />
                 <InfoField label="Admission Form No" value={fmt(s.admissionFormNo)} />
@@ -483,8 +459,8 @@ export default function StudentDetail() {
 
           {/* Admission fields — Book No & Receipt No */}
           {(s.bookNo || s.receiptNo) && (
-            <div className="pt-2 border-t border-gray-100">
-              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-3">Admission Details</p>
+            <div className="pt-2" style={{borderTop:'1px solid rgba(255,255,255,0.07)'}}>
+              <p className="text-[10px] font-semibold text-[#6b7280] uppercase tracking-widest mb-3">Admission Details</p>
               <div className="grid grid-cols-2 gap-2">
                 <InfoField label="Book No"    value={fmt(s.bookNo)} />
                 <InfoField label="Receipt No" value={fmt(s.receiptNo)} />
@@ -495,7 +471,7 @@ export default function StudentDetail() {
           {/* Payment Details */}
           {(s.transactionId || s.regFeeDate || s.regFeeReceiptNo) && (
             <div>
-              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-3">Payment Details</p>
+              <p className="text-[10px] font-semibold text-[#6b7280] uppercase tracking-widest mb-3">Payment Details</p>
               <div className="grid grid-cols-2 gap-2">
                 <InfoField label="Transaction ID" value={fmt(s.transactionId)} />
                 <InfoField label="Receipt No"     value={fmt(s.regFeeReceiptNo)} />
@@ -518,13 +494,13 @@ export default function StudentDetail() {
   };
 
   const ReceptionCard = () => (
-    <div className="bg-white rounded-2xl">
-      <div className="px-5 pt-4 pb-3 flex items-center justify-between border-b border-gray-100 sticky top-0 bg-white z-10">
+    <div className="hud-card rounded-2xl overflow-hidden">
+      <div className="px-5 pt-4 pb-3 flex items-center justify-between sticky top-0 z-10" style={{borderBottom:'1px solid rgba(255,255,255,0.07)',background:'rgba(17,24,39,0.95)'}}>
         <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg bg-violet-50 flex items-center justify-center">
-            <FiCalendar size={14} className="text-violet-600" />
+          <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{background:'rgba(139,92,246,0.15)'}}>
+            <FiCalendar size={14} className="text-violet-400" />
           </div>
-          <p className="text-sm font-semibold text-gray-800">Reception Entries</p>
+          <p className="text-sm font-semibold text-[#f3f4f6]">Reception Entries</p>
         </div>
         <div className="flex items-center gap-2">
           {receptionEntries.length > 0 && (
@@ -547,7 +523,7 @@ export default function StudentDetail() {
             <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-violet-400" />
           </div>
         ) : receptionEntries.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-8 text-gray-400">
+          <div className="flex flex-col items-center justify-center py-8 text-[#6b7280]">
             <FiCalendar size={28} className="mb-2 opacity-30" />
             <p className="text-sm">Koi reception entry nahi mili</p>
           </div>
@@ -572,17 +548,14 @@ export default function StudentDetail() {
               <div key={entry._id} className="flex gap-3 items-start">
                 {/* Timeline dot */}
                 <div className="flex flex-col items-center shrink-0 mt-1">
-                  <div className={`w-2.5 h-2.5 rounded-full border-2 ${
-                    idx === 0 ? 'border-violet-500 bg-violet-500' : 'border-gray-300 bg-white'
-                  }`} />
+                <div className={`w-2.5 h-2.5 rounded-full border-2 ${idx === 0 ? 'border-violet-500 bg-violet-500' : 'border-[#4b5563]'}`}
+                  style={idx !== 0 ? {background:'rgba(255,255,255,0.1)'} : {}} />
                   {idx < receptionEntries.length - 1 && (
-                    <div className="w-0.5 h-full min-h-[24px] bg-gray-100 mt-1" />
+                    <div className="w-0.5 h-full min-h-[24px] mt-1" style={{background:'rgba(255,255,255,0.08)'}} />
                   )}
                 </div>
 
-                <div className={`flex-1 rounded-xl p-3 border ${
-                  idx === 0 ? 'border-violet-100 bg-violet-50/40' : 'border-gray-100 bg-gray-50'
-                }`}>
+                <div className="flex-1 rounded-xl p-3" style={idx === 0 ? {border:'1px solid rgba(139,92,246,0.25)',background:'rgba(139,92,246,0.06)'} : {border:'1px solid rgba(255,255,255,0.07)',background:'rgba(255,255,255,0.03)'}}>
                   <div className="flex items-start justify-between gap-2 flex-wrap">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full border ${purposeColor[entry.visitPurpose]}`}>
@@ -596,33 +569,33 @@ export default function StudentDetail() {
                         </span>
                       )}
                       {entry.town && (
-                        <span className="flex items-center gap-1 text-xs text-gray-500">
+                        <span className="flex items-center gap-1 text-xs text-[#9ca3af]">
                           <FiMapPin size={10} /> {entry.town}
                         </span>
                       )}
                     </div>
-                    <span className="text-[11px] text-gray-400 shrink-0">
+                    <span className="text-[11px] text-[#6b7280] shrink-0">
                       {new Date(entry.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
                     </span>
                   </div>
 
-                  <div className="mt-3 space-y-1.5 pt-2 border-t border-gray-200">
+                  <div className="mt-3 space-y-1.5 pt-2" style={{borderTop:'1px solid rgba(255,255,255,0.07)'}}>
                     {entry.branch && (
                       <div className="flex items-center justify-between">
-                        <span className="text-[11px] text-gray-500 uppercase tracking-wide">Branch</span>
-                        <span className="text-xs font-semibold text-gray-700">{entry.branch}</span>
+                        <span className="text-[11px] text-[#6b7280] uppercase tracking-wide">Branch</span>
+                        <span className="text-xs font-semibold text-[#d1d5db]">{entry.branch}</span>
                       </div>
                     )}
                     {entry.interviewer?.name && (
                       <div className="flex items-center justify-between">
-                        <span className="text-[11px] text-gray-500 uppercase tracking-wide">Interviewer</span>
-                        <span className="text-xs font-semibold text-gray-700">{entry.interviewer.name}</span>
+                        <span className="text-[11px] text-[#6b7280] uppercase tracking-wide">Interviewer</span>
+                        <span className="text-xs font-semibold text-[#d1d5db]">{entry.interviewer.name}</span>
                       </div>
                     )}
                     {entry.enteredBy?.name && (
                       <div className="flex items-center justify-between">
-                        <span className="text-[11px] text-gray-500 uppercase tracking-wide">Entered By</span>
-                        <span className="text-xs font-semibold text-gray-700">{entry.enteredBy.name}</span>
+                        <span className="text-[11px] text-[#6b7280] uppercase tracking-wide">Entered By</span>
+                        <span className="text-xs font-semibold text-[#d1d5db]">{entry.enteredBy.name}</span>
                       </div>
                     )}
                   </div>
@@ -643,49 +616,55 @@ export default function StudentDetail() {
     const canTakeFinal = technicalPassed && isValidFormSource;
     const resultColor = (r) => r === 'Pass' ? 'bg-emerald-100 text-emerald-700' : r === 'Fail' ? 'bg-rose-100 text-rose-600' : 'bg-amber-100 text-amber-700';
     return (
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-4">
-        <div className="px-5 pt-4 pb-3 flex items-center justify-between border-b border-gray-100">
+      <div className="hud-card rounded-2xl overflow-hidden mb-4">
+        <div className="px-5 pt-4 pb-3 flex items-center justify-between" style={{borderBottom:'1px solid rgba(255,255,255,0.07)'}}>
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg bg-orange-50 flex items-center justify-center"><FiAward size={14} className="text-primary" /></div>
-            <p className="text-sm font-semibold text-gray-800">Interview History</p>
+            <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{background:'rgba(6,182,212,0.15)'}}><FiAward size={14} style={{color:'var(--color-primary)'}} /></div>
+            <p className="text-sm font-semibold text-[#f3f4f6]">Interview History</p>
           </div>
           <div className="flex items-center gap-2">
-            {interviews.length > 0 && <span className="text-xs font-semibold bg-orange-50 text-primary border border-orange-100 px-2.5 py-1 rounded-full">{interviews.length} round{interviews.length !== 1 ? 's' : ''}</span>}
-            {user?.role === 'admin' && <button onClick={() => canTakeFinal && setFinalForm({ remarks: '', result: 'Pending' })} disabled={!canTakeFinal} title={!isValidFormSource ? 'Sirf SSISM ya B.Tech form wale students ka final interview ho sakta hai' : !technicalPassed ? 'Technical interview pass hone ke baad hi final interview le sakte hain' : ''} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${canTakeFinal ? 'bg-primary text-white hover:bg-primary-dark' : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`}>★ Final Interview</button>}
+            {interviews.length > 0 && <span className="text-xs font-semibold px-2.5 py-1 rounded-full" style={{background:'rgba(6,182,212,0.1)',color:'var(--color-primary)',border:'1px solid rgba(6,182,212,0.2)'}}>{interviews.length} round{interviews.length !== 1 ? 's' : ''}</span>}
+            {user?.role === 'admin' && <button onClick={() => canTakeFinal && setFinalForm({ remarks: '', result: 'Pending' })} disabled={!canTakeFinal} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${canTakeFinal ? 'hud-btn-primary' : 'text-[#6b7280] cursor-not-allowed'}`} style={!canTakeFinal ? {background:'rgba(255,255,255,0.05)',border:'1px solid rgba(255,255,255,0.08)'} : {}}>★ Final Interview</button>}
           </div>
         </div>
         <div className="p-5 space-y-4">
           {interviews.map((h) => (
-            <div key={h._id} className="border border-gray-100 rounded-2xl p-4">
+            <div key={h._id} className="rounded-2xl p-4" style={{border:'1px solid rgba(255,255,255,0.08)',background:'rgba(255,255,255,0.03)'}}>
               <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-sm font-bold text-primary bg-orange-50 border border-orange-200 px-3 py-1 rounded-full">Round {h.round}</span>
+                  <span className="text-sm font-bold px-3 py-1 rounded-full" style={{background:'rgba(6,182,212,0.1)',color:'var(--color-primary)',border:'1px solid rgba(6,182,212,0.2)'}}>Round {h.round}</span>
                   {h.interviewType && <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${h.interviewType === 'Online' ? 'bg-blue-100 text-blue-700' : 'bg-violet-100 text-violet-700'}`}>{h.interviewType}</span>}
-                  {h.interviewer?.name && <span className="text-xs text-gray-500 flex items-center gap-1"><FiUser size={10} /> {h.interviewer.name}</span>}
-                  <span className="text-xs text-gray-400">{new Date(h.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
+                  {h.interviewer?.name && <span className="text-xs text-[#9ca3af] flex items-center gap-1"><FiUser size={10} /> {h.interviewer.name}</span>}
+                  <span className="text-xs text-[#6b7280]">{new Date(h.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
                 </div>
                 <span className={`text-xs font-bold px-3 py-1 rounded-full ${resultColor(h.result)}`}>{h.result}</span>
               </div>
               <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 mb-3">
                 {[['Maths', h.mathematicsMarks], ['Subject', h.subjectiveKnowledge], ['Reasoning', h.reasoningMarks], ['Goal', h.goalClarity], ['Sincerity', h.sincerity], ['Comm.', h.communicationLevel], ['Confidence', h.confidenceLevel], ...(h.assignmentMarks != null ? [['Assignment', h.assignmentMarks]] : [])].map(([label, val]) => (
-                  <div key={label} className="bg-gray-50 rounded-lg px-2.5 py-2 text-center"><p className="text-[10px] text-gray-400 leading-tight mb-0.5">{label}</p><p className="text-sm font-bold text-gray-700">{val}<span className="text-[10px] font-normal text-gray-400">/5</span></p></div>
+                  <div key={label} className="rounded-lg px-2.5 py-2 text-center" style={{background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,255,255,0.07)'}}>
+                    <p className="text-[10px] text-[#6b7280] leading-tight mb-0.5">{label}</p>
+                    <p className="text-sm font-bold text-[#f3f4f6]">{val}<span className="text-[10px] font-normal text-[#6b7280]">/5</span></p>
+                  </div>
                 ))}
               </div>
-              <div className="bg-orange-50 border border-orange-100 rounded-xl px-3 py-2 flex items-center justify-between"><span className="text-xs text-gray-500 font-medium">Total Score</span><span className="text-base font-bold text-primary">{h.totalMark}</span></div>
-              {h.remarks && <p className="text-xs text-gray-500 mt-2 bg-gray-50 rounded-lg px-3 py-2">💬 {h.remarks}</p>}
+              <div className="rounded-xl px-3 py-2 flex items-center justify-between" style={{background:'rgba(6,182,212,0.08)',border:'1px solid rgba(6,182,212,0.15)'}}>
+                <span className="text-xs text-[#9ca3af] font-medium">Total Score</span>
+                <span className="text-base font-bold" style={{color:'var(--color-primary)'}}>{h.totalMark}</span>
+              </div>
+              {h.remarks && <p className="text-xs text-[#9ca3af] mt-2 rounded-lg px-3 py-2" style={{background:'rgba(255,255,255,0.04)'}}>💬 {h.remarks}</p>}
             </div>
           ))}
           {s.finalInterview?.result && (
-            <div className="border-2 border-primary/20 bg-orange-50/30 rounded-2xl p-4">
+            <div className="rounded-2xl p-4" style={{border:'2px solid rgba(6,182,212,0.25)',background:'rgba(6,182,212,0.05)'}}>
               <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-sm font-bold bg-primary text-white px-3 py-1 rounded-full">★ Final Interview</span>
-                  {s.finalInterview.doneBy?.name && <span className="text-xs text-gray-500 flex items-center gap-1"><FiUser size={10} /> {s.finalInterview.doneBy.name}</span>}
-                  {s.finalInterview.doneAt && <span className="text-xs text-gray-400">{new Date(s.finalInterview.doneAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</span>}
+                  <span className="text-sm font-bold text-white px-3 py-1 rounded-full" style={{background:'var(--color-primary)'}}>★ Final Interview</span>
+                  {s.finalInterview.doneBy?.name && <span className="text-xs text-[#9ca3af] flex items-center gap-1"><FiUser size={10} /> {s.finalInterview.doneBy.name}</span>}
+                  {s.finalInterview.doneAt && <span className="text-xs text-[#6b7280]">{new Date(s.finalInterview.doneAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</span>}
                 </div>
                 <span className={`text-xs font-bold px-3 py-1 rounded-full ${resultColor(s.finalInterview.result)}`}>{s.finalInterview.result}</span>
               </div>
-              {s.finalInterview.remarks && <p className="text-xs text-gray-500 bg-white border border-orange-100 rounded-lg px-3 py-2">💬 {s.finalInterview.remarks}</p>}
+              {s.finalInterview.remarks && <p className="text-xs text-[#9ca3af] rounded-lg px-3 py-2" style={{background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,255,255,0.07)'}}>💬 {s.finalInterview.remarks}</p>}
             </div>
           )}
         </div>

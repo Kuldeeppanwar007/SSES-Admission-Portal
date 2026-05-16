@@ -21,12 +21,12 @@ function CapacityCard({ label, admitted, finalCleared, limit, color, bg, border,
   const pct = limit ? Math.min(Math.round((admitted / limit) * 100), 100) : null;
   const isFull = limit !== null && remaining === 0;
   return (
-    <div onClick={onClick} className={`bg-white rounded-2xl border ${border} shadow-sm p-4 flex flex-col gap-2 ${onClick ? 'cursor-pointer hover:shadow-md hover:border-orange-200 transition-shadow' : ''}`}>
+    <div onClick={onClick} className={`hud-card hud-card-lift rounded-2xl p-4 flex flex-col gap-2 ${onClick ? 'cursor-pointer' : ''}`}>
       <p className={`text-xs font-bold uppercase tracking-wide ${color}`}>{label}</p>
       <div className="flex items-end justify-between">
         <div>
-          <p className="text-2xl font-bold text-gray-800">{admitted}</p>
-          <p className="text-xs text-gray-400">{limit !== null ? `of ${limit}` : 'No limit set'}</p>
+          <p className="text-2xl font-bold text-[#f3f4f6]">{admitted}</p>
+          <p className="text-xs text-[#6b7280]">{limit !== null ? `of ${limit}` : 'No limit set'}</p>
         </div>
         {remaining !== null && (
           <p className={`text-sm font-bold ${isFull ? 'text-rose-500' : 'text-emerald-600'}`}>
@@ -51,7 +51,7 @@ function CapacityCard({ label, admitted, finalCleared, limit, color, bg, border,
             <div className={`h-1.5 rounded-full transition-all duration-700 ${isFull ? 'bg-rose-500' : bar}`}
               style={{ width: `${pct}%` }} />
           </div>
-          <p className="text-xs text-gray-400 mt-1 text-right">{pct}%</p>
+          <p className="text-xs text-[#6b7280] mt-1 text-right">{pct}%</p>
         </div>
       )}
     </div>
@@ -69,8 +69,8 @@ function SSISMCapacityCards({ trackWise, finalClearedBySubject, navigate }) {
   return (
     <div>
       <div className="flex items-center gap-2 mb-3">
-        <span className="text-sm font-bold text-gray-700 uppercase tracking-wide">SSISM Branch Capacity</span>
-        <div className="flex-1 h-px bg-gray-200" />
+        <span className="hud-section-label">SSISM Branch Capacity</span>
+        <div className="flex-1 h-px" style={{background:'rgba(255,255,255,0.08)'}} />
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         {SSISM_BRANCHES.map((b) => (
@@ -96,8 +96,8 @@ function BTechCapacityCards({ btechByBranch, finalClearedBySubject, navigate }) 
   return (
     <div>
       <div className="flex items-center gap-2 mb-3">
-        <span className="text-sm font-bold text-gray-700 uppercase tracking-wide">B.Tech Branch Capacity</span>
-        <div className="flex-1 h-px bg-gray-200" />
+        <span className="hud-section-label">B.Tech Branch Capacity</span>
+        <div className="flex-1 h-px" style={{background:'rgba(255,255,255,0.08)'}} />
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {BTECH_BRANCHES.map((b) => (
@@ -123,17 +123,17 @@ function AdmissionTypeCards({ admissionTypeBreakdown, navigate }) {
   return (
     <div>
       <div className="flex items-center gap-2 mb-3">
-        <span className="text-sm font-bold text-gray-700 uppercase tracking-wide">Admission Type Breakdown</span>
-        <div className="flex-1 h-px bg-gray-200" />
+        <span className="hud-section-label">Admission Type Breakdown</span>
+        <div className="flex-1 h-px" style={{background:'rgba(255,255,255,0.08)'}} />
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {ADMISSION_TYPES.map(({ key, color, bg, border }) => (
           <div key={key}
             onClick={() => navigate(`/students?admissionType=${encodeURIComponent(key)}`)}
-            className={`bg-white rounded-2xl border ${border} shadow-sm p-4 cursor-pointer hover:shadow-md hover:border-orange-200 transition-shadow`}>
+            className="hud-card hud-card-lift rounded-2xl p-4 cursor-pointer">
             <p className={`text-xs font-bold uppercase tracking-wide ${color}`}>{key}</p>
-            <p className="text-2xl font-bold text-gray-800 mt-1">{admissionTypeBreakdown?.[key] || 0}</p>
-            <p className="text-xs text-gray-400">admitted</p>
+            <p className="text-2xl font-bold text-[#f3f4f6] mt-1">{admissionTypeBreakdown?.[key] || 0}</p>
+            <p className="text-xs text-[#6b7280]">admitted</p>
           </div>
         ))}
       </div>
@@ -155,8 +155,8 @@ function TrackScholarshipBreakdown({ trackAdmissionTypeBreakdown, navigate }) {
   return (
     <div>
       <div className="flex items-center gap-2 mb-3">
-        <span className="text-sm font-bold text-gray-700 uppercase tracking-wide">Track-wise Scholarship Breakdown</span>
-        <div className="flex-1 h-px bg-gray-200" />
+        <span className="hud-section-label">Track-wise Scholarship Breakdown</span>
+        <div className="flex-1 h-px" style={{background:'rgba(255,255,255,0.08)'}} />
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         {tracks.map(track => {
@@ -165,10 +165,10 @@ function TrackScholarshipBreakdown({ trackAdmissionTypeBreakdown, navigate }) {
             sum + Object.values(typeData[t] || {}).reduce((s, c) => s + c, 0), 0);
           if (totalScholarship === 0) return null;
           return (
-            <div key={track} className="bg-white rounded-2xl border border-orange-100 shadow-sm overflow-hidden hover:shadow-md hover:border-orange-200 transition-shadow">
+            <div key={track} className="hud-card hud-card-lift rounded-2xl overflow-hidden">
               {/* Header */}
-              <div className="px-4 py-3 bg-gradient-to-r from-gray-50 to-white border-b border-gray-100 flex items-center justify-between">
-                <p className="font-bold text-gray-800 text-sm">{track}</p>
+              <div className="px-4 py-3 flex items-center justify-between" style={{borderBottom:'1px solid rgba(255,255,255,0.07)',background:'rgba(255,255,255,0.03)'}}>
+                <p className="font-bold text-[#f3f4f6] text-sm">{track}</p>
                 <span className="text-xs bg-orange-50 text-primary font-bold px-2 py-0.5 rounded-full border border-orange-100">{totalScholarship} total</span>
               </div>
               {/* Scholarship type rows */}
@@ -181,7 +181,7 @@ function TrackScholarshipBreakdown({ trackAdmissionTypeBreakdown, navigate }) {
                   return (
                     <div key={type}
                       onClick={() => navigate(`/students?admissionType=${encodeURIComponent(type)}&status=Admitted&track=${encodeURIComponent(track)}`)}
-                      className="px-4 py-3 hover:bg-gray-50/60 transition-colors cursor-pointer">
+                      className="px-4 py-3 hover:bg-white/5 transition-colors cursor-pointer">
                       <div className="flex items-center justify-between mb-1.5">
                         <span className={`text-xs font-bold uppercase tracking-wide ${text}`}>{type}</span>
                         <span className={`text-xs font-bold px-1.5 py-0.5 rounded-md ${badge}`}>{total}</span>
@@ -256,8 +256,8 @@ function FunnelStageCards({ funnelStageBreakdown, trackFunnelBreakdown, navigate
   return (
     <div>
       <div className="flex items-center gap-2 mb-3 flex-wrap">
-        <span className="text-sm font-bold text-gray-700 uppercase tracking-wide">Funnel Stage Breakdown</span>
-        <div className="flex-1 h-px bg-gray-200" />
+        <span className="hud-section-label">Funnel Stage Breakdown</span>
+        <div className="flex-1 h-px" style={{background:'rgba(255,255,255,0.08)'}} />
         {user?.role === 'admin' && tracks.length > 0 && (
           <select
             value={selectedTrack}
@@ -281,12 +281,12 @@ function FunnelStageCards({ funnelStageBreakdown, trackFunnelBreakdown, navigate
                 ? `/students?status=Calling&noFunnelStage=1${selectedTrack ? `&track=${encodeURIComponent(selectedTrack)}` : ''}`
                 : `/students?funnelStage=${encodeURIComponent(key)}${selectedTrack ? `&track=${encodeURIComponent(selectedTrack)}` : ''}`
             )}
-            className={`bg-white rounded-2xl border ${border} shadow-sm p-4 flex flex-col gap-3 hover:shadow-md hover:border-orange-200 transition-shadow cursor-pointer`}>
+            className="hud-card hud-card-lift rounded-2xl p-4 flex flex-col gap-3 cursor-pointer">
             <div className={`w-10 h-10 rounded-xl ${iconBg} flex items-center justify-center`}>
               <Icon size={18} className={iconColor} />
             </div>
             <div>
-              <p className="text-xs text-gray-400 font-medium uppercase tracking-wide leading-tight">{label}</p>
+              <p className="text-xs text-[#6b7280] font-medium uppercase tracking-wide leading-tight">{label}</p>
               <p className={`text-3xl font-bold mt-0.5 ${text}`}>{activeBreakdown[key] || 0}</p>
             </div>
           </div>
@@ -326,32 +326,32 @@ function PointsTable({ trackWise }) {
   const tracks = [...trackWise].sort((a, b) => (b.admissionPoints || 0) - (a.admissionPoints || 0));
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+    <div className="hud-card rounded-2xl overflow-hidden">
       <button onClick={() => setOpen((o) => !o)}
-        className="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-50/60 transition-colors">
+        className="w-full flex items-center justify-between px-5 py-4 hover:bg-white/5 transition-colors">
         <div className="flex items-center gap-2">
           <span className="text-lg">🎮</span>
-          <span className="text-sm font-bold text-gray-700 uppercase tracking-wide">Final Points Table (Tracks as Rows)</span>
+          <span className="hud-section-label">Final Points Table (Tracks as Rows)</span>
         </div>
         <FiChevronDown size={16} className={`text-gray-400 transition-transform duration-300 ${open ? 'rotate-180' : ''}`} />
       </button>
 
       {open && (
-        <div className="overflow-x-auto border-t border-gray-50">
+        <div className="overflow-x-auto" style={{borderTop:'1px solid rgba(255,255,255,0.06)'}}>
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-gray-100">
-                <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500 whitespace-nowrap">#</th>
-                <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500 whitespace-nowrap">Center ↓ / Course →</th>
+              <tr style={{borderBottom:'1px solid rgba(255,255,255,0.07)'}}>
+                <th className="px-3 py-3 text-left text-xs font-semibold text-[#6b7280] whitespace-nowrap">#</th>
+                <th className="px-3 py-3 text-left text-xs font-semibold text-[#6b7280] whitespace-nowrap">Center ↓ / Course →</th>
                 {SUBJECTS.map((s) => (
-                  <th key={s} className="px-3 py-3 text-center text-xs font-semibold text-gray-500 whitespace-nowrap">
+                  <th key={s} className="px-3 py-3 text-center text-xs font-semibold text-[#6b7280] whitespace-nowrap">
                     {SUBJECT_LABELS[s]}
                   </th>
                 ))}
-                <th className="px-3 py-3 text-center text-xs font-semibold text-gray-500 whitespace-nowrap">Adm. Pts</th>
-                <th className="px-3 py-3 text-center text-xs font-semibold text-emerald-600 whitespace-nowrap">₹ Branch-wise Reward Earned</th>
-                <th className="px-3 py-3 text-center text-xs font-semibold text-amber-500 whitespace-nowrap">🎁 Bonus Pts</th>
-                <th className="px-3 py-3 text-center text-xs font-semibold text-gray-500 whitespace-nowrap">Total Pts</th>
+                <th className="px-3 py-3 text-center text-xs font-semibold text-[#6b7280] whitespace-nowrap">Adm. Pts</th>
+                <th className="px-3 py-3 text-center text-xs font-semibold text-emerald-400 whitespace-nowrap">₹ Reward</th>
+                <th className="px-3 py-3 text-center text-xs font-semibold text-amber-400 whitespace-nowrap">🎁 Bonus</th>
+                <th className="px-3 py-3 text-center text-xs font-semibold text-[#6b7280] whitespace-nowrap">Total Pts</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
@@ -366,11 +366,11 @@ function PointsTable({ trackWise }) {
                 });
                 const isTop3 = i < 3;
                 return (
-                  <tr key={track} className={`transition-colors ${isTop3 ? 'bg-orange-50/40 hover:bg-orange-50/70' : 'hover:bg-gray-50/60'}`}>
+                  <tr key={track} className={`transition-colors ${isTop3 ? 'bg-[rgba(6,182,212,0.06)] hover:bg-[rgba(6,182,212,0.1)]' : 'hover:bg-white/[0.03]'}`}>
                     <td className="px-3 py-3 text-base">
                       {RANK_BADGE[i] || <span className="text-xs text-gray-400 font-semibold">{i + 1}</span>}
                     </td>
-                    <td className="px-3 py-3 font-bold text-gray-800 whitespace-nowrap">
+                    <td className="px-3 py-3 font-bold text-[#f3f4f6] whitespace-nowrap">
                       {track.toUpperCase()}
                     </td>
                     {SUBJECTS.map((s) => {
@@ -426,11 +426,11 @@ function LeaderboardSection({ stats, user }) {
     : null;
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+    <div className="hud-card rounded-2xl overflow-hidden">
       <button onClick={() => setOpen((o) => !o)}
-        className="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-50/60 transition-colors">
+        className="w-full flex items-center justify-between px-5 py-4 hover:bg-white/5 transition-colors">
         <div className="flex items-center gap-3">
-          <span className="text-sm font-bold text-gray-700 uppercase tracking-wide">Points Leaderboard</span>
+          <span className="hud-section-label">Points Leaderboard</span>
           {myRank && (
             <span className="text-xs bg-orange-50 text-primary font-bold px-2 py-0.5 rounded-full border border-orange-100">
               Your Rank #{myRank}
@@ -441,27 +441,26 @@ function LeaderboardSection({ stats, user }) {
       </button>
 
       {open && (
-        <div className="border-t border-gray-50">
+        <div style={{borderTop:'1px solid rgba(255,255,255,0.06)'}}>
           {sorted.map(({ track, points, calledCount, totalCount }, i) => {
             const isMe = user?.role === 'track_incharge' && user?.track === track;
             const rank = RANK_STYLES[i] || { bg: 'bg-gray-100', text: 'text-gray-500', emoji: null };
             const barW = Math.round(((points || 0) / maxScore) * 100);
-            // breakdown from stats
             const tw = stats.trackWise.find(t => t.track === track) || {};
             const admissionPts = tw.admissionPoints || 0;
             const callingPts = tw.callingPoints || 0;
             const funnelPts = tw.funnelPoints || 0;
             return (
               <div key={track}
-                className={`px-5 py-3 border-b border-gray-50 last:border-0 transition-colors ${isMe ? 'bg-orange-50/60' : 'hover:bg-gray-50/60'
-                  }`}>
+                style={{borderBottom:'1px solid rgba(255,255,255,0.05)'}}
+                className={`px-5 py-3 transition-colors ${isMe ? 'bg-[rgba(6,182,212,0.08)]' : 'hover:bg-white/[0.03]'}`}>
                 <div className="flex items-center gap-4">
                   <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 text-xs font-bold ${rank.bg} ${rank.text}`}>
                     {rank.emoji || i + 1}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className={`text-sm font-semibold ${isMe ? 'text-primary' : 'text-gray-800'}`}>{track}</span>
+                      <span className={`text-sm font-semibold ${isMe ? 'text-[var(--color-primary)]' : 'text-[#f3f4f6]'}`}>{track}</span>
                       {isMe && <span className="text-xs bg-orange-100 text-primary font-bold px-1.5 py-0.5 rounded-full">You</span>}
                       {totalCount > 0 && <span className="text-xs text-gray-400">📞 {calledCount}/{totalCount}</span>}
                     </div>
@@ -471,7 +470,7 @@ function LeaderboardSection({ stats, user }) {
                     </div>
                   </div>
                   <div className="text-right shrink-0">
-                    <p className={`text-sm font-bold tabular-nums ${isMe ? 'text-primary' : 'text-gray-700'}`}>
+                    <p className={`text-sm font-bold tabular-nums ${isMe ? 'text-[var(--color-primary)]' : 'text-[#d1d5db]'}`}>
                       {points || 0} <span className="text-xs font-medium text-gray-400">pts</span>
                     </p>
                   </div>
@@ -551,8 +550,8 @@ export default function Dashboard() {
     <div className="space-y-8">
       <div className="flex flex-row items-center justify-between gap-2 w-full">
         <div className="min-w-0 flex-shrink">
-          <h2 className="text-xl sm:text-2xl font-bold text-gray-900 truncate">Dashboard</h2>
-          <p className="text-[10px] sm:text-sm text-gray-500 mt-0.5 truncate">Overview of all admissions</p>
+          <h2 className="text-xl sm:text-2xl font-bold text-[#f3f4f6] truncate">Dashboard</h2>
+          <p className="text-[10px] sm:text-sm text-[#6b7280] mt-0.5 truncate">Overview of all admissions</p>
         </div>
         
         <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
@@ -601,13 +600,13 @@ export default function Dashboard() {
         {STAT_META.map(({ key, label, icon: Icon, iconBg, iconColor, text, href }) => (
           <div key={key}
             onClick={() => navigate(href)}
-            className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex flex-col gap-3 hover:shadow-md hover:border-orange-200 transition-shadow cursor-pointer">
+            className="hud-card hud-card-lift rounded-2xl p-4 flex flex-col gap-3 cursor-pointer">
             <div className={`w-10 h-10 rounded-xl ${iconBg} flex items-center justify-center`}>
               <Icon size={18} className={iconColor} />
             </div>
             <div className="flex items-start justify-between gap-1">
               <div>
-                <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">{label}</p>
+                <p className="text-xs text-[#6b7280] font-medium uppercase tracking-wide">{label}</p>
                 <p className={`text-3xl font-bold mt-0.5 ${text}`}>{stats[key] ?? 0}</p>
               </div>
               {key === 'admitted' && (stats.admittedNoFunnelCount || 0) > 0 && (
@@ -660,16 +659,16 @@ export default function Dashboard() {
         })();
         const alreadyDone = bonusHistory.some((w) => new Date(w.weekStart).toDateString() === thisWeekStart);
         return (
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+          <div className="hud-card rounded-2xl overflow-hidden">
             <button onClick={() => setBonusOpen(o => !o)}
-              className="w-full px-5 py-4 border-b border-gray-50 flex items-center justify-between flex-wrap gap-3 hover:bg-gray-50/60 transition-colors">
+              className="w-full px-5 py-4 flex items-center justify-between flex-wrap gap-3 hover:bg-white/5 transition-colors" style={{borderBottom:'1px solid rgba(255,255,255,0.07)'}}>  
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 bg-orange-50 rounded-lg flex items-center justify-center">
                   <FiGift size={15} className="text-primary" />
                 </div>
                 <div className="text-left">
-                  <p className="text-sm font-bold text-gray-800">Weekly Bonus Distribution</p>
-                  <p className="text-xs text-gray-400">Top 3 tracks — 🥇 +200 &nbsp;🥈 +150 &nbsp;🥉 +100 pts</p>
+                  <p className="text-sm font-bold text-[#f3f4f6]">Weekly Bonus Distribution</p>
+                  <p className="text-xs text-[#6b7280]">Top 3 tracks — 🥇 +200 &nbsp;🥈 +150 &nbsp;🥉 +100 pts</p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
@@ -688,9 +687,9 @@ export default function Dashboard() {
 
             {/* Bonus History — last 3 only */}
             {bonusOpen && bonusHistory.length > 0 && (
-              <div className="divide-y divide-gray-50">
+              <div>
                 {bonusHistory.slice(0, 3).map((week) => (
-                  <div key={week._id} className="px-5 py-3 flex items-center justify-between flex-wrap gap-2">
+                  <div key={week._id} className="px-5 py-3 flex items-center justify-between flex-wrap gap-2" style={{borderBottom:'1px solid rgba(255,255,255,0.05)'}}>  
                     <div className="flex items-center gap-2 text-xs text-gray-400">
                       <FiClock size={12} />
                       <span>Week of {new Date(week.weekStart).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
@@ -718,12 +717,12 @@ export default function Dashboard() {
       {/* Track-wise */}
       <div>
         <div className="flex items-center gap-2 mb-4">
-          <h3 className="text-sm font-bold text-gray-700 uppercase tracking-wide">Track-wise Progress</h3>
-          <div className="flex-1 h-px bg-gray-200" />
+          <h3 className="hud-section-label">Track-wise Progress</h3>
+          <div className="flex-1 h-px" style={{background:'rgba(255,255,255,0.08)'}} />
         </div>
 
         {(stats.trackWise || []).length === 0 ? (
-          <div className="bg-white rounded-2xl border border-dashed border-gray-200 p-10 text-center">
+          <div className="hud-card rounded-2xl p-10 text-center" style={{borderStyle:'dashed'}}>
             <div className="w-12 h-12 bg-orange-50 rounded-full flex items-center justify-center mx-auto mb-3">
               <FiAward size={22} className="text-primary" />
             </div>
@@ -740,11 +739,11 @@ export default function Dashboard() {
               return (
                 <div key={track}
                   onClick={() => navigate(`/admin-track/${track}`)}
-                  className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden hover:shadow-md hover:border-orange-200 transition-shadow cursor-pointer">
+                  className="hud-card hud-card-lift rounded-2xl overflow-hidden cursor-pointer">
                   {/* Card Header */}
-                  <div className="px-4 py-3 bg-gradient-to-r from-gray-50 to-white border-b border-gray-100">
+                  <div className="px-4 py-3" style={{borderBottom:'1px solid rgba(255,255,255,0.07)',background:'rgba(255,255,255,0.03)'}}>
                     <div className="flex items-center justify-between mb-1">
-                      <p className="font-bold text-gray-800 text-sm">{track}</p>
+                      <p className="font-bold text-[#f3f4f6] text-sm">{track}</p>
                       <div className="flex items-center gap-1.5">
                         <span className="text-xs bg-orange-50 text-primary font-bold px-2 py-0.5 rounded-full border border-orange-100">
                           🏆 {points || 0}
@@ -762,14 +761,14 @@ export default function Dashboard() {
                         </span>
                       ))}
                     </div>
-                    <p className="text-xs text-gray-400">{totalAdmitted} / {totalTarget} admitted</p>
+                    <p className="text-xs text-[#6b7280]">{totalAdmitted} / {totalTarget} admitted</p>
                   </div>
 
                   {/* Overall progress bar */}
                   <div className="px-5 pt-3 pb-1">
                     <div className="flex justify-between text-xs mb-1">
-                      <span className="text-gray-400">Overall Progress</span>
-                      <span className="font-semibold text-gray-600">{pct}%</span>
+                      <span className="text-[#6b7280]">Overall Progress</span>
+                      <span className="font-semibold text-[#9ca3af]">{pct}%</span>
                     </div>
                     <div className="w-full bg-gray-100 rounded-full h-2">
                       <div className={`h-2 rounded-full transition-all duration-700 ${pctColor}`}
@@ -778,11 +777,11 @@ export default function Dashboard() {
                   </div>
 
                   {/* Subject rows — same style as Targets page */}
-                  <div className="divide-y divide-gray-50 mt-2">
+                  <div className="mt-2">
                     {subjects.map(({ subject, target, admitted }) => {
                       const sPct = target > 0 ? Math.round((admitted / target) * 100) : 0;
                       return (
-                        <div key={subject} className="flex items-center justify-between px-5 py-3 hover:bg-gray-50/70 transition-colors">
+                        <div key={subject} className="flex items-center justify-between px-5 py-3 hover:bg-white/[0.03] transition-colors" style={{borderBottom:'1px solid rgba(255,255,255,0.04)'}}>  
                           <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${SUBJECT_COLORS[subject] || 'bg-gray-100 text-gray-600'}`}>
                             {subject}
                           </span>
@@ -791,7 +790,7 @@ export default function Dashboard() {
                               <div className="h-1.5 rounded-full bg-primary/60 transition-all duration-500"
                                 style={{ width: `${Math.min(sPct, 100)}%` }} />
                             </div>
-                            <span className="text-xs font-bold tabular-nums text-gray-700">{admitted}/{target}</span>
+                            <span className="text-xs font-bold tabular-nums text-[#d1d5db]">{admitted}/{target}</span>
                             <span className={`text-xs font-bold tabular-nums px-1.5 py-0.5 rounded-md ${sPct >= 75 ? 'bg-emerald-50 text-emerald-600' :
                                 sPct >= 40 ? 'bg-amber-50 text-amber-600' :
                                   'bg-rose-50 text-rose-500'

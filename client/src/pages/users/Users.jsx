@@ -7,6 +7,14 @@ import BottomSheet from '../../components/BottomSheet';
 
 const emptyForm = { name: '', email: '', password: '', role: 'track_incharge', track: '', isActive: true };
 
+const ROLE_COLORS = {
+  admin:         { bg: 'rgba(139,92,246,0.12)', text: '#a78bfa', border: 'rgba(139,92,246,0.25)' },
+  manager:       { bg: 'rgba(16,185,129,0.12)', text: '#34d399', border: 'rgba(16,185,129,0.25)' },
+  track_incharge:{ bg: 'rgba(6,182,212,0.12)',  text: '#22d3ee', border: 'rgba(6,182,212,0.25)'  },
+  interviewer:   { bg: 'rgba(59,130,246,0.12)', text: '#60a5fa', border: 'rgba(59,130,246,0.25)' },
+  receptionist:  { bg: 'rgba(245,158,11,0.12)', text: '#fbbf24', border: 'rgba(245,158,11,0.25)' },
+};
+
 export default function Users() {
   const [users, setUsers] = useState([]);
   const [activeTab, setActiveTab] = useState('all');
@@ -20,19 +28,17 @@ export default function Users() {
     { key: 'all', label: 'All' },
     { key: 'admin', label: 'Admin' },
     { key: 'manager', label: 'Manager' },
-    { key: 'track_incharge', label: 'Track Incharge' },
+    { key: 'track_incharge', label: 'Track' },
     { key: 'interviewer', label: 'Interviewer' },
-    { key: 'receptionist', label: 'Receptionist' },
+    { key: 'receptionist', label: 'Reception' },
   ];
-  const filteredUsers = activeTab === 'all' ? users : users.filter((u) => u.role === activeTab);
+  const filteredUsers = activeTab === 'all' ? users : users.filter(u => u.role === activeTab);
 
-  const fetchUsers = () => api.get('/users').then(({ data }) => setUsers(data)).catch(() => toast.error('Failed to load users'));
-
+  const fetchUsers = () => api.get('/users').then(({ data }) => setUsers(data)).catch(() => toast.error('Failed'));
   useEffect(() => { fetchUsers(); }, []);
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
+    e.preventDefault(); setLoading(true);
     try {
       if (editId) await api.put(`/users/${editId}`, form);
       else await api.post('/users', form);
@@ -50,142 +56,169 @@ export default function Users() {
 
   const handleDelete = async (id) => {
     if (!window.confirm('Delete this user?')) return;
-    try { await api.delete(`/users/${id}`); toast.success('User deleted'); fetchUsers(); }
+    try { await api.delete(`/users/${id}`); toast.success('Deleted'); fetchUsers(); }
     catch { toast.error('Delete failed'); }
   };
 
+  const inputCls = "w-full rounded-xl px-3 py-2.5 text-sm outline-none transition-all";
+
   return (
     <div>
+      {/* Header */}
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold text-gray-800">Users</h2>
+        <div>
+          <h2 className="text-2xl font-bold text-[#f3f4f6]">Users</h2>
+          <p className="text-sm text-[#6b7280] mt-0.5">{users.length} total users</p>
+        </div>
         <button onClick={() => { setShowForm(true); setForm(emptyForm); setEditId(null); }}
-          className="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary-dark text-sm">
-          <FiPlus /> Add User
+          className="hud-btn-primary">
+          <FiPlus size={15} /> Add User
         </button>
       </div>
 
-      <BottomSheet
-        open={showForm}
-        onClose={() => { setShowForm(false); setEditId(null); }}
-        title={editId ? 'Edit User' : 'Add New User'}
-        maxWidth="max-w-lg"
-      >
+      {/* Form Modal */}
+      <BottomSheet open={showForm} onClose={() => { setShowForm(false); setEditId(null); }}
+        title={editId ? 'Edit User' : 'Add New User'} maxWidth="max-w-lg">
         <form onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
           {[['Name', 'name', 'text'], ['Email', 'email', 'email']].map(([label, key, type]) => (
             <div key={key}>
-              <label className="block text-sm font-medium text-gray-700 mb-1">{label}<span className="text-red-500">*</span></label>
+              <label className="block text-xs font-semibold text-[#9ca3af] uppercase tracking-wide mb-1.5">
+                {label} <span className="text-red-400">*</span>
+              </label>
               <input type={type} value={form[key]} required
-                onChange={(e) => setForm({ ...form, [key]: e.target.value })}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
+                onChange={e => setForm({ ...form, [key]: e.target.value })}
+                className={inputCls} />
             </div>
           ))}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Password{!editId && <span className="text-red-500">*</span>}</label>
+            <label className="block text-xs font-semibold text-[#9ca3af] uppercase tracking-wide mb-1.5">
+              Password {!editId && <span className="text-red-400">*</span>}
+            </label>
             <div className="relative">
               <input type={showPassword ? 'text' : 'password'} value={form.password} required={!editId}
-                placeholder={editId ? 'Leave blank to keep current' : ''}
-                onChange={(e) => setForm({ ...form, password: e.target.value })}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 pr-9 text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
+                placeholder={editId ? 'Leave blank to keep' : ''}
+                onChange={e => setForm({ ...form, password: e.target.value })}
+                className={`${inputCls} pr-10`} />
               <button type="button" onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
-                {showPassword ? <FiEyeOff size={16} /> : <FiEye size={16} />}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#6b7280] hover:text-[#9ca3af]">
+                {showPassword ? <FiEyeOff size={15} /> : <FiEye size={15} />}
               </button>
             </div>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
-            <select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none">
-              {ROLES.map((r) => <option key={r} value={r}>{r.replace('_', ' ')}</option>)}
+            <label className="block text-xs font-semibold text-[#9ca3af] uppercase tracking-wide mb-1.5">Role</label>
+            <select value={form.role} onChange={e => setForm({ ...form, role: e.target.value })} className={inputCls}>
+              {ROLES.map(r => <option key={r} value={r}>{r.replace('_', ' ')}</option>)}
             </select>
           </div>
           {(form.role === 'track_incharge' || form.role === 'interviewer') && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Track<span className="text-red-500">*</span></label>
-              <select value={form.track} required onChange={(e) => setForm({ ...form, track: e.target.value })}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none">
+              <label className="block text-xs font-semibold text-[#9ca3af] uppercase tracking-wide mb-1.5">
+                Track <span className="text-red-400">*</span>
+              </label>
+              <select value={form.track} required onChange={e => setForm({ ...form, track: e.target.value })} className={inputCls}>
                 <option value="">Select Track</option>
-                {MAIN_TRACKS.map((t) => <option key={t}>{t}</option>)}
+                {MAIN_TRACKS.map(t => <option key={t}>{t}</option>)}
               </select>
             </div>
           )}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2.5">
             <input type="checkbox" id="isActive" checked={form.isActive}
-              onChange={(e) => setForm({ ...form, isActive: e.target.checked })} />
-            <label htmlFor="isActive" className="text-sm text-gray-700">Active</label>
+              onChange={e => setForm({ ...form, isActive: e.target.checked })}
+              className="w-4 h-4 rounded" />
+            <label htmlFor="isActive" className="text-sm text-[#d1d5db]">Active</label>
           </div>
-          <div className="sm:col-span-2">
-            <button type="submit" disabled={loading}
-              className="w-full bg-primary text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-primary-dark disabled:opacity-60 transition-colors">
+          <div className="sm:col-span-2 mt-2">
+            <button type="submit" disabled={loading} className="hud-btn-primary w-full py-3">
               {loading ? 'Saving...' : editId ? 'Update User' : 'Create User'}
             </button>
           </div>
         </form>
       </BottomSheet>
 
-      <div className="grid grid-cols-6 mb-4 border border-gray-200 rounded-xl overflow-hidden">
-        {tabs.map((t) => (
-          <button key={t.key} onClick={() => setActiveTab(t.key)}
-            className={`flex flex-col items-center justify-center py-2 px-1 text-xs font-medium transition-colors border-r last:border-r-0 border-gray-200 ${
-              activeTab === t.key ? 'bg-primary text-white' : 'bg-white text-gray-500 hover:bg-gray-50'
-            }`}>
-            <span className="truncate w-full text-center">{t.label}</span>
-            <span className={`mt-0.5 text-[10px] px-1.5 py-0.5 rounded-full font-semibold ${
-              activeTab === t.key ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500'
-            }`}>
-              {t.key === 'all' ? users.length : users.filter((u) => u.role === t.key).length}
-            </span>
-          </button>
-        ))}
+      {/* Tabs */}
+      <div className="flex gap-1 mb-5 p-1 rounded-xl overflow-x-auto" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
+        {tabs.map(t => {
+          const count = t.key === 'all' ? users.length : users.filter(u => u.role === t.key).length;
+          const isActive = activeTab === t.key;
+          return (
+            <button key={t.key} onClick={() => setActiveTab(t.key)}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all whitespace-nowrap"
+              style={{
+                background: isActive ? 'var(--color-primary)' : 'transparent',
+                color: isActive ? 'white' : '#9ca3af',
+                boxShadow: isActive ? '0 0 12px var(--color-primary-glow)' : 'none',
+              }}>
+              {t.label}
+              <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold"
+                style={{ background: isActive ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.08)' }}>
+                {count}
+              </span>
+            </button>
+          );
+        })}
       </div>
 
+      {/* User Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredUsers.map((u) => (
-          <div key={u._id} className="bg-white rounded-xl shadow p-5 flex flex-col gap-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center font-bold text-lg">
-                  {u.name.charAt(0).toUpperCase()}
+        {filteredUsers.map(u => {
+          const roleStyle = ROLE_COLORS[u.role] || ROLE_COLORS.admin;
+          return (
+            <div key={u._id} className="hud-card hud-card-lift p-5 flex flex-col gap-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-base shrink-0"
+                    style={{ background: 'linear-gradient(135deg, var(--color-primary), var(--color-primary-dark))', boxShadow: '0 0 12px var(--color-primary-glow)' }}>
+                    {u.name.charAt(0).toUpperCase()}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="font-semibold text-[#f3f4f6] truncate">{u.name}</p>
+                    <p className="text-xs text-[#6b7280] truncate">{u.email}</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="font-semibold text-gray-800">{u.name}</p>
-                  <p className="text-xs text-gray-500">{u.email}</p>
-                </div>
+                <span className="text-[10px] font-bold px-2 py-1 rounded-full shrink-0"
+                  style={{ background: u.isActive ? 'rgba(16,185,129,0.12)' : 'rgba(239,68,68,0.12)', color: u.isActive ? '#34d399' : '#f87171', border: `1px solid ${u.isActive ? 'rgba(16,185,129,0.25)' : 'rgba(239,68,68,0.25)'}` }}>
+                  {u.isActive ? 'Active' : 'Inactive'}
+                </span>
               </div>
-              <span className={`px-2 py-1 rounded-full text-xs font-medium ${u.isActive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                {u.isActive ? 'Active' : 'Inactive'}
-              </span>
-            </div>
-            <div className="flex flex-col gap-1 text-sm text-gray-600">
-              <div className="flex justify-between">
-                <span className="text-gray-400">Role</span>
-                <span className="capitalize font-medium">{u.role.replace('_', ' ')}</span>
+
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between items-center">
+                  <span className="text-[#6b7280]">Role</span>
+                  <span className="text-xs font-semibold px-2.5 py-1 rounded-full capitalize"
+                    style={{ background: roleStyle.bg, color: roleStyle.text, border: `1px solid ${roleStyle.border}` }}>
+                    {u.role.replace('_', ' ')}
+                  </span>
+                </div>
+                {u.track && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-[#6b7280]">Track</span>
+                    <span className="text-[#d1d5db] font-medium">{u.track}</span>
+                  </div>
+                )}
+                {u.role === 'track_incharge' && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-[#6b7280]">Points</span>
+                    <span className="font-bold" style={{ color: 'var(--color-primary)' }}>🏆 {u.points || 0}</span>
+                  </div>
+                )}
               </div>
-              {u.track && (
-                <div className="flex justify-between">
-                  <span className="text-gray-400">Track</span>
-                  <span className="font-medium">{u.track}</span>
-                </div>
-              )}
-              {u.role === 'track_incharge' && (
-                <div className="flex justify-between">
-                  <span className="text-gray-400">Points</span>
-                  <span className="font-semibold text-primary">🏆 {u.points || 0}</span>
-                </div>
-              )}
+
+              <div className="flex gap-2 pt-3" style={{ borderTop: '1px solid rgba(255,255,255,0.07)' }}>
+                <button onClick={() => handleEdit(u)}
+                  className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
+                  style={{ background: 'rgba(6,182,212,0.1)', color: 'var(--color-primary)', border: '1px solid rgba(6,182,212,0.2)' }}>
+                  <FiEdit2 size={12} /> Edit
+                </button>
+                <button onClick={() => handleDelete(u._id)}
+                  className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors ml-auto"
+                  style={{ background: 'rgba(239,68,68,0.1)', color: '#f87171', border: '1px solid rgba(239,68,68,0.2)' }}>
+                  <FiTrash2 size={12} /> Delete
+                </button>
+              </div>
             </div>
-            <div className="flex gap-2 pt-1 border-t border-gray-100">
-              <button onClick={() => handleEdit(u)}
-                className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors">
-                <FiEdit2 size={13} /> Edit
-              </button>
-              <button onClick={() => handleDelete(u._id)}
-                className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-rose-50 text-rose-500 hover:bg-rose-100 transition-colors ml-auto">
-                <FiTrash2 size={13} /> Delete
-              </button>
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
