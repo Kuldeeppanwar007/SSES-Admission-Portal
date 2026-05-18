@@ -198,12 +198,23 @@ const getStudents = async (req, res) => {
           'B.Tech(AI/ML)': ['B.Tech(AI/ML)', 'AI/ML', 'AIML', 'ai/ml', 'aiml', 'B.Tech(AIML)', 'b.tech(ai/ml)', 'B.tech(AI/ML)'],
         };
         const aliases = SUBJECT_TO_BRANCHES[sf] || [sf];
-        // branch ya subject dono se filter karo
+        const otherCanonicalAliases = Object.entries(SUBJECT_TO_BRANCHES)
+          .filter(([key]) => key !== sf)
+          .flatMap(([, vals]) => vals);
+
+        // branch ya subject dono se filter karo, par agar subject se match ho raha hai to branch kisi aur canonical branch ka nahi hona chahiye
         const branchSubjectCondition = { $or: [
           { branch: { $in: aliases } },
           { branch: { $regex: `^${sf.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, $options: 'i' } },
-          { subject: { $in: aliases } },
-          { subject: { $regex: `^${sf.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, $options: 'i' } },
+          { 
+            $and: [
+              { $or: [
+                { subject: { $in: aliases } },
+                { subject: { $regex: `^${sf.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, $options: 'i' } },
+              ]},
+              { branch: { $not: { $regex: `^(${otherCanonicalAliases.map(a => a.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})$`, $options: 'i' } } }
+            ]
+          }
         ]};
         delete filter.subject;
         if (filter.$or) {
