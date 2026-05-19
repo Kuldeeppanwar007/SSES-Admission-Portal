@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import api from '../../api/axios';
 import { STATUSES, STATUS_COLORS } from '../../utils/constants';
@@ -7,10 +7,12 @@ import toast from 'react-hot-toast';
 import {
   FiEdit2, FiArrowLeft, FiImage, FiFileText, FiExternalLink,
   FiClock, FiDownload, FiSend, FiPhone, FiMapPin, FiUser,
-  FiCalendar, FiBook, FiAward, FiCheckCircle, FiAlertCircle,
+  FiCalendar, FiBook, FiAward, FiCheckCircle, FiAlertCircle, FiChevronDown,
 } from 'react-icons/fi';
 import BottomSheet from '../../components/BottomSheet';
 import ReceptionEntryModal from '../../components/ReceptionEntryModal';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 export default function StudentDetail() {
   const { id } = useParams();
@@ -29,17 +31,87 @@ export default function StudentDetail() {
   const [receptionEntries, setReceptionEntries] = useState([]);
   const [receptionLoading, setReceptionLoading] = useState(true);
   const [receptionOpen, setReceptionOpen] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
+  const exportRef = useRef(null);
 
-  const handleExport = async () => {
+  useEffect(() => {
+    const handler = (e) => {
+      if (exportRef.current && !exportRef.current.contains(e.target)) setExportOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const handleExport = async (format = 'xlsx') => {
     setExporting(true);
     try {
-      const res = await api.post('/students/export', { ids: [id] }, { responseType: 'blob' });
-      const url = window.URL.createObjectURL(new Blob([res.data]));
-      const a = document.createElement('a');
-      a.href = url; a.download = `${student?.name || 'student'}_export.xlsx`; a.click();
-      window.URL.revokeObjectURL(url);
-      toast.success('Exported successfully');
-    } catch { toast.error('Export failed'); }
+      const now = new Date();
+      const dateStr = `${now.getDate().toString().padStart(2,'0')}-${(now.getMonth()+1).toString().padStart(2,'0')}-${now.getFullYear()}`;
+      const namePart = student?.name ? student.name.replace(/[^a-zA-Z0-9]/g, '_') : 'student';
+      const filename = `${namePart}_export_${dateStr}`;
+
+      if (format === 'pdf') {
+        const res = await api.post('/students/export', { ids: [id] }, { params: { format: 'json' } });
+        const rows = res.data;
+        if (!rows || rows.length === 0) {
+          toast.error('No data to export');
+          return;
+        }
+
+        const doc = new jsPDF('landscape');
+        doc.setFontSize(16);
+        doc.setFont('helvetica', 'bold');
+        doc.text(`Student Export (${dateStr})`, 10, 15);
+        
+        const headers = Object.keys(rows[0]);
+        const data = rows.map(row => Object.values(row).map(v => v ? String(v) : ''));
+
+        autoTable(doc, {
+          startY: 22,
+          head: [headers],
+          body: data,
+          theme: 'grid',
+          styles: { 
+            font: 'helvetica',
+            fontSize: 8, 
+            cellPadding: 3,
+            lineColor: [226, 232, 240],
+            lineWidth: 0.1,
+            textColor: [51, 65, 85],
+          },
+          headStyles: { 
+            fillColor: [249, 115, 22],
+            textColor: [255, 255, 255], 
+            fontStyle: 'bold',
+            halign: 'center'
+          },
+          columnStyles: {
+            0: { halign: 'center', cellWidth: 10 },
+            4: { halign: 'center' },
+            5: { halign: 'center' },
+            10: { halign: 'center' },
+            13: { halign: 'center' }
+          },
+          alternateRowStyles: { 
+            fillColor: [255, 251, 245]
+          },
+          margin: { top: 20, left: 10, right: 10 }
+        });
+
+        doc.save(`${filename}.pdf`);
+        toast.success('Exported as PDF successfully');
+      } else {
+        const res = await api.post('/students/export', { ids: [id] }, { responseType: 'blob' });
+        const url = window.URL.createObjectURL(new Blob([res.data]));
+        const a = document.createElement('a');
+        a.href = url; a.download = `${filename}.xlsx`; a.click();
+        window.URL.revokeObjectURL(url);
+        toast.success('Exported as Excel successfully');
+      }
+    } catch (err) { 
+      console.error("Export error:", err);
+      toast.error('Export failed'); 
+    }
     finally { setExporting(false); }
   };
 
@@ -708,10 +780,25 @@ export default function StudentDetail() {
             className="flex items-center gap-1.5 bg-primary text-white px-3 py-1.5 rounded-lg text-sm hover:bg-primary-dark">
             <FiEdit2 size={13} /> Edit
           </button>
-          <button onClick={handleExport} disabled={exporting}
-            className="flex items-center gap-1.5 border border-orange-200 text-primary px-3 py-1.5 rounded-lg text-sm hover:bg-orange-50 disabled:opacity-60">
-            <FiDownload size={13} /> {exporting ? 'Exporting...' : 'Export'}
-          </button>
+          <div className="relative" ref={exportRef}>
+            <button onClick={() => setExportOpen(!exportOpen)} disabled={exporting}
+              className="flex items-center gap-1.5 border border-primary text-primary px-3 py-1.5 rounded-lg text-sm hover:bg-orange-50 disabled:opacity-60 transition-colors">
+              <FiDownload size={13} /> {exporting ? 'Exporting...' : 'Export'}
+              <FiChevronDown size={14} className={`transition-transform ${exportOpen ? 'rotate-180' : ''}`} />
+            </button>
+            {exportOpen && (
+              <div className="absolute right-0 mt-1 w-32 bg-white rounded-xl shadow-lg border border-gray-100 py-1 z-50">
+                <button onClick={() => { handleExport('xlsx'); setExportOpen(false); }}
+                  className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 hover:text-primary">
+                  Excel
+                </button>
+                <button onClick={() => { handleExport('pdf'); setExportOpen(false); }}
+                  className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 hover:text-primary">
+                  PDF
+                </button>
+              </div>
+            )}
+          </div>
           <button onClick={handleViewHistory}
             className="flex items-center gap-1.5 border border-gray-300 text-gray-600 px-3 py-1.5 rounded-lg text-sm hover:bg-gray-50">
             <FiClock size={13} /> History

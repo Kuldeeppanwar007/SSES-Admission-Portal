@@ -1078,6 +1078,10 @@ const exportStudents = async (req, res) => {
       'Added On':         s.createdAt ? new Date(s.createdAt).toLocaleDateString('en-IN') : '',
     }));
 
+    if (req.query.format === 'json') {
+      return res.json(rows);
+    }
+
     const wb = xlsx.utils.book_new();
     const ws = xlsx.utils.json_to_sheet(rows);
     ws['!cols'] = [6, 22, 22, 14, 14, 14, 12, 20, 30, 14, 12, 30, 16, 14].map((w) => ({ wch: w }));

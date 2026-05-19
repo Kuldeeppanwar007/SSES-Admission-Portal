@@ -10,6 +10,8 @@ import DatePicker from '../../components/DatePicker';
 import ReceptionEntryModal from '../../components/ReceptionEntryModal';
 import { isOnline, cacheStudents, getCachedStudents } from '../../utils/offlineQueue';
 import { usePerformanceMonitor, useDebounce } from '../../hooks/usePerformance';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 const RATING = [
   { value: 1, label: '1. Very Weak' },
@@ -403,12 +405,20 @@ export default function Students() {
   const [maxInterviewRound, setMaxInterviewRound] = useState(3);
   const [mobileActionsOpen, setMobileActionsOpen] = useState(false);
   const mobileActionsRef = useRef(null);
+  const [exportDesktopOpen, setExportDesktopOpen] = useState(false);
+  const exportDesktopRef = useRef(null);
+  const [exportMobileOpen, setExportMobileOpen] = useState(false);
+  const exportMobileRef = useRef(null);
   const [branches, setBranches] = useState([]);
   const [villages, setVillages] = useState([]);
   const [schools, setSchools] = useState([]);
 
   useEffect(() => {
-    const handler = (e) => { if (mobileActionsRef.current && !mobileActionsRef.current.contains(e.target)) setMobileActionsOpen(false); };
+    const handler = (e) => { 
+      if (mobileActionsRef.current && !mobileActionsRef.current.contains(e.target)) setMobileActionsOpen(false); 
+      if (exportDesktopRef.current && !exportDesktopRef.current.contains(e.target)) setExportDesktopOpen(false);
+      if (exportMobileRef.current && !exportMobileRef.current.contains(e.target)) setExportMobileOpen(false);
+    };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, []);
@@ -588,38 +598,91 @@ export default function Students() {
   const toggleSelect = (id) => setSelected((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
   const toggleAll = () => setSelected(selected.length === students.length ? [] : students.map((s) => s._id));
 
-  const handleExport = async (ids = []) => {
+  const handleExport = async (ids = [], format = 'xlsx') => {
     setExporting(true);
     try {
       const params = ids.length === 0 ? { ...filters, ...(tab === 'disabled' ? { status: 'Disabled' } : {}) } : {};
-      const res = await api.post('/students/export', { ids }, { params, responseType: 'blob' });
-      const url = window.URL.createObjectURL(new Blob([res.data]));
-      const a = document.createElement('a');
-      a.href = url;
-
+      
       const now = new Date();
       const dateStr = `${now.getDate().toString().padStart(2,'0')}-${(now.getMonth()+1).toString().padStart(2,'0')}-${now.getFullYear()}`;
-
+      
       let filename;
+      let namePart = 'student';
       if (ids.length === 1) {
-        // Single student — student ka naam
         const student = students.find(s => s._id === ids[0]);
-        const namePart = student ? student.name.replace(/[^a-zA-Z0-9]/g, '_') : 'student';
-        filename = `${namePart}_${dateStr}.xlsx`;
+        namePart = student ? student.name.replace(/[^a-zA-Z0-9]/g, '_') : 'student';
+        filename = `${namePart}_${dateStr}`;
       } else if (ids.length > 1) {
-        // Selected multiple — selected + date
-        filename = `students_selected_${dateStr}.xlsx`;
+        filename = `students_selected_${dateStr}`;
       } else {
-        // Export all — track filter laga ho to track name, warna "all"
         const trackPart = filters.track ? filters.track.replace(/[^a-zA-Z0-9]/g, '_') : 'all';
-        filename = `students_${trackPart}_${dateStr}.xlsx`;
+        filename = `students_${trackPart}_${dateStr}`;
       }
 
-      a.download = filename;
-      a.click();
-      window.URL.revokeObjectURL(url);
-      toast.success(`${ids.length > 0 ? ids.length : 'All'} students exported`);
-    } catch { toast.error('Export failed'); }
+      if (format === 'pdf') {
+        const res = await api.post('/students/export', { ids }, { params: { ...params, format: 'json' } });
+        const rows = res.data;
+        if (!rows || rows.length === 0) {
+          toast.error('No data to export');
+          return;
+        }
+
+        const doc = new jsPDF('landscape');
+        doc.setFontSize(16);
+        doc.setFont('helvetica', 'bold');
+        doc.text(`Students Export (${dateStr})`, 10, 15);
+        
+        const headers = Object.keys(rows[0]);
+        const data = rows.map(row => Object.values(row).map(v => v ? String(v) : ''));
+
+        autoTable(doc, {
+          startY: 22,
+          head: [headers],
+          body: data,
+          theme: 'grid',
+          styles: { 
+            font: 'helvetica',
+            fontSize: 8, 
+            cellPadding: 3,
+            lineColor: [226, 232, 240],
+            lineWidth: 0.1,
+            textColor: [51, 65, 85],
+          },
+          headStyles: { 
+            fillColor: [249, 115, 22],
+            textColor: [255, 255, 255], 
+            fontStyle: 'bold',
+            halign: 'center'
+          },
+          columnStyles: {
+            0: { halign: 'center', cellWidth: 10 },
+            4: { halign: 'center' },
+            5: { halign: 'center' },
+            10: { halign: 'center' },
+            13: { halign: 'center' }
+          },
+          alternateRowStyles: { 
+            fillColor: [255, 251, 245]
+          },
+          margin: { top: 20, left: 10, right: 10 }
+        });
+
+        doc.save(`${filename}.pdf`);
+        toast.success(`${ids.length > 0 ? ids.length : 'All'} students exported as PDF`);
+      } else {
+        const res = await api.post('/students/export', { ids }, { params, responseType: 'blob' });
+        const url = window.URL.createObjectURL(new Blob([res.data]));
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${filename}.xlsx`;
+        a.click();
+        window.URL.revokeObjectURL(url);
+        toast.success(`${ids.length > 0 ? ids.length : 'All'} students exported as Excel`);
+      }
+    } catch (err) { 
+      console.error("Export error:", err);
+      toast.error('Export failed'); 
+    }
     finally { setExporting(false); }
   };
 
@@ -756,17 +819,25 @@ export default function Students() {
               <FiFileText size={13} /> Reception Entry
             </button>
           )}
-          {selected.length > 0 ? (
-            <button onClick={() => handleExport(selected)} disabled={exporting}
-              className="flex items-center gap-1 bg-primary text-white px-3 py-1.5 rounded-lg text-sm disabled:opacity-60">
-              <FiDownload size={13} /> Export ({selected.length})
+          <div className="relative" ref={exportDesktopRef}>
+            <button onClick={() => setExportDesktopOpen(!exportDesktopOpen)} disabled={exporting}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors disabled:opacity-60 ${selected.length > 0 ? 'bg-primary text-white hover:bg-primary-dark' : 'border border-primary text-primary hover:bg-orange-50'}`}>
+              <FiDownload size={13} /> {exporting ? 'Exporting...' : (selected.length > 0 ? `Export (${selected.length})` : 'Export All')}
+              <FiChevronDown size={14} className={`transition-transform ${exportDesktopOpen ? 'rotate-180' : ''}`} />
             </button>
-          ) : (
-            <button onClick={() => handleExport([])} disabled={exporting}
-              className="flex items-center gap-1 bg-primary text-white px-3 py-1.5 rounded-lg text-sm disabled:opacity-60">
-              <FiDownload size={13} /> {exporting ? 'Exporting...' : 'Export All'}
-            </button>
-          )}
+            {exportDesktopOpen && (
+              <div className="absolute right-0 mt-1 w-32 bg-white rounded-xl shadow-lg border border-gray-100 py-1 z-50">
+                <button onClick={() => { handleExport(selected, 'xlsx'); setExportDesktopOpen(false); }}
+                  className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 hover:text-primary">
+                  Excel
+                </button>
+                <button onClick={() => { handleExport(selected, 'pdf'); setExportDesktopOpen(false); }}
+                  className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 hover:text-primary">
+                  PDF
+                </button>
+              </div>
+            )}
+          </div>
           {!isDisabledTab && (
             <>
               <button onClick={handleDownloadTemplate}
@@ -802,17 +873,25 @@ export default function Students() {
             <FiFileText size={13} /> Reception Entry
           </button>
         )}
-        {selected.length > 0 ? (
-          <button onClick={() => handleExport(selected)} disabled={exporting}
-            className="flex-1 flex items-center justify-center gap-1 bg-primary text-white py-2 rounded-lg text-sm font-medium disabled:opacity-60">
-            <FiDownload size={13} /> Export ({selected.length})
+        <div className="relative flex-1" ref={exportMobileRef}>
+          <button onClick={() => setExportMobileOpen(!exportMobileOpen)} disabled={exporting}
+            className={`w-full flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-60 ${selected.length > 0 ? 'bg-primary text-white hover:bg-primary-dark' : 'bg-primary text-white hover:bg-primary-dark'}`}>
+            <FiDownload size={13} /> {exporting ? 'Exporting...' : (selected.length > 0 ? `Export (${selected.length})` : 'Export')}
+            <FiChevronDown size={14} className={`transition-transform ${exportMobileOpen ? 'rotate-180' : ''}`} />
           </button>
-        ) : (
-          <button onClick={() => handleExport([])} disabled={exporting}
-            className="flex-1 flex items-center justify-center gap-1 bg-primary text-white py-2 rounded-lg text-sm font-medium disabled:opacity-60">
-            <FiDownload size={13} /> {exporting ? 'Exporting...' : 'Export'}
-          </button>
-        )}
+          {exportMobileOpen && (
+            <div className="absolute right-0 mt-1 w-full bg-white rounded-xl shadow-lg border border-gray-100 py-1 z-50">
+              <button onClick={() => { handleExport(selected, 'xlsx'); setExportMobileOpen(false); }}
+                className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 hover:text-primary">
+                Excel
+              </button>
+              <button onClick={() => { handleExport(selected, 'pdf'); setExportMobileOpen(false); }}
+                className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 hover:text-primary">
+                PDF
+              </button>
+            </div>
+          )}
+        </div>
         {!isDisabledTab && (
           <div className="relative flex-1" ref={mobileActionsRef}>
             <button onClick={() => setMobileActionsOpen(o => !o)}
