@@ -442,32 +442,20 @@ export default function DailySummary() {
           {/* Full-width big cards */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {[
-              { label: 'Total Visitors', value: summary.receptionStats.total || 0,       icon: FiUsers,       bg: 'from-sky-500 to-sky-400',     purpose: null },
-              { label: 'Inquiry',        value: summary.receptionStats.inquiry || 0,      icon: FiTrendingUp,  bg: 'from-amber-500 to-amber-400',  purpose: 'Inquiry' },
-              { label: 'Interview',      value: summary.receptionStats.interview || 0,    icon: FiCheckCircle, bg: 'from-emerald-500 to-emerald-400', purpose: 'Interview' },
-              { label: 'Re-Interview',   value: summary.receptionStats.reInterview || 0,  icon: FiEdit,        bg: 'from-rose-500 to-rose-400',    purpose: 'Re-Interview' },
-            ].map(({ label, value, icon: Icon, bg, purpose }) => (
-              <div key={label} onClick={() => openDrawer(
+              { label: 'Total Visitors', value: summary.receptionStats.total || 0,       icon: FiUsers,       iconBg: 'bg-sky-50',     iconColor: 'text-sky-500',     purpose: null },
+              { label: 'Inquiry',        value: summary.receptionStats.inquiry || 0,      icon: FiTrendingUp,  iconBg: 'bg-amber-50',   iconColor: 'text-amber-500',   purpose: 'Inquiry' },
+              { label: 'Interview',      value: summary.receptionStats.interview || 0,    icon: FiCheckCircle, iconBg: 'bg-emerald-50', iconColor: 'text-emerald-500', purpose: 'Interview' },
+              { label: 'Re-Interview',   value: summary.receptionStats.reInterview || 0,  icon: FiEdit,        iconBg: 'bg-rose-50',    iconColor: 'text-rose-500',    purpose: 'Re-Interview' },
+            ].map(({ label, value, icon: Icon, iconBg, iconColor, purpose }) => (
+              <StatCard key={label} label={label} value={value} icon={Icon}
+                iconBg={iconBg} iconColor={iconColor}
+                onClick={() => openDrawer(
                   purpose ? `${label} Entries` : 'Total Visitors',
                   `${displayDate} — ${value} entr${value === 1 ? 'y' : 'ies'}`,
                   purpose ? receptionEntries.filter(e => e.visitPurpose === purpose) : receptionEntries,
                   '', `Koi ${label} entry nahi mili`, 'reception'
                 )}
-                className="cursor-pointer group rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all">
-                <div className={`bg-gradient-to-br ${bg} p-5 flex items-center justify-between`}>
-                  <div>
-                    <p className="text-white/80 text-xs font-semibold uppercase tracking-wider mb-1">{label}</p>
-                    <p className="text-white text-4xl font-bold">{value}</p>
-                  </div>
-                  <div className="w-14 h-14 rounded-2xl bg-white/20 flex items-center justify-center">
-                    <Icon size={28} className="text-white" />
-                  </div>
-                </div>
-                <div className="bg-white px-5 py-2.5 flex items-center justify-between border-t border-gray-100">
-                  <span className="text-xs text-gray-500 font-medium">View entries</span>
-                  <span className="text-xs text-primary font-semibold opacity-0 group-hover:opacity-100 transition-opacity">→</span>
-                </div>
-              </div>
+              />
             ))}
           </div>
 
