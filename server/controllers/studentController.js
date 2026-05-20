@@ -625,13 +625,25 @@ const updateStatus = async (req, res) => {
 
 // Get status history
 const getStatusHistory = async (req, res) => {
-  const StatusHistory = require('../models/StatusHistory');
-  const filter = { student: req.params.id };
-  if (req.user.role === 'track_incharge') filter['changedBy'] = req.user._id;
-  const history = await StatusHistory.find(filter)
-    .populate('changedBy', 'name role')
-    .sort({ createdAt: -1 });
-  res.json(history);
+  try {
+    const StatusHistory = require('../models/StatusHistory');
+    const filter = { student: req.params.id };
+    
+    if (req.user.role === 'track_incharge') {
+      const Student = require('../models/Student');
+      const student = await Student.findById(req.params.id).select('track');
+      if (!student || student.track !== req.user.track) {
+        return res.status(403).json({ message: 'Access denied' });
+      }
+    }
+
+    const history = await StatusHistory.find(filter)
+      .populate('changedBy', 'name role')
+      .sort({ createdAt: -1 });
+    res.json(history);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 };
 
 // Get all activity history (for Activity Log page)
