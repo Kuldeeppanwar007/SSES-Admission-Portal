@@ -1162,7 +1162,7 @@ export default function Students() {
                     <input type="checkbox" checked={allSelected} onChange={toggleAll}
                       className="rounded border-gray-300 text-primary focus:ring-primary cursor-pointer" />
                   </th>
-                  {['S.N.', 'Form No.', 'Name', 'Father Name', 'Track', 'Town', 'Mobile', 'Form', 'Status', 'Attempt', 'History', 'Actions'].map((h) => (
+                  {['S.N.', 'Form No.', 'Name', 'Adm. Type', 'Father Name', 'Track', 'Town', 'Mobile', 'Form', 'Status', 'Attempt', 'History', 'Actions'].map((h) => (
                     <th key={h} className={`px-4 py-3 text-xs font-semibold uppercase text-gray-500 ${h === 'Attempt' ? 'text-center' : 'text-left'}`}>
                       {h === 'Form No.' ? (
                         <div className="flex items-center gap-1 cursor-pointer hover:text-primary transition-colors select-none" onClick={() => {
@@ -1201,12 +1201,15 @@ export default function Students() {
                       ) : <span className="text-gray-300 text-xs">—</span>}
                     </td>
                     <td className="px-4 py-3 font-medium text-gray-800">
-                      <span className="flex items-center gap-1.5">
+                      <span className="flex items-center gap-1.5 flex-wrap">
                         {s.isPriority && <span className="text-violet-500 text-xs font-bold" title="Priority">⚡</span>}
                         {s.isTopper && <span className="text-yellow-500 text-xs" title="Topper">🏆</span>}
                         {s.finalInterview?.result && <span className="text-emerald-500 text-base leading-none" title="Final Interview Done">★</span>}
                         {s.name}
                       </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      {s.admissionType ? <span className="px-2 py-1 rounded bg-blue-100 text-blue-700 text-[10px] font-bold tracking-wide" title="Admission Type">{s.admissionType}</span> : <span className="text-gray-300 text-xs">—</span>}
                     </td>
                     <td className="px-4 py-3 text-gray-600">{s.fatherName}</td>
                     <td className="px-4 py-3 text-gray-500 text-xs">{s.displayTrack || '—'}</td>
@@ -1323,10 +1326,11 @@ export default function Students() {
               <input type="checkbox" checked={selected.includes(s._id)} onChange={(e) => { e.stopPropagation(); toggleSelect(s._id); }}
                 onClick={(e) => e.stopPropagation()}
                 className="rounded border-gray-300 text-primary focus:ring-primary cursor-pointer shrink-0" />
-              <p className="font-semibold text-gray-800 flex-1 min-w-0 truncate">
-                {s.isPriority && <span className="mr-1">⚡</span>}
-                {s.isTopper && <span className="mr-1">🏆</span>}
-                {s.serialNumber}. {s.name}{s.finalInterview?.result && <span className="text-emerald-500 ml-1">★</span>}
+              <p className="font-semibold text-gray-800 flex-1 min-w-0 truncate flex items-center gap-1 flex-wrap">
+                {s.isPriority && <span className="mr-0.5">⚡</span>}
+                {s.isTopper && <span className="mr-0.5">🏆</span>}
+                <span>{s.serialNumber}. {s.name}</span>
+                {s.finalInterview?.result && <span className="text-emerald-500 ml-0.5">★</span>}
               </p>
               <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold shrink-0 ${STATUS_COLORS[s.status]}`}>{s.status}</span>
             </div>
@@ -1338,6 +1342,9 @@ export default function Students() {
             <div className="flex items-center gap-2 flex-wrap pl-6 mb-3">
               {s.admissionFormNo && (
                 <span className="text-xs font-semibold bg-orange-50 text-primary border border-orange-100 px-2 py-0.5 rounded-full">Form #{s.admissionFormNo}</span>
+              )}
+              {s.admissionType && (
+                <span className="text-[10px] font-bold tracking-wide bg-blue-100 text-blue-700 px-2 py-0.5 rounded">{s.admissionType}</span>
               )}
               {s.displayTrack && (
                 <span className="flex items-center gap-1 text-sm text-gray-500">

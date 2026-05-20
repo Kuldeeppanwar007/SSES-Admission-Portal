@@ -32,7 +32,14 @@ export default function StudentDetail() {
   const [receptionLoading, setReceptionLoading] = useState(true);
   const [receptionOpen, setReceptionOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
+  const [localAdmType, setLocalAdmType] = useState('SNS');
   const exportRef = useRef(null);
+
+  useEffect(() => {
+    if (student?.admissionType && ['SNS', 'SVS', 'Shri Ram'].includes(student.admissionType)) {
+      setLocalAdmType(student.admissionType);
+    }
+  }, [student?.admissionType]);
 
   useEffect(() => {
     const handler = (e) => {
@@ -174,6 +181,16 @@ export default function StudentDetail() {
     finally { setFlagLoading(false); }
   };
 
+  const handleAdmTypeChange = async (val) => {
+    setFlagLoading(true);
+    try {
+      const { data } = await api.put(`/students/${id}`, { admissionType: val });
+      setStudent(data);
+      toast.success(`Admission type ${val ? 'set to ' + val : 'removed'}!`);
+    } catch { toast.error('Update failed'); }
+    finally { setFlagLoading(false); }
+  };
+
   if (!student) return (
     <div className="flex justify-center items-center h-64">
       <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary"></div>
@@ -268,7 +285,7 @@ export default function StudentDetail() {
 
         {/* Flags toggle — admin/manager/track_incharge */}
         {(user?.role === 'admin' || user?.role === 'manager' || user?.role === 'track_incharge') && (
-          <div className="flex gap-3 mt-4 pt-4 border-t border-gray-100">
+          <div className="flex gap-3 mt-4 pt-4 border-t border-gray-100 flex-wrap">
             <label className={`flex items-center gap-2 cursor-pointer select-none px-3 py-1.5 rounded-xl border-2 transition-all text-sm ${
               s.isTopper ? 'border-yellow-400 bg-yellow-50' : 'border-gray-200 bg-gray-50'
             } ${flagLoading ? 'opacity-60 pointer-events-none' : ''}`}>
@@ -283,6 +300,33 @@ export default function StudentDetail() {
                 className="w-4 h-4 accent-violet-500 cursor-pointer" />
               <span className="font-semibold text-violet-700">⚡ Priority</span>
             </label>
+
+            {/* Admission Type Dropdown + Checkbox */}
+            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border-2 transition-all text-sm ${
+              ['SNS', 'SVS', 'Shri Ram'].includes(s.admissionType) ? 'border-blue-400 bg-blue-50' : 'border-gray-200 bg-gray-50'
+            } ${flagLoading ? 'opacity-60 pointer-events-none' : ''}`}>
+              <input type="checkbox" 
+                checked={['SNS', 'SVS', 'Shri Ram'].includes(s.admissionType)}
+                onChange={(e) => handleAdmTypeChange(e.target.checked ? localAdmType : null)}
+                className="w-4 h-4 accent-blue-500 cursor-pointer" 
+              />
+              <select 
+                value={localAdmType}
+                onChange={(e) => {
+                  setLocalAdmType(e.target.value);
+                  if (['SNS', 'SVS', 'Shri Ram'].includes(s.admissionType)) {
+                    handleAdmTypeChange(e.target.value);
+                  }
+                }}
+                className={`bg-transparent font-semibold outline-none cursor-pointer ${
+                  ['SNS', 'SVS', 'Shri Ram'].includes(s.admissionType) ? 'text-blue-700' : 'text-gray-700'
+                }`}
+              >
+                <option value="SNS">SNS</option>
+                <option value="SVS">SVS</option>
+                <option value="Shri Ram">Shri Ram</option>
+              </select>
+            </div>
           </div>
         )}
 

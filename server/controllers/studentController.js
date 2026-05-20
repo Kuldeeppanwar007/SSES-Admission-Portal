@@ -281,7 +281,7 @@ const getStudents = async (req, res) => {
     const [total, students] = await Promise.all([
       Student.countDocuments(filter),
       Student.find(filter)
-        .select('sn name fatherName track trackName village mobileNo formSource status finalInterview createdAt isTopper isPriority branch remarks admissionFormNo')
+        .select('sn name fatherName track trackName village mobileNo formSource status finalInterview createdAt isTopper isPriority branch remarks admissionFormNo admissionType')
         .populate('addedBy', 'name')
         .collation({ locale: 'en_US', numericOrdering: true })
         .sort(sortByFormNo === 'asc' ? { admissionFormNo: 1, createdAt: -1 } : sortByFormNo === 'desc' ? { admissionFormNo: -1, createdAt: -1 } : { createdAt: -1 })
