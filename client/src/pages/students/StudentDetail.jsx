@@ -767,7 +767,7 @@ export default function StudentDetail() {
           </div>
           <div className="flex items-center gap-2">
             {interviews.length > 0 && <span className="text-xs font-semibold bg-orange-50 text-primary border border-orange-100 px-2.5 py-1 rounded-full">{interviews.length} round{interviews.length !== 1 ? 's' : ''}</span>}
-            {user?.role === 'admin' && <button onClick={() => canTakeFinal && setFinalForm({ remarks: '', result: 'Pending' })} disabled={!canTakeFinal} title={!isValidFormSource ? 'Sirf SSISM ya B.Tech form wale students ka final interview ho sakta hai' : !technicalPassed ? 'Technical interview pass hone ke baad hi final interview le sakte hain' : ''} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${canTakeFinal ? 'bg-primary text-white hover:bg-primary-dark' : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`}>★ Final Interview</button>}
+            {user?.role === 'admin' && <button onClick={() => canTakeFinal && setFinalForm({ remarks: '', result: 'Pending', interviewType: 'On Campus' })} disabled={!canTakeFinal} title={!isValidFormSource ? 'Sirf SSISM ya B.Tech form wale students ka final interview ho sakta hai' : !technicalPassed ? 'Technical interview pass hone ke baad hi final interview le sakte hain' : ''} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${canTakeFinal ? 'bg-primary text-white hover:bg-primary-dark' : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`}>★ Final Interview</button>}
           </div>
         </div>
         <div className="p-5 space-y-4">
@@ -796,6 +796,7 @@ export default function StudentDetail() {
               <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-sm font-bold bg-primary text-white px-3 py-1 rounded-full">★ Final Interview</span>
+                  {s.finalInterview.interviewType && <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${s.finalInterview.interviewType === 'Online' ? 'bg-blue-100 text-blue-700' : 'bg-violet-100 text-violet-700'}`}>{s.finalInterview.interviewType}</span>}
                   {s.finalInterview.doneBy?.name && <span className="text-xs text-gray-500 flex items-center gap-1"><FiUser size={10} /> {s.finalInterview.doneBy.name}</span>}
                   {s.finalInterview.doneAt && <span className="text-xs text-gray-400">{new Date(s.finalInterview.doneAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</span>}
                 </div>
@@ -884,6 +885,26 @@ export default function StudentDetail() {
       {finalForm && (
         <BottomSheet open onClose={() => setFinalForm(null)} title="Take Final Interview" maxWidth="max-w-sm">
           <form onSubmit={handleFinalInterview} className="space-y-4 pt-2">
+            <div className="flex bg-gray-100 p-1 rounded-xl">
+              <button
+                type="button"
+                onClick={() => setFinalForm({ ...finalForm, interviewType: 'On Campus' })}
+                className={`flex-1 py-1.5 text-sm font-semibold rounded-lg transition-all ${
+                  finalForm.interviewType === 'On Campus' ? 'bg-white text-primary shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                On Campus
+              </button>
+              <button
+                type="button"
+                onClick={() => setFinalForm({ ...finalForm, interviewType: 'Online' })}
+                className={`flex-1 py-1.5 text-sm font-semibold rounded-lg transition-all ${
+                  finalForm.interviewType === 'Online' ? 'bg-white text-primary shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                Online
+              </button>
+            </div>
             <div>
               <label className="block text-xs font-medium text-gray-500 mb-1">Round</label>
               <input value={interviews.length + 1} disabled

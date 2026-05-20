@@ -98,6 +98,7 @@ const studentSchema = new mongoose.Schema({
     round:   { type: Number, default: null },
     remarks: { type: String, default: '' },
     result:  { type: String, enum: ['Pass', 'Fail', 'Pending', null], default: null },
+    interviewType: { type: String, default: null },
     doneBy:  { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     doneAt:  { type: Date, default: null },
   },

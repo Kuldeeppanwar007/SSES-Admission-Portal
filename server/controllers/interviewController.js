@@ -75,12 +75,12 @@ const getInterviews = async (req, res) => {
 
 const addFinalInterview = async (req, res) => {
   try {
-    const { remarks, result } = req.body;
+    const { remarks, result, interviewType } = req.body;
     const lastInterview = await Interview.findOne({ student: req.params.studentId }).sort({ round: -1 });
     const round = lastInterview ? lastInterview.round + 1 : 1;
     const updated = await Student.findByIdAndUpdate(
       req.params.studentId,
-      { finalInterview: { round, remarks: remarks || '', result: result || 'Pending', doneBy: req.user._id, doneAt: new Date() } },
+      { finalInterview: { round, remarks: remarks || '', result: result || 'Pending', interviewType: interviewType || null, doneBy: req.user._id, doneAt: new Date() } },
       { new: true }
     ).populate('finalInterview.doneBy', 'name');
     res.json(updated.finalInterview);
