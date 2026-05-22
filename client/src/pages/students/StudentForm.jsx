@@ -445,7 +445,7 @@ export default function StudentForm() {
                 <p className="text-xs text-gray-400 mt-1">No funnel stages for this status</p>
               )}
             </div>
-            {(isAdmin || isManager || user?.role === 'track_incharge') && form.status === 'Admitted' && (
+            {(isAdmin || isManager || user?.role === 'track_incharge' || user?.role === 'interviewer') && form.status === 'Admitted' && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Admission Type {form.status === 'Admitted' && <span className="text-rose-500">*</span>}</label>
                 <select value={form.admissionType} onChange={(e) => setForm({ ...form, admissionType: e.target.value })}
