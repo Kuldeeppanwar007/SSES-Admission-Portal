@@ -1300,7 +1300,8 @@ const getStats = async (req, res) => {
     ]);
     const allTrackSubjectMap = {};
     allTrackSubjectAdmitted.forEach(({ _id, admitted }) => {
-      const { track, subject } = _id;
+      let { track, subject } = _id;
+      if (track) track = resolveMainTrack(track);
       const mappedSubject = BTECH_SUBJECTS.includes(subject) ? 'B.Tech' : subject;
       if (!allTrackSubjectMap[track]) allTrackSubjectMap[track] = {};
       allTrackSubjectMap[track][mappedSubject] = (allTrackSubjectMap[track][mappedSubject] || 0) + admitted;
@@ -1312,8 +1313,9 @@ const getStats = async (req, res) => {
     const pointsPerSubject = {};
     const amountPerSubject = {}; // Full Fees amount per subject per track
     targets.forEach(({ track, subject, target, points: pts, amount }) => {
+      if (track) track = resolveMainTrack(track);
       if (!trackMap[track]) trackMap[track] = { subjects: {} };
-      trackMap[track].subjects[subject] = { target, admitted: 0 };
+      trackMap[track].subjects[subject] = { target: (trackMap[track].subjects[subject]?.target || 0) + target, admitted: 0 };
       if (!pointsPerSubject[track]) pointsPerSubject[track] = {};
       pointsPerSubject[track][subject] = pts || 0;
       if (!amountPerSubject[track]) amountPerSubject[track] = {};
@@ -1321,7 +1323,8 @@ const getStats = async (req, res) => {
     });
 
     trackSubjectAdmitted.forEach(({ _id, admitted }) => {
-      const { track, subject } = _id;
+      let { track, subject } = _id;
+      if (track) track = resolveMainTrack(track);
       // B.Tech ke 4 subjects ko 'B.Tech' ke under group karo
       const mappedSubject = BTECH_SUBJECTS.includes(subject) ? 'B.Tech' : subject;
       if (!trackMap[track]) trackMap[track] = { subjects: {} };
@@ -1333,7 +1336,8 @@ const getStats = async (req, res) => {
     const trackPointsDocs = await TrackPoints.find({});
     const pointsMap = {};
     trackPointsDocs.forEach(({ track, points }) => {
-      pointsMap[track] = points || 0;
+      if (track) track = resolveMainTrack(track);
+      pointsMap[track] = (pointsMap[track] || 0) + (points || 0);
     });
 
     Object.keys(pointsMap).forEach((track) => {
@@ -1346,7 +1350,10 @@ const getStats = async (req, res) => {
     const weeklyBonusMap = {}; // { track: totalBonusPoints }
     allBonuses.forEach(({ bonuses }) => {
       bonuses.forEach(({ track, points }) => {
-        if (track) weeklyBonusMap[track] = (weeklyBonusMap[track] || 0) + points;
+        if (track) {
+          track = resolveMainTrack(track);
+          weeklyBonusMap[track] = (weeklyBonusMap[track] || 0) + points;
+        }
       });
     });
 
@@ -1361,7 +1368,14 @@ const getStats = async (req, res) => {
     ]);
     const callingMap = {};
     callingData.forEach(({ _id, total, called }) => {
-      callingMap[_id] = { calledCount: called, totalCount: total, efficiency: total > 0 ? Math.round((called / total) * 100) : 0 };
+      let track = _id;
+      if (track) track = resolveMainTrack(track);
+      if (!callingMap[track]) callingMap[track] = { calledCount: 0, totalCount: 0 };
+      callingMap[track].calledCount += called;
+      callingMap[track].totalCount += total;
+    });
+    Object.keys(callingMap).forEach(track => {
+      callingMap[track].efficiency = callingMap[track].totalCount > 0 ? Math.round((callingMap[track].calledCount / callingMap[track].totalCount) * 100) : 0;
     });
 
     // Funnel points per track — awardedFunnelStages se calculate karo
@@ -1373,6 +1387,7 @@ const getStats = async (req, res) => {
     const FUNNEL_PTS = { 'Call Completed': 5, 'Lead Interested': 10, 'Admission Closed': 100 };
     const funnelPointsMap = {}; // track -> total funnel points
     funnelData.forEach(({ _id: { track, stage }, count }) => {
+      if (track) track = resolveMainTrack(track);
       funnelPointsMap[track] = (funnelPointsMap[track] || 0) + count * (FUNNEL_PTS[stage] || 0);
     });
 
@@ -1497,6 +1512,7 @@ const getStats = async (req, res) => {
     const trackFunnelBreakdown = {};
     trackFunnelAgg.forEach(({ _id: { track, funnelStage }, count }) => {
       if (!track) return;
+      track = resolveMainTrack(track);
       if (!trackFunnelBreakdown[track]) trackFunnelBreakdown[track] = {};
       trackFunnelBreakdown[track][funnelStage] = (trackFunnelBreakdown[track][funnelStage] || 0) + count;
     });
@@ -1507,8 +1523,9 @@ const getStats = async (req, res) => {
     ]);
     trackNoStageAgg.forEach(({ _id: track, count }) => {
       if (!track) return;
+      track = resolveMainTrack(track);
       if (!trackFunnelBreakdown[track]) trackFunnelBreakdown[track] = {};
-      trackFunnelBreakdown[track]['No Stage'] = count;
+      trackFunnelBreakdown[track]['No Stage'] = (trackFunnelBreakdown[track]['No Stage'] || 0) + count;
     });
 
     // AdmissionType breakdown
@@ -1531,10 +1548,11 @@ const getStats = async (req, res) => {
     const trackAdmissionTypeBreakdown = {};
     trackAdmissionTypeData.forEach(({ _id: { track, admissionType, subject }, count }) => {
       if (!track) return;
+      track = resolveMainTrack(track);
       const typeKey = admissionType === 'Shri Ram' ? 'PSRDMS' : admissionType;
       if (!trackAdmissionTypeBreakdown[track]) trackAdmissionTypeBreakdown[track] = {};
       if (!trackAdmissionTypeBreakdown[track][typeKey]) trackAdmissionTypeBreakdown[track][typeKey] = {};
-      trackAdmissionTypeBreakdown[track][typeKey][subject || 'Unknown'] = count;
+      trackAdmissionTypeBreakdown[track][typeKey][subject || 'Unknown'] = (trackAdmissionTypeBreakdown[track][typeKey][subject || 'Unknown'] || 0) + count;
     });
 
     res.json({ total, applied, calling, admitted, rejected, disabled, unassigned, admittedNoFunnelCount, finalCleared, finalClearedManual, interviewAttempts, trackWise, btechByBranch, finalClearedBySubject, admissionTypeBreakdown, trackAdmissionTypeBreakdown, funnelStageBreakdown, trackFunnelBreakdown });
