@@ -34,16 +34,26 @@ function CapacityCard({ label, admitted, finalCleared, limit, color, bg, border,
           </p>
         )}
       </div>
-      {/* Final Cleared breakdown */}
-      <div className="grid grid-cols-2 gap-1.5">
-        <span className="text-[11px] text-emerald-600 font-semibold bg-emerald-50 px-1.5 py-0.5 rounded-md text-center">✓ {admitted} admitted</span>
-        {finalCleared > 0 ? (
-          <span
-            onClick={(e) => { e.stopPropagation(); onPendingClick?.(); }}
-            className="text-[11px] text-amber-600 font-semibold bg-amber-50 px-1.5 py-0.5 rounded-md text-center cursor-pointer hover:bg-amber-100 transition-colors">
-            ⏳ {finalCleared} pending
+      {/* Breakdown */}
+      <div className="flex flex-col gap-1.5 mt-1">
+        <div className="flex items-center justify-between bg-emerald-50 px-2.5 py-1.5 rounded-lg border border-emerald-100/50">
+          <span className="text-[11px] text-emerald-700 font-semibold flex items-center gap-1.5">
+            <span className="w-4 h-4 rounded-full bg-emerald-200/50 flex items-center justify-center text-[10px]">✓</span> 
+            Admission Done
           </span>
-        ) : <span />}
+          <span className="text-xs font-bold text-emerald-700">{admitted}</span>
+        </div>
+        {finalCleared > 0 && (
+          <div
+            onClick={(e) => { e.stopPropagation(); onPendingClick?.(); }}
+            className="flex items-center justify-between bg-amber-50 px-2.5 py-1.5 rounded-lg border border-amber-100/50 cursor-pointer hover:bg-amber-100/80 transition-colors">
+            <span className="text-[11px] text-amber-700 font-semibold flex items-center gap-1.5">
+              <span className="w-4 h-4 rounded-full bg-amber-200/50 flex items-center justify-center text-[9px]">⏳</span> 
+              Final Interview Cleared
+            </span>
+            <span className="text-xs font-bold text-amber-700">{finalCleared}</span>
+          </div>
+        )}
       </div>
       {pct !== null && (
         <div>
@@ -223,8 +233,8 @@ const STAT_META = [
   { key: 'applied', label: 'Not Calling', icon: FiFileText, iconBg: 'bg-amber-100', iconColor: 'text-amber-500', text: 'text-amber-600', href: '/students?status=Applied' },
   { key: 'calling', label: 'Calling', icon: FiPhone, iconBg: 'bg-sky-100', iconColor: 'text-sky-500', text: 'text-sky-600', href: '/students?status=Calling' },
   { key: 'interviewAttempts', label: 'Interview Attempts', icon: FiCheckCircle, iconBg: 'bg-violet-100', iconColor: 'text-violet-500', text: 'text-violet-600', href: '/students?interviewFilter=hasAttempts' },
-  { key: 'finalCleared', label: 'Final Cleared', icon: FiCheckCircle, iconBg: 'bg-green-100', iconColor: 'text-green-500', text: 'text-green-600', href: '/students?interviewFilter=finalCleared' },
-  { key: 'admitted', label: 'Admitted', icon: FiAward, iconBg: 'bg-emerald-100', iconColor: 'text-emerald-500', text: 'text-emerald-600', href: '/students?status=Admitted' },
+  { key: 'finalCleared', label: 'Final Interview Cleared', icon: FiCheckCircle, iconBg: 'bg-green-100', iconColor: 'text-green-500', text: 'text-green-600', href: '/students?interviewFilter=finalCleared' },
+  { key: 'admitted', label: 'Admission Done', icon: FiAward, iconBg: 'bg-emerald-100', iconColor: 'text-emerald-500', text: 'text-emerald-600', href: '/students?status=Admitted' },
   { key: 'rejected', label: 'Rejected', icon: FiXCircle, iconBg: 'bg-rose-100', iconColor: 'text-rose-500', text: 'text-rose-600', href: '/students?status=Rejected' },
   { key: 'disabled', label: 'Disabled', icon: FiSlash, iconBg: 'bg-gray-100', iconColor: 'text-gray-400', text: 'text-gray-500', href: '/students?tab=disabled' },
 ];

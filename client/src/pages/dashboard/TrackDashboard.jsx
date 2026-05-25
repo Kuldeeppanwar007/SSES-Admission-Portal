@@ -44,8 +44,8 @@ const STAT_META = [
   { key: 'applied',            label: 'Not Calling',       icon: FiFileText,  iconBg: 'bg-amber-100',   iconColor: 'text-amber-500',  text: 'text-amber-600',   href: '/students?status=Applied' },
   { key: 'calling',            label: 'Calling',           icon: FiPhone,     iconBg: 'bg-sky-100',     iconColor: 'text-sky-500',    text: 'text-sky-600',     href: '/students?status=Calling' },
   { key: 'interviewAttempts',  label: 'Interview Attempts',icon: FiClipboard, iconBg: 'bg-violet-100',  iconColor: 'text-violet-500', text: 'text-violet-600',  href: '/students?interviewFilter=hasAttempts' },
-  { key: 'finalCleared',       label: 'Final Cleared',     icon: FiCheckCircle, iconBg: 'bg-green-100', iconColor: 'text-green-500',  text: 'text-green-600',   href: '/students?interviewFilter=finalCleared' },
-  { key: 'admitted',           label: 'Admitted',          icon: FiAward,     iconBg: 'bg-emerald-100', iconColor: 'text-emerald-500',text: 'text-emerald-600', href: '/students?status=Admitted' },
+  { key: 'finalCleared',       label: 'Final Interview Cleared',     icon: FiCheckCircle, iconBg: 'bg-green-100', iconColor: 'text-green-500',  text: 'text-green-600',   href: '/students?interviewFilter=finalCleared' },
+  { key: 'admitted',           label: 'Admission Done',          icon: FiAward,     iconBg: 'bg-emerald-100', iconColor: 'text-emerald-500',text: 'text-emerald-600', href: '/students?status=Admitted' },
   { key: 'rejected',           label: 'Rejected',          icon: FiXCircle,   iconBg: 'bg-rose-100',    iconColor: 'text-rose-500',   text: 'text-rose-600',    href: '/students?status=Rejected' },
   { key: 'disabled',           label: 'Disabled',          icon: FiSlash,     iconBg: 'bg-gray-100',    iconColor: 'text-gray-400',   text: 'text-gray-500',    href: '/students?tab=disabled' },
 ];

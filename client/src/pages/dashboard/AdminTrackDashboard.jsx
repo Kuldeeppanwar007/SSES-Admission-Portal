@@ -44,7 +44,7 @@ const STAT_META = [
   { key: 'total',    label: 'Total',       icon: FiUsers,    iconBg: 'bg-blue-100',    iconColor: 'text-blue-500',   text: 'text-blue-600' },
   { key: 'applied',  label: 'Not Calling', icon: FiFileText, iconBg: 'bg-amber-100',   iconColor: 'text-amber-500',  text: 'text-amber-600' },
   { key: 'calling',  label: 'Calling',     icon: FiPhone,    iconBg: 'bg-sky-100',     iconColor: 'text-sky-500',    text: 'text-sky-600' },
-  { key: 'admitted', label: 'Admitted',    icon: FiAward,    iconBg: 'bg-emerald-100', iconColor: 'text-emerald-500',text: 'text-emerald-600' },
+  { key: 'admitted', label: 'Admission Done',    icon: FiAward,    iconBg: 'bg-emerald-100', iconColor: 'text-emerald-500',text: 'text-emerald-600' },
   { key: 'rejected', label: 'Rejected',    icon: FiXCircle,  iconBg: 'bg-rose-100',    iconColor: 'text-rose-500',   text: 'text-rose-600' },
   { key: 'disabled', label: 'Disabled',    icon: FiSlash,    iconBg: 'bg-gray-100',    iconColor: 'text-gray-400',   text: 'text-gray-500' },
 ];
