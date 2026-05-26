@@ -3,6 +3,7 @@ import api from '../api/axios';
 import toast from 'react-hot-toast';
 import BottomSheet from './BottomSheet';
 import { TRACK_TOWNS } from '../utils/constants';
+import { FiAlertCircle } from 'react-icons/fi';
 
 const VISIT_PURPOSES = ['Inquiry', 'Interview', 'Re-Interview'];
 const ALL_TOWNS = Object.values(TRACK_TOWNS).flat();
@@ -21,14 +22,20 @@ export default function ReceptionEntryModal({ onClose, student, onSaved }) {
   const [loading, setLoading] = useState(false);
   const [interviewers, setInterviewers] = useState([]);
   const [formNoError, setFormNoError] = useState('');
+  const [showConfirm, setShowConfirm] = useState(false);
   const hasFormNo = !!student?.admissionFormNo;
 
   useEffect(() => {
     api.get('/reception/interviewers').then(({ data }) => setInterviewers(data)).catch(() => {});
   }, []);
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
+    setShowConfirm(true);
+  };
+
+  const handleConfirmSubmit = async () => {
+    setShowConfirm(false);
     setLoading(true);
     try {
       await api.post('/reception', { ...form, studentId: student?._id || null });
@@ -134,6 +141,85 @@ export default function ReceptionEntryModal({ onClose, student, onSaved }) {
           {loading ? 'Saving...' : 'Save Entry'}
         </button>
       </form>
+
+      {showConfirm && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl shadow-2xl border border-slate-100 max-w-md w-full overflow-hidden animate-in fade-in zoom-in-95 duration-200 flex flex-col my-auto max-h-[90vh] text-left">
+            {/* Header */}
+            <div className="px-6 py-5 border-b border-slate-100 flex items-center gap-3 bg-gradient-to-r from-orange-50/50 to-white">
+              <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center text-primary shrink-0">
+                <FiAlertCircle size={20} />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-gray-900">Confirm Reception Entry</h3>
+                <p className="text-xs text-gray-500 font-medium">Please review details before saving the visit entry</p>
+              </div>
+            </div>
+
+            {/* Content List */}
+            <div className="px-6 py-5 overflow-y-auto space-y-4 flex-1">
+              <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100/80 space-y-2.5">
+                {student?.name && (
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-gray-400 font-semibold uppercase tracking-wide">Student</span>
+                    <span className="text-gray-800 font-bold">{student.name}</span>
+                  </div>
+                )}
+                <div className="flex justify-between items-center text-xs border-t border-slate-100/60 pt-2.5">
+                  <span className="text-gray-400 font-semibold uppercase tracking-wide">Date</span>
+                  <span className="text-gray-700 font-bold">{form.date ? new Date(form.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}</span>
+                </div>
+                <div className="flex justify-between items-center text-xs border-t border-slate-100/60 pt-2.5">
+                  <span className="text-gray-400 font-semibold uppercase tracking-wide">Entry Type</span>
+                  <span className="text-gray-700 font-bold">{form.entryType}</span>
+                </div>
+                <div className="flex justify-between items-center text-xs border-t border-slate-100/60 pt-2.5">
+                  <span className="text-gray-400 font-semibold uppercase tracking-wide">Town</span>
+                  <span className="text-gray-700 font-bold">{form.town || '—'}</span>
+                </div>
+                <div className="flex justify-between items-center text-xs border-t border-slate-100/60 pt-2.5">
+                  <span className="text-gray-400 font-semibold uppercase tracking-wide">Form No</span>
+                  <span className="text-gray-700 font-bold">{form.admissionFormNo || '—'}</span>
+                </div>
+                <div className="flex justify-between items-center text-xs border-t border-slate-100/60 pt-2.5">
+                  <span className="text-gray-400 font-semibold uppercase tracking-wide">Visit Purpose</span>
+                  <span className="text-orange-700 font-bold bg-orange-50 px-2 py-0.5 rounded-md border border-orange-100">{form.visitPurpose}</span>
+                </div>
+                {form.branch && (
+                  <div className="flex justify-between items-center text-xs border-t border-slate-100/60 pt-2.5">
+                    <span className="text-gray-400 font-semibold uppercase tracking-wide">Branch</span>
+                    <span className="text-gray-700 font-bold">{form.branch}</span>
+                  </div>
+                )}
+                {form.interviewer && (
+                  <div className="flex justify-between items-center text-xs border-t border-slate-100/60 pt-2.5">
+                    <span className="text-gray-400 font-semibold uppercase tracking-wide">Interviewer</span>
+                    <span className="text-gray-700 font-bold">{interviewers.find(i => i._id === form.interviewer)?.name || '—'}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Footer Actions */}
+            <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex gap-3 shrink-0">
+              <button
+                type="button"
+                onClick={() => setShowConfirm(false)}
+                className="flex-1 border border-slate-200 bg-white text-gray-500 py-2.5 rounded-xl text-xs font-bold hover:bg-slate-50 active:scale-95 transition-all duration-200"
+              >
+                Cancel / Edit
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmSubmit}
+                className="flex-1 bg-primary text-white py-2.5 rounded-xl text-xs font-bold hover:bg-primary-dark hover:shadow-lg hover:shadow-primary/20 active:scale-95 transition-all duration-200"
+              >
+                Confirm & Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </BottomSheet>
   );
 }

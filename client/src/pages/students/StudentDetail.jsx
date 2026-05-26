@@ -40,6 +40,8 @@ export default function StudentDetail() {
   const [editTab, setEditTab] = useState('general');
   const exportRef = useRef(null);
   const [showFinalConfirm, setShowFinalConfirm] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteInfo, setDeleteInfo] = useState({ type: '', id: '', idx: null, details: {} });
 
   useEffect(() => {
     if (student?.admissionType && ['SNS', 'SVS', 'Shri Ram'].includes(student.admissionType)) {
@@ -258,63 +260,121 @@ export default function StudentDetail() {
     }
   };
 
-  const handleDeleteReception = async (entryId, idx) => {
-    if (!window.confirm("Kya aap sach me ye visit entry delete karna chahte hain?")) return;
-    try {
-      await api.delete(`/reception/${entryId}`);
-      toast.success("Visit entry successfully deleted!");
-
-      // Update local state in form
-      const list = adminEditForm.receptionUpdates.filter(r => r._id !== entryId);
-      setAdminEditForm({ ...adminEditForm, receptionUpdates: list });
-
-      // Update actual parent data state
-      fetchReceptionEntries();
-    } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to delete reception entry");
-    }
+  const handleDeleteReception = (entryId, idx) => {
+    const entry = adminEditForm.receptionUpdates[idx];
+    setDeleteInfo({
+      type: 'reception',
+      id: entryId,
+      idx,
+      details: {
+        title: 'Delete Visit Entry',
+        message: 'Kya aap sach me ye visit entry delete karna chahte hain?',
+        fields: [
+          { label: 'Visit Entry', value: `#${idx + 1}` },
+          { label: 'Purpose', value: entry.visitPurpose || '—' },
+          { label: 'Date', value: entry.date ? new Date(entry.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—' },
+          { label: 'Town', value: entry.town || '—' }
+        ]
+      }
+    });
+    setShowDeleteConfirm(true);
   };
 
-  const handleDeleteInterview = async (interviewId, idx) => {
-    if (!window.confirm("Kya aap sach me ye technical round delete karna chahte hain? Remaining rounds automatically correct/re-index ho jayenge.")) return;
-    try {
-      await api.delete(`/interviews/${interviewId}`);
-      toast.success("Technical round successfully deleted!");
+  const handleDeleteInterview = (interviewId, idx) => {
+    const inv = adminEditForm.interviewUpdates[idx];
+    const totalMark =
+      Number(inv.mathematicsMarks || 0) + Number(inv.subjectiveKnowledge || 0) +
+      Number(inv.reasoningMarks || 0) + Number(inv.goalClarity || 0) +
+      Number(inv.sincerity || 0) + Number(inv.communicationLevel || 0) +
+      Number(inv.confidenceLevel || 0) + Number(inv.assignmentMarks || 0);
 
-      // Update local state in form
-      const list = adminEditForm.interviewUpdates.filter(i => i._id !== interviewId);
-      // Re-index local rounds in UI chronologically
-      const reIndexed = list.sort((a, b) => new Date(a.date) - new Date(b.date)).map((item, i) => ({ ...item, round: i + 1 }));
-      setAdminEditForm({ ...adminEditForm, interviewUpdates: reIndexed });
-
-      // Update actual parent data state
-      const { data: iData } = await api.get(`/interviews/${id}`);
-      setInterviews(iData);
-    } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to delete technical round");
-    }
+    setDeleteInfo({
+      type: 'interview',
+      id: interviewId,
+      idx,
+      details: {
+        title: 'Delete Technical Round',
+        message: 'Kya aap sach me ye technical round delete karna chahte hain? Remaining rounds automatically correct/re-index ho jayenge.',
+        fields: [
+          { label: 'Round', value: `#${inv.round}` },
+          { label: 'Date', value: inv.date ? new Date(inv.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—' },
+          { label: 'Type', value: inv.interviewType || '—' },
+          { label: 'Result', value: inv.result || 'Pending' },
+          { label: 'Total Score', value: `${totalMark} / 40` }
+        ]
+      }
+    });
+    setShowDeleteConfirm(true);
   };
 
-  const handleDeleteFinalInterview = async () => {
-    if (!window.confirm("Kya aap sach me final interview details delete karna chahte hain?")) return;
+  const handleDeleteFinalInterview = () => {
+    const final = adminEditForm.studentUpdates.finalInterview;
+    setDeleteInfo({
+      type: 'final',
+      id: null,
+      idx: null,
+      details: {
+        title: 'Delete Final Interview',
+        message: 'Kya aap sach me final interview details delete karna chahte hain?',
+        fields: [
+          { label: 'Round No', value: final?.round ? `#${final.round}` : '—' },
+          { label: 'Result', value: final?.result || '—' },
+          { label: 'Type', value: final?.interviewType || '—' },
+          { label: 'Done By', value: final?.doneBy?.name || '—' }
+        ]
+      }
+    });
+    setShowDeleteConfirm(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    const { type, id: deleteId, idx } = deleteInfo;
+    setShowDeleteConfirm(false);
     try {
-      await api.delete(`/interviews/${id}/final`);
-      toast.success("Final interview successfully deleted!");
+      if (type === 'reception') {
+        await api.delete(`/reception/${deleteId}`);
+        toast.success("Visit entry successfully deleted!");
 
-      // Update local state in form
-      setAdminEditForm({
-        ...adminEditForm,
-        studentUpdates: {
-          ...adminEditForm.studentUpdates,
-          finalInterview: { round: '', remarks: '', result: '', interviewType: '', doneBy: '', doneAt: '' }
-        }
-      });
+        // Update local state in form
+        const list = adminEditForm.receptionUpdates.filter(r => r._id !== deleteId);
+        setAdminEditForm({ ...adminEditForm, receptionUpdates: list });
 
-      // Update actual parent data state
-      const { data: sData } = await api.get(`/students/${id}`);
-      setStudent(sData);
+        // Update actual parent data state
+        fetchReceptionEntries();
+      } else if (type === 'interview') {
+        await api.delete(`/interviews/${deleteId}`);
+        toast.success("Technical round successfully deleted!");
+
+        // Update local state in form
+        const list = adminEditForm.interviewUpdates.filter(i => i._id !== deleteId);
+        // Re-index local rounds in UI chronologically
+        const reIndexed = list.sort((a, b) => new Date(a.date) - new Date(b.date)).map((item, i) => ({ ...item, round: i + 1 }));
+        setAdminEditForm({ ...adminEditForm, interviewUpdates: reIndexed });
+
+        // Update actual parent data state
+        const { data: iData } = await api.get(`/interviews/${id}`);
+        setInterviews(iData);
+      } else if (type === 'final') {
+        await api.delete(`/interviews/${id}/final`);
+        toast.success("Final interview successfully deleted!");
+
+        // Update local state in form
+        setAdminEditForm({
+          ...adminEditForm,
+          studentUpdates: {
+            ...adminEditForm.studentUpdates,
+            finalInterview: { round: '', remarks: '', result: '', interviewType: '', doneBy: '', doneAt: '' }
+          }
+        });
+
+        // Update actual parent data state
+        const { data: sData } = await api.get(`/students/${id}`);
+        setStudent(sData);
+      }
     } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to delete final interview");
+      toast.error(err.response?.data?.message || "Failed to delete");
+    } finally {
+      setDeleteInfo({ type: '', id: '', idx: null, details: {} });
     }
   };
 
@@ -1856,6 +1916,61 @@ export default function StudentDetail() {
             </form>
           </div>
         </BottomSheet>
+      )}
+
+      {showDeleteConfirm && deleteInfo.details && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl shadow-2xl border border-slate-100 max-w-md w-full overflow-hidden animate-in fade-in zoom-in-95 duration-200 flex flex-col my-auto max-h-[90vh] text-left">
+            {/* Header */}
+            <div className="px-6 py-5 border-b border-slate-100 flex items-center gap-3 bg-gradient-to-r from-orange-50/50 to-white">
+              <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center text-primary shrink-0">
+                <FiTrash2 size={18} className="text-primary" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-gray-900">{deleteInfo.details.title}</h3>
+                <p className="text-xs text-gray-500 font-medium">Please review details carefully. This action cannot be undone.</p>
+              </div>
+            </div>
+
+            {/* Content List */}
+            <div className="px-6 py-5 overflow-y-auto space-y-4 flex-1">
+              <p className="text-xs text-orange-800 font-semibold bg-orange-50/60 border border-orange-100 rounded-xl p-3.5 italic">
+                "{deleteInfo.details.message}"
+              </p>
+
+              <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100/80 space-y-2.5">
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-gray-400 font-semibold uppercase tracking-wide">Student</span>
+                  <span className="text-gray-800 font-bold">{student.name}</span>
+                </div>
+                {deleteInfo.details.fields?.map((f, i) => (
+                  <div key={i} className="flex justify-between items-center text-xs border-t border-slate-100/60 pt-2.5">
+                    <span className="text-gray-400 font-semibold uppercase tracking-wide">{f.label}</span>
+                    <span className="text-gray-700 font-bold">{f.value}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Footer Actions */}
+            <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex gap-3 shrink-0">
+              <button
+                type="button"
+                onClick={() => { setShowDeleteConfirm(false); setDeleteInfo({ type: '', id: '', idx: null, details: {} }); }}
+                className="flex-1 border border-slate-200 bg-white text-gray-500 py-2.5 rounded-xl text-xs font-bold hover:bg-slate-50 active:scale-95 transition-all duration-200"
+              >
+                Cancel / Keep
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDelete}
+                className="flex-1 bg-primary text-white py-2.5 rounded-xl text-xs font-bold hover:bg-primary-dark hover:shadow-lg hover:shadow-primary/20 active:scale-95 transition-all duration-200"
+              >
+                Confirm & Delete
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
