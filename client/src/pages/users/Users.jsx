@@ -5,7 +5,7 @@ import toast from 'react-hot-toast';
 import { FiPlus, FiTrash2, FiEdit2, FiEye, FiEyeOff } from 'react-icons/fi';
 import BottomSheet from '../../components/BottomSheet';
 
-const emptyForm = { name: '', email: '', password: '', role: 'track_incharge', track: '', isActive: true };
+const emptyForm = { name: '', email: '', password: '', role: 'track_incharge', track: '', isActive: true, canEditStudent: false };
 
 export default function Users() {
   const [users, setUsers] = useState([]);
@@ -44,7 +44,7 @@ export default function Users() {
   };
 
   const handleEdit = (u) => {
-    setForm({ name: u.name, email: u.email, password: '', role: u.role, track: u.track || '', isActive: u.isActive });
+    setForm({ name: u.name, email: u.email, password: '', role: u.role, track: u.track || '', isActive: u.isActive, canEditStudent: !!u.canEditStudent });
     setEditId(u._id); setShowForm(true);
   };
 
@@ -114,6 +114,14 @@ export default function Users() {
               onChange={(e) => setForm({ ...form, isActive: e.target.checked })} />
             <label htmlFor="isActive" className="text-sm text-gray-700">Active</label>
           </div>
+          {form.role === 'admin' && (
+            <div className="flex items-center gap-2 sm:col-span-2">
+              <input type="checkbox" id="canEditStudent" checked={form.canEditStudent}
+                onChange={(e) => setForm({ ...form, canEditStudent: e.target.checked })}
+                className="w-4 h-4 accent-primary cursor-pointer" />
+              <label htmlFor="canEditStudent" className="text-sm text-gray-700 font-semibold cursor-pointer">Can Edit Student Profile</label>
+            </div>
+          )}
           <div className="sm:col-span-2">
             <button type="submit" disabled={loading}
               className="w-full bg-primary text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-primary-dark disabled:opacity-60 transition-colors">
@@ -161,6 +169,18 @@ export default function Users() {
                 <span className="text-gray-400">Role</span>
                 <span className="capitalize font-medium">{u.role.replace('_', ' ')}</span>
               </div>
+              {u.role === 'admin' && (
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-400">Edit Profile</span>
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                    u.canEditStudent 
+                      ? 'bg-purple-50 text-purple-600 border-purple-100' 
+                      : 'bg-gray-100 text-gray-400 border-gray-200'
+                  }`}>
+                    {u.canEditStudent ? '📝 Student Editor' : 'No Permission'}
+                  </span>
+                </div>
+              )}
               {u.track && (
                 <div className="flex justify-between">
                   <span className="text-gray-400">Track</span>

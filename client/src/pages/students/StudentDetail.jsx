@@ -8,6 +8,7 @@ import {
   FiEdit2, FiArrowLeft, FiImage, FiFileText, FiExternalLink,
   FiClock, FiDownload, FiSend, FiPhone, FiMapPin, FiUser,
   FiCalendar, FiBook, FiAward, FiCheckCircle, FiAlertCircle, FiChevronDown,
+  FiTrash2,
 } from 'react-icons/fi';
 import BottomSheet from '../../components/BottomSheet';
 import ReceptionEntryModal from '../../components/ReceptionEntryModal';
@@ -33,7 +34,12 @@ export default function StudentDetail() {
   const [receptionOpen, setReceptionOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
   const [localAdmType, setLocalAdmType] = useState('SNS');
+  const [adminEditOpen, setAdminEditOpen] = useState(false);
+  const [adminEditForm, setAdminEditForm] = useState(null);
+  const [adminSaving, setAdminSaving] = useState(false);
+  const [editTab, setEditTab] = useState('general');
   const exportRef = useRef(null);
+  const [showFinalConfirm, setShowFinalConfirm] = useState(false);
 
   useEffect(() => {
     if (student?.admissionType && ['SNS', 'SVS', 'Shri Ram'].includes(student.admissionType)) {
@@ -53,7 +59,7 @@ export default function StudentDetail() {
     setExporting(true);
     try {
       const now = new Date();
-      const dateStr = `${now.getDate().toString().padStart(2,'0')}-${(now.getMonth()+1).toString().padStart(2,'0')}-${now.getFullYear()}`;
+      const dateStr = `${now.getDate().toString().padStart(2, '0')}-${(now.getMonth() + 1).toString().padStart(2, '0')}-${now.getFullYear()}`;
       const namePart = student?.name ? student.name.replace(/[^a-zA-Z0-9]/g, '_') : 'student';
       const filename = `${namePart}_export_${dateStr}`;
 
@@ -69,7 +75,7 @@ export default function StudentDetail() {
         doc.setFontSize(16);
         doc.setFont('helvetica', 'bold');
         doc.text(`Student Export (${dateStr})`, 10, 15);
-        
+
         const headers = Object.keys(rows[0]);
         const data = rows.map(row => Object.values(row).map(v => v ? String(v) : ''));
 
@@ -78,17 +84,17 @@ export default function StudentDetail() {
           head: [headers],
           body: data,
           theme: 'grid',
-          styles: { 
+          styles: {
             font: 'helvetica',
-            fontSize: 8, 
+            fontSize: 8,
             cellPadding: 3,
             lineColor: [226, 232, 240],
             lineWidth: 0.1,
             textColor: [51, 65, 85],
           },
-          headStyles: { 
+          headStyles: {
             fillColor: [249, 115, 22],
-            textColor: [255, 255, 255], 
+            textColor: [255, 255, 255],
             fontStyle: 'bold',
             halign: 'center'
           },
@@ -99,7 +105,7 @@ export default function StudentDetail() {
             10: { halign: 'center' },
             13: { halign: 'center' }
           },
-          alternateRowStyles: { 
+          alternateRowStyles: {
             fillColor: [255, 251, 245]
           },
           margin: { top: 20, left: 10, right: 10 }
@@ -115,9 +121,9 @@ export default function StudentDetail() {
         window.URL.revokeObjectURL(url);
         toast.success('Exported as Excel successfully');
       }
-    } catch (err) { 
+    } catch (err) {
       console.error("Export error:", err);
-      toast.error('Export failed'); 
+      toast.error('Export failed');
     }
     finally { setExporting(false); }
   };
@@ -125,7 +131,7 @@ export default function StudentDetail() {
   const fetchReceptionEntries = () => {
     api.get(`/reception/all-by-student/${id}`)
       .then(({ data }) => setReceptionEntries(data))
-      .catch(() => {})
+      .catch(() => { })
       .finally(() => setReceptionLoading(false));
   };
 
@@ -135,12 +141,17 @@ export default function StudentDetail() {
       .catch(() => toast.error('Failed to load student'));
     api.get(`/interviews/${id}`)
       .then(({ data }) => setInterviews(data))
-      .catch(() => {});
+      .catch(() => { });
     fetchReceptionEntries();
   }, [id]);
 
-  const handleFinalInterview = async (e) => {
+  const handleFinalInterview = (e) => {
     e.preventDefault();
+    setShowFinalConfirm(true);
+  };
+
+  const handleConfirmFinalInterview = async () => {
+    setShowFinalConfirm(false);
     setFinalLoading(true);
     try {
       await api.post(`/interviews/${id}/final`, finalForm);
@@ -191,6 +202,127 @@ export default function StudentDetail() {
     finally { setFlagLoading(false); }
   };
 
+  const handleOpenAdminEdit = () => {
+    const sFields = {};
+    const whitelist = [
+      'name', 'fatherName', 'track', 'mobileNo', 'whatsappNo', 'subject', 'fullAddress', 'otherTrack',
+      'email', 'schoolName', 'district', 'village', 'whatsappNumber', 'jeeScore', 'persentage12', 'persentage10',
+      'persentage11', 'branch', 'year', 'joinBatch', 'feesScheme', 'category', 'gender', 'school12Sub', 'dob',
+      'aadharNo', 'fatherOccupation', 'fatherIncome', 'fatherContactNumber', 'pincode', 'tehsil', 'trackName',
+      'isTopper', 'isPriority', 'bookNo', 'receiptNo', 'admissionFormNo', 'status', 'remarks', 'funnelStage',
+      'applicationType', 'regFees', 'regFeesStatus', 'regFeeReceiptNo', 'regFeeDate', 'formSource', 'admissionType',
+      'finalInterview'
+    ];
+    whitelist.forEach(f => {
+      sFields[f] = student[f] !== undefined ? student[f] : '';
+    });
+    if (!sFields.finalInterview) {
+      sFields.finalInterview = { round: '', remarks: '', result: '', interviewType: '', doneBy: '', doneAt: '' };
+    }
+
+    setAdminEditForm({
+      studentUpdates: sFields,
+      interviewUpdates: interviews.map(i => ({ ...i })),
+      receptionUpdates: receptionEntries.map(r => ({ ...r }))
+    });
+    setEditTab('general');
+    setAdminEditOpen(true);
+  };
+
+  const formatDateForInput = (dStr) => {
+    if (!dStr) return '';
+    try {
+      return new Date(dStr).toISOString().slice(0, 10);
+    } catch (_) {
+      return '';
+    }
+  };
+
+  const handleAdminSave = async (e) => {
+    e.preventDefault();
+    setAdminSaving(true);
+    try {
+      await api.put(`/students/${id}/admin-edit`, adminEditForm);
+      toast.success('Student records fully updated!');
+      setAdminEditOpen(false);
+      setAdminEditForm(null);
+      const { data: sData } = await api.get(`/students/${id}`);
+      setStudent(sData);
+      const { data: iData } = await api.get(`/interviews/${id}`);
+      setInterviews(iData);
+      fetchReceptionEntries();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to save admin edits');
+    } finally {
+      setAdminSaving(false);
+    }
+  };
+
+  const handleDeleteReception = async (entryId, idx) => {
+    if (!window.confirm("Kya aap sach me ye visit entry delete karna chahte hain?")) return;
+    try {
+      await api.delete(`/reception/${entryId}`);
+      toast.success("Visit entry successfully deleted!");
+
+      // Update local state in form
+      const list = adminEditForm.receptionUpdates.filter(r => r._id !== entryId);
+      setAdminEditForm({ ...adminEditForm, receptionUpdates: list });
+
+      // Update actual parent data state
+      fetchReceptionEntries();
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to delete reception entry");
+    }
+  };
+
+  const handleDeleteInterview = async (interviewId, idx) => {
+    if (!window.confirm("Kya aap sach me ye technical round delete karna chahte hain? Remaining rounds automatically correct/re-index ho jayenge.")) return;
+    try {
+      await api.delete(`/interviews/${interviewId}`);
+      toast.success("Technical round successfully deleted!");
+
+      // Update local state in form
+      const list = adminEditForm.interviewUpdates.filter(i => i._id !== interviewId);
+      // Re-index local rounds in UI chronologically
+      const reIndexed = list.sort((a, b) => new Date(a.date) - new Date(b.date)).map((item, i) => ({ ...item, round: i + 1 }));
+      setAdminEditForm({ ...adminEditForm, interviewUpdates: reIndexed });
+
+      // Update actual parent data state
+      const { data: iData } = await api.get(`/interviews/${id}`);
+      setInterviews(iData);
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to delete technical round");
+    }
+  };
+
+  const handleDeleteFinalInterview = async () => {
+    if (!window.confirm("Kya aap sach me final interview details delete karna chahte hain?")) return;
+    try {
+      await api.delete(`/interviews/${id}/final`);
+      toast.success("Final interview successfully deleted!");
+
+      // Update local state in form
+      setAdminEditForm({
+        ...adminEditForm,
+        studentUpdates: {
+          ...adminEditForm.studentUpdates,
+          finalInterview: { round: '', remarks: '', result: '', interviewType: '', doneBy: '', doneAt: '' }
+        }
+      });
+
+      // Update actual parent data state
+      const { data: sData } = await api.get(`/students/${id}`);
+      setStudent(sData);
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to delete final interview");
+    }
+  };
+
+  const tabClass = (t) => `flex-1 min-w-[140px] flex items-center justify-center gap-1.5 py-2.5 px-3 text-xs font-bold rounded-xl transition-all duration-200 text-center ${editTab === t
+      ? 'bg-primary text-white shadow-md shadow-primary/25 scale-[1.02]'
+      : 'text-gray-500 hover:bg-gray-100 hover:text-gray-800'
+    }`;
+
   if (!student) return (
     <div className="flex justify-center items-center h-64">
       <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary"></div>
@@ -204,16 +336,16 @@ export default function StudentDetail() {
   const ProfileHeader = () => (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-4">
       {/* Top color strip */}
-      <div className="h-2 bg-gradient-to-r from-primary to-orange-400" />
+      <div className="h-2 bg-gradient-to-r from-primary to-primary-light" />
 
       <div className="p-5">
         <div className="flex items-start gap-4">
           {/* Avatar */}
           {s.photo ? (
             <img src={s.photo} alt="Photo"
-              className="w-20 h-20 rounded-2xl object-cover border-2 border-orange-100 shrink-0" />
+              className="w-20 h-20 rounded-2xl object-cover border-2 border-primary/20 shrink-0" />
           ) : (
-            <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-primary to-orange-400 flex items-center justify-center text-white text-3xl font-bold shrink-0 shadow-sm">
+            <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-primary to-primary-light flex items-center justify-center text-white text-3xl font-bold shrink-0 shadow-sm">
               {s.name?.[0]?.toUpperCase()}
             </div>
           )}
@@ -286,31 +418,28 @@ export default function StudentDetail() {
         {/* Flags toggle — admin/manager/track_incharge */}
         {(user?.role === 'admin' || user?.role === 'manager' || user?.role === 'track_incharge') && (
           <div className="flex gap-3 mt-4 pt-4 border-t border-gray-100 flex-wrap">
-            <label className={`flex items-center gap-2 cursor-pointer select-none px-3 py-1.5 rounded-xl border-2 transition-all text-sm ${
-              s.isTopper ? 'border-yellow-400 bg-yellow-50' : 'border-gray-200 bg-gray-50'
-            } ${flagLoading ? 'opacity-60 pointer-events-none' : ''}`}>
+            <label className={`flex items-center gap-2 cursor-pointer select-none px-3 py-1.5 rounded-xl border-2 transition-all text-sm ${s.isTopper ? 'border-yellow-400 bg-yellow-50' : 'border-gray-200 bg-gray-50'
+              } ${flagLoading ? 'opacity-60 pointer-events-none' : ''}`}>
               <input type="checkbox" checked={!!s.isTopper} onChange={() => handleFlagToggle('isTopper')}
                 className="w-4 h-4 accent-yellow-500 cursor-pointer" />
               <span className="font-semibold text-yellow-700">🏆 Topper</span>
             </label>
-            <label className={`flex items-center gap-2 cursor-pointer select-none px-3 py-1.5 rounded-xl border-2 transition-all text-sm ${
-              s.isPriority ? 'border-violet-400 bg-violet-50' : 'border-gray-200 bg-gray-50'
-            } ${flagLoading ? 'opacity-60 pointer-events-none' : ''}`}>
+            <label className={`flex items-center gap-2 cursor-pointer select-none px-3 py-1.5 rounded-xl border-2 transition-all text-sm ${s.isPriority ? 'border-violet-400 bg-violet-50' : 'border-gray-200 bg-gray-50'
+              } ${flagLoading ? 'opacity-60 pointer-events-none' : ''}`}>
               <input type="checkbox" checked={!!s.isPriority} onChange={() => handleFlagToggle('isPriority')}
                 className="w-4 h-4 accent-violet-500 cursor-pointer" />
               <span className="font-semibold text-violet-700">⚡ Priority</span>
             </label>
 
             {/* Admission Type Dropdown + Checkbox */}
-            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border-2 transition-all text-sm ${
-              ['SNS', 'SVS', 'Shri Ram'].includes(s.admissionType) ? 'border-blue-400 bg-blue-50' : 'border-gray-200 bg-gray-50'
-            } ${flagLoading ? 'opacity-60 pointer-events-none' : ''}`}>
-              <input type="checkbox" 
+            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border-2 transition-all text-sm ${['SNS', 'SVS', 'Shri Ram'].includes(s.admissionType) ? 'border-blue-400 bg-blue-50' : 'border-gray-200 bg-gray-50'
+              } ${flagLoading ? 'opacity-60 pointer-events-none' : ''}`}>
+              <input type="checkbox"
                 checked={['SNS', 'SVS', 'Shri Ram'].includes(s.admissionType)}
                 onChange={(e) => handleAdmTypeChange(e.target.checked ? localAdmType : null)}
-                className="w-4 h-4 accent-blue-500 cursor-pointer" 
+                className="w-4 h-4 accent-blue-500 cursor-pointer"
               />
-              <select 
+              <select
                 value={localAdmType}
                 onChange={(e) => {
                   setLocalAdmType(e.target.value);
@@ -318,9 +447,8 @@ export default function StudentDetail() {
                     handleAdmTypeChange(e.target.value);
                   }
                 }}
-                className={`bg-transparent font-semibold outline-none cursor-pointer ${
-                  ['SNS', 'SVS', 'Shri Ram'].includes(s.admissionType) ? 'text-blue-700' : 'text-gray-700'
-                }`}
+                className={`bg-transparent font-semibold outline-none cursor-pointer ${['SNS', 'SVS', 'Shri Ram'].includes(s.admissionType) ? 'text-blue-700' : 'text-gray-700'
+                  }`}
               >
                 <option value="SNS">SNS</option>
                 <option value="SVS">SVS</option>
@@ -364,7 +492,7 @@ export default function StudentDetail() {
 
   // ─── Personal Details Card ─────────────────────────────────────────────────
   const hasPersonal = !!(s.gender || s.dob || s.category || s.aadharNo || s.district || s.village || s.tehsil || s.pincode || s.fullAddress);
-  const hasFather   = !!(s.fatherOccupation || s.fatherIncome || s.fatherContactNumber);
+  const hasFather = !!(s.fatherOccupation || s.fatherIncome || s.fatherContactNumber);
 
   const PersonalDetailsCard = () => {
     if (!hasPersonal && !hasFather) return null;
@@ -382,10 +510,10 @@ export default function StudentDetail() {
             <div>
               <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-3">Personal Info</p>
               <div className="grid grid-cols-2 gap-2">
-                <InfoField label="Gender"        value={fmt(s.gender)} />
+                <InfoField label="Gender" value={fmt(s.gender)} />
                 <InfoField label="Date of Birth" value={fmt(s.dob)} />
-                <InfoField label="Category"      value={fmt(s.category)} />
-                <InfoField label="Aadhar No"     value={fmt(s.aadharNo)} />
+                <InfoField label="Category" value={fmt(s.category)} />
+                <InfoField label="Aadhar No" value={fmt(s.aadharNo)} />
               </div>
             </div>
           )}
@@ -394,10 +522,10 @@ export default function StudentDetail() {
             <div>
               <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-3">Address</p>
               <div className="grid grid-cols-2 gap-2">
-                <InfoField label="District"      value={fmt(s.district)} />
+                <InfoField label="District" value={fmt(s.district)} />
                 <InfoField label="Village / City" value={fmt(s.village)} />
-                <InfoField label="Tehsil"         value={fmt(s.tehsil)} />
-                <InfoField label="Pincode"        value={fmt(s.pincode)} />
+                <InfoField label="Tehsil" value={fmt(s.tehsil)} />
+                <InfoField label="Pincode" value={fmt(s.pincode)} />
                 {s.fullAddress && (
                   <div className="col-span-2 bg-gray-50 rounded-xl p-3">
                     <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-0.5">Full Address</p>
@@ -412,8 +540,8 @@ export default function StudentDetail() {
             <div>
               <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-3">Father / Family</p>
               <div className="grid grid-cols-2 gap-2">
-                <InfoField label="Occupation"     value={fmt(s.fatherOccupation)} />
-                <InfoField label="Annual Income"  value={s.fatherIncome ? `\u20B9 ${s.fatherIncome}` : null} />
+                <InfoField label="Occupation" value={fmt(s.fatherOccupation)} />
+                <InfoField label="Annual Income" value={s.fatherIncome ? `\u20B9 ${s.fatherIncome}` : null} />
                 <InfoField label="Father Contact" value={fmt(s.fatherContactNumber)} />
               </div>
             </div>
@@ -453,10 +581,10 @@ export default function StudentDetail() {
                     <p className="text-sm font-medium text-gray-800">{s.schoolName}</p>
                   </div>
                 )}
-                <InfoField label="12th Subject"      value={fmt(s.school12Sub)} />
+                <InfoField label="12th Subject" value={fmt(s.school12Sub)} />
                 <InfoField label="12th Passout Year" value={fmt(s.passout12)} />
-                <InfoField label="10th Roll No"      value={fmt(s.rollNumber10)} />
-                <InfoField label="12th Roll No"      value={fmt(s.rollNumber12)} />
+                <InfoField label="10th Roll No" value={fmt(s.rollNumber10)} />
+                <InfoField label="12th Roll No" value={fmt(s.rollNumber12)} />
               </div>
 
               {/* Percentage visual bars */}
@@ -474,10 +602,9 @@ export default function StudentDetail() {
                       </div>
                       <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
                         <div
-                          className={`h-full rounded-full ${
-                            Number(val) >= 75 ? 'bg-emerald-400' :
-                            Number(val) >= 50 ? 'bg-amber-400' : 'bg-rose-400'
-                          }`}
+                          className={`h-full rounded-full ${Number(val) >= 75 ? 'bg-emerald-400' :
+                              Number(val) >= 50 ? 'bg-amber-400' : 'bg-rose-400'
+                            }`}
                           style={{ width: `${Math.min(Number(val), 100)}%` }}
                         />
                       </div>
@@ -504,10 +631,10 @@ export default function StudentDetail() {
             <div>
               <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-3">Branch / Preferences</p>
               <div className="grid grid-cols-2 gap-2">
-                <InfoField label="Branch"      value={fmt(s.branch)} />
-                <InfoField label="Priority 1"  value={fmt(s.priority1)} />
-                <InfoField label="Priority 2"  value={fmt(s.priority2)} />
-                <InfoField label="Priority 3"  value={fmt(s.priority3)} />
+                <InfoField label="Branch" value={fmt(s.branch)} />
+                <InfoField label="Priority 1" value={fmt(s.priority1)} />
+                <InfoField label="Priority 2" value={fmt(s.priority2)} />
+                <InfoField label="Priority 3" value={fmt(s.priority3)} />
               </div>
             </div>
           )}
@@ -517,10 +644,10 @@ export default function StudentDetail() {
             <div>
               <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-3">SSISM Details</p>
               <div className="grid grid-cols-2 gap-2">
-                <InfoField label="Year"        value={fmt(s.year)} />
-                <InfoField label="Join Batch"  value={fmt(s.joinBatch)} />
+                <InfoField label="Year" value={fmt(s.year)} />
+                <InfoField label="Join Batch" value={fmt(s.joinBatch)} />
                 <InfoField label="Fees Scheme" value={fmt(s.feesScheme)} />
-                <InfoField label="Track Name"  value={fmt(s.trackName)} />
+                <InfoField label="Track Name" value={fmt(s.trackName)} />
                 {s.isTop20 && (
                   <div className="col-span-2 bg-amber-50 border border-amber-100 rounded-xl px-3 py-2">
                     <span className="text-xs font-semibold text-amber-700">⭐ Top 20 Student</span>
@@ -541,9 +668,9 @@ export default function StudentDetail() {
   const PaymentCard = () => {
     if (!hasPayment) return null;
     const payStatusColor = {
-      SUCCESS:             'bg-emerald-100 text-emerald-700 border-emerald-200',
-      INITIATED:           'bg-amber-100 text-amber-700 border-amber-200',
-      FAILED:              'bg-rose-100 text-rose-700 border-rose-200',
+      SUCCESS: 'bg-emerald-100 text-emerald-700 border-emerald-200',
+      INITIATED: 'bg-amber-100 text-amber-700 border-amber-200',
+      FAILED: 'bg-rose-100 text-rose-700 border-rose-200',
       NO_PAYMENT_REQUIRED: 'bg-gray-100 text-gray-600 border-gray-200',
     };
     const isAdmitted = s.status === 'Admitted';
@@ -591,7 +718,7 @@ export default function StudentDetail() {
             <div>
               <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-3">Form & Application</p>
               <div className="grid grid-cols-2 gap-2">
-                <InfoField label="Application Type"  value={fmt(s.applicationType)} />
+                <InfoField label="Application Type" value={fmt(s.applicationType)} />
                 <InfoField label="Admission Form No" value={fmt(s.admissionFormNo)} />
               </div>
             </div>
@@ -602,7 +729,7 @@ export default function StudentDetail() {
             <div className="pt-2 border-t border-gray-100">
               <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-3">Admission Details</p>
               <div className="grid grid-cols-2 gap-2">
-                <InfoField label="Book No"    value={fmt(s.bookNo)} />
+                <InfoField label="Book No" value={fmt(s.bookNo)} />
                 <InfoField label="Receipt No" value={fmt(s.receiptNo)} />
               </div>
             </div>
@@ -614,8 +741,8 @@ export default function StudentDetail() {
               <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-3">Payment Details</p>
               <div className="grid grid-cols-2 gap-2">
                 <InfoField label="Transaction ID" value={fmt(s.transactionId)} />
-                <InfoField label="Receipt No"     value={fmt(s.regFeeReceiptNo)} />
-                <InfoField label="Payment Date"   value={s.regFeeDate ? new Date(s.regFeeDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : null} />
+                <InfoField label="Receipt No" value={fmt(s.regFeeReceiptNo)} />
+                <InfoField label="Payment Date" value={s.regFeeDate ? new Date(s.regFeeDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : null} />
               </div>
             </div>
           )}
@@ -627,9 +754,9 @@ export default function StudentDetail() {
 
   // ─── Reception Entries Card ─────────────────────────────────────────────
   const purposeColor = {
-    Visit:        'bg-blue-100 text-blue-700 border-blue-200',
-    Inquiry:      'bg-amber-100 text-amber-700 border-amber-200',
-    Interview:    'bg-violet-100 text-violet-700 border-violet-200',
+    Visit: 'bg-blue-100 text-blue-700 border-blue-200',
+    Inquiry: 'bg-amber-100 text-amber-700 border-amber-200',
+    Interview: 'bg-violet-100 text-violet-700 border-violet-200',
     'Re-Interview': 'bg-rose-100 text-rose-700 border-rose-200',
   };
 
@@ -688,26 +815,23 @@ export default function StudentDetail() {
               <div key={entry._id} className="flex gap-3 items-start">
                 {/* Timeline dot */}
                 <div className="flex flex-col items-center shrink-0 mt-1">
-                  <div className={`w-2.5 h-2.5 rounded-full border-2 ${
-                    idx === 0 ? 'border-violet-500 bg-violet-500' : 'border-gray-300 bg-white'
-                  }`} />
+                  <div className={`w-2.5 h-2.5 rounded-full border-2 ${idx === 0 ? 'border-violet-500 bg-violet-500' : 'border-gray-300 bg-white'
+                    }`} />
                   {idx < receptionEntries.length - 1 && (
                     <div className="w-0.5 h-full min-h-[24px] bg-gray-100 mt-1" />
                   )}
                 </div>
 
-                <div className={`flex-1 rounded-xl p-3 border ${
-                  idx === 0 ? 'border-violet-100 bg-violet-50/40' : 'border-gray-100 bg-gray-50'
-                }`}>
+                <div className={`flex-1 rounded-xl p-3 border ${idx === 0 ? 'border-violet-100 bg-violet-50/40' : 'border-gray-100 bg-gray-50'
+                  }`}>
                   <div className="flex items-start justify-between gap-2 flex-wrap">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full border ${purposeColor[entry.visitPurpose]}`}>
                         {entry.visitPurpose}
                       </span>
                       {entry.entryType && (
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
-                          entry.entryType === 'Online' ? 'bg-sky-100 text-sky-700' : 'bg-gray-200 text-gray-600'
-                        }`}>
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${entry.entryType === 'Online' ? 'bg-sky-100 text-sky-700' : 'bg-gray-200 text-gray-600'
+                          }`}>
                           {entry.entryType.toUpperCase()}
                         </span>
                       )}
@@ -821,24 +945,30 @@ export default function StudentDetail() {
         </button>
         <h2 className="text-lg font-bold text-gray-800">Student Profile</h2>
         <div className="ml-auto flex items-center gap-2 flex-wrap">
+          {user?.role === 'admin' && user?.canEditStudent && (
+            <button onClick={handleOpenAdminEdit}
+              className="flex items-center gap-1.5 bg-primary text-white px-3.5 py-1.5 rounded-lg text-sm hover:bg-primary-dark font-semibold shadow-md shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all duration-300">
+              <FiEdit2 size={13} /> Admin Edit
+            </button>
+          )}
           <button onClick={() => navigate(`/students/${id}/edit`)}
-            className="flex items-center gap-1.5 bg-primary text-white px-3 py-1.5 rounded-lg text-sm hover:bg-primary-dark">
+            className="flex items-center gap-1.5 bg-primary text-white px-3 py-1.5 rounded-lg text-sm hover:bg-primary-dark hover:scale-[1.02] active:scale-[0.98] transition-all duration-300">
             <FiEdit2 size={13} /> Edit
           </button>
           <div className="relative" ref={exportRef}>
             <button onClick={() => setExportOpen(!exportOpen)} disabled={exporting}
-              className="flex items-center gap-1.5 border border-primary text-primary px-3 py-1.5 rounded-lg text-sm hover:bg-orange-50 disabled:opacity-60 transition-colors">
+              className="flex items-center gap-1.5 border border-primary text-primary px-3 py-1.5 rounded-lg text-sm hover:bg-primary/5 disabled:opacity-60 transition-colors">
               <FiDownload size={13} /> {exporting ? 'Exporting...' : 'Export'}
               <FiChevronDown size={14} className={`transition-transform ${exportOpen ? 'rotate-180' : ''}`} />
             </button>
             {exportOpen && (
               <div className="absolute right-0 mt-1 w-32 bg-white rounded-xl shadow-lg border border-gray-100 py-1 z-50">
                 <button onClick={() => { handleExport('xlsx'); setExportOpen(false); }}
-                  className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 hover:text-primary">
+                  className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-primary/5 hover:text-primary">
                   Excel
                 </button>
                 <button onClick={() => { handleExport('pdf'); setExportOpen(false); }}
-                  className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 hover:text-primary">
+                  className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-primary/5 hover:text-primary">
                   PDF
                 </button>
               </div>
@@ -850,7 +980,7 @@ export default function StudentDetail() {
           </button>
           {user?.role === 'track_incharge' && (
             <button onClick={() => setEditReqForm({ field: '', newValue: '', reason: '' })}
-              className="flex items-center gap-1.5 border border-orange-200 text-primary px-3 py-1.5 rounded-lg text-sm hover:bg-orange-50">
+              className="flex items-center gap-1.5 border border-primary/20 text-primary px-3 py-1.5 rounded-lg text-sm hover:bg-primary/5">
               <FiSend size={13} /> Request Edit
             </button>
           )}
@@ -889,18 +1019,16 @@ export default function StudentDetail() {
               <button
                 type="button"
                 onClick={() => setFinalForm({ ...finalForm, interviewType: 'On Campus' })}
-                className={`flex-1 py-1.5 text-sm font-semibold rounded-lg transition-all ${
-                  finalForm.interviewType === 'On Campus' ? 'bg-white text-primary shadow-sm' : 'text-gray-500 hover:text-gray-700'
-                }`}
+                className={`flex-1 py-1.5 text-sm font-semibold rounded-lg transition-all ${finalForm.interviewType === 'On Campus' ? 'bg-white text-primary shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                  }`}
               >
                 On Campus
               </button>
               <button
                 type="button"
                 onClick={() => setFinalForm({ ...finalForm, interviewType: 'Online' })}
-                className={`flex-1 py-1.5 text-sm font-semibold rounded-lg transition-all ${
-                  finalForm.interviewType === 'Online' ? 'bg-white text-primary shadow-sm' : 'text-gray-500 hover:text-gray-700'
-                }`}
+                className={`flex-1 py-1.5 text-sm font-semibold rounded-lg transition-all ${finalForm.interviewType === 'Online' ? 'bg-white text-primary shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                  }`}
               >
                 Online
               </button>
@@ -930,6 +1058,79 @@ export default function StudentDetail() {
             </button>
           </form>
         </BottomSheet>
+      )}
+
+      {showFinalConfirm && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl shadow-2xl border border-slate-100 max-w-md w-full overflow-hidden animate-in fade-in zoom-in-95 duration-200 flex flex-col my-auto max-h-[90vh] text-left">
+            {/* Header */}
+            <div className="px-6 py-5 border-b border-slate-100 flex items-center gap-3 bg-gradient-to-r from-orange-50/50 to-white">
+              <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center text-primary shrink-0">
+                <FiAlertCircle size={20} />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-gray-900">Confirm Final Interview</h3>
+                <p className="text-xs text-gray-500 font-medium">Please review final decision details before submitting</p>
+              </div>
+            </div>
+
+            {/* Content List */}
+            <div className="px-6 py-5 overflow-y-auto space-y-4 flex-1">
+              <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100/80 space-y-2.5">
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-gray-400 font-semibold uppercase tracking-wide">Candidate</span>
+                  <span className="text-gray-800 font-bold">{student.name}</span>
+                </div>
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-gray-400 font-semibold uppercase tracking-wide">Interview Round</span>
+                  <span className="text-gray-700 font-bold">Final Round ({interviews.length + 1})</span>
+                </div>
+                {finalForm.interviewType && (
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-gray-400 font-semibold uppercase tracking-wide">Type</span>
+                    <span className="text-gray-700 font-bold">{finalForm.interviewType}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Decision */}
+              <div className="bg-orange-50/50 border border-orange-100 rounded-2xl p-4 flex justify-between items-center">
+                <span className="text-xs text-gray-600 font-semibold">Final Result Decision</span>
+                <span className={`text-xs font-bold px-3 py-1 rounded-full ${finalForm.result === 'Pass' ? 'bg-emerald-100 text-emerald-700' :
+                    finalForm.result === 'Fail' ? 'bg-rose-100 text-rose-700' : 'bg-amber-100 text-amber-700'
+                  }`}>{finalForm.result}</span>
+              </div>
+
+              {/* Remarks */}
+              {finalForm.remarks && (
+                <div className="space-y-1">
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Remarks</p>
+                  <p className="text-xs text-gray-600 bg-slate-50 border border-slate-100 rounded-xl px-3 py-2.5 italic">
+                    "{finalForm.remarks}"
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Footer Actions */}
+            <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex gap-3 shrink-0">
+              <button
+                type="button"
+                onClick={() => setShowFinalConfirm(false)}
+                className="flex-1 border border-slate-200 bg-white text-gray-500 py-2.5 rounded-xl text-xs font-bold hover:bg-slate-50 active:scale-95 transition-all duration-200"
+              >
+                Cancel / Edit
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmFinalInterview}
+                className="flex-1 bg-primary text-white py-2.5 rounded-xl text-xs font-bold hover:bg-primary-dark hover:shadow-lg active:scale-95 transition-all duration-200"
+              >
+                Confirm & Submit
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {editReqForm && (
@@ -1025,6 +1226,634 @@ export default function StudentDetail() {
                 </div>
               </div>
             )}
+          </div>
+        </BottomSheet>
+      )}
+
+      {adminEditOpen && adminEditForm && (
+        <BottomSheet open onClose={() => { setAdminEditOpen(false); setAdminEditForm(null); }} title="Admin Control Center — Edit Profile" subtitle={`Enforced Admin Edit Mode · Student: ${student.name}`} maxWidth="max-w-5xl">
+          <div className="flex flex-col max-h-[75vh] sm:max-h-[70vh]">
+            {/* Tabs */}
+            <div className="flex p-1.5 bg-gray-50 border border-gray-100 rounded-2xl mb-6 shrink-0 flex-wrap gap-1">
+              <button type="button" onClick={() => setEditTab('general')} className={tabClass('general')}>
+                <FiUser size={14} /> General & Personal
+              </button>
+              <button type="button" onClick={() => setEditTab('academic')} className={tabClass('academic')}>
+                <FiBook size={14} /> Academic Info
+              </button>
+              <button type="button" onClick={() => setEditTab('reception')} className={tabClass('reception')}>
+                <FiCalendar size={14} /> Reception Visits ({adminEditForm.receptionUpdates.length})
+              </button>
+              <button type="button" onClick={() => setEditTab('interviews')} className={tabClass('interviews')}>
+                <FiAward size={14} /> Technical Rounds ({adminEditForm.interviewUpdates.length})
+              </button>
+              <button type="button" onClick={() => setEditTab('final')} className={tabClass('final')}>
+                <FiCheckCircle size={14} /> Final Interview
+              </button>
+            </div>
+
+            {/* Form */}
+            <form onSubmit={handleAdminSave} className="flex flex-col flex-1 min-h-0 text-left">
+              {/* Scrollable Form Content */}
+              <div className="flex-1 overflow-y-auto pr-1 pb-5 space-y-5">
+                {editTab === 'general' && (
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-1">
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-500 mb-1.5">Student Name <span className="text-primary">*</span></label>
+                      <input type="text" required value={adminEditForm.studentUpdates.name}
+                        onChange={e => setAdminEditForm({
+                          ...adminEditForm,
+                          studentUpdates: { ...adminEditForm.studentUpdates, name: e.target.value }
+                        })}
+                        className="w-full bg-gray-50/50 hover:bg-gray-50 focus:bg-white border border-gray-200 focus:border-primary rounded-xl px-3.5 py-2 text-sm focus:outline-none focus:ring-4 focus:ring-primary/10 transition-all duration-200" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-500 mb-1.5">Father's Name</label>
+                      <input type="text" value={adminEditForm.studentUpdates.fatherName}
+                        onChange={e => setAdminEditForm({
+                          ...adminEditForm,
+                          studentUpdates: { ...adminEditForm.studentUpdates, fatherName: e.target.value }
+                        })}
+                        className="w-full bg-gray-50/50 hover:bg-gray-50 focus:bg-white border border-gray-200 focus:border-primary rounded-xl px-3.5 py-2 text-sm focus:outline-none focus:ring-4 focus:ring-primary/10 transition-all duration-200" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-500 mb-1.5">Mobile Number <span className="text-primary">*</span></label>
+                      <input type="text" required value={adminEditForm.studentUpdates.mobileNo}
+                        onChange={e => setAdminEditForm({
+                          ...adminEditForm,
+                          studentUpdates: { ...adminEditForm.studentUpdates, mobileNo: e.target.value }
+                        })}
+                        className="w-full bg-gray-50/50 hover:bg-gray-50 focus:bg-white border border-gray-200 focus:border-primary rounded-xl px-3.5 py-2 text-sm focus:outline-none focus:ring-4 focus:ring-primary/10 transition-all duration-200" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-500 mb-1.5">WhatsApp Number</label>
+                      <input type="text" value={adminEditForm.studentUpdates.whatsappNo || adminEditForm.studentUpdates.whatsappNumber || ''}
+                        onChange={e => setAdminEditForm({
+                          ...adminEditForm,
+                          studentUpdates: { ...adminEditForm.studentUpdates, whatsappNo: e.target.value, whatsappNumber: e.target.value }
+                        })}
+                        className="w-full bg-gray-50/50 hover:bg-gray-50 focus:bg-white border border-gray-200 focus:border-primary rounded-xl px-3.5 py-2 text-sm focus:outline-none focus:ring-4 focus:ring-primary/10 transition-all duration-200" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-500 mb-1.5">Track</label>
+                      <select value={adminEditForm.studentUpdates.track}
+                        onChange={e => setAdminEditForm({
+                          ...adminEditForm,
+                          studentUpdates: { ...adminEditForm.studentUpdates, track: e.target.value }
+                        })}
+                        className="w-full bg-gray-50/50 hover:bg-gray-50 focus:bg-white border border-gray-200 focus:border-primary rounded-xl px-3.5 py-2 text-sm focus:outline-none focus:ring-4 focus:ring-primary/10 transition-all duration-200 cursor-pointer bg-white">
+                        <option value="">No Track</option>
+                        {['Harda', 'Khategaon', 'Rehti', 'Satwas & Kannod'].map(t => <option key={t}>{t}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-500 mb-1.5">Town / Village</label>
+                      <input type="text" value={adminEditForm.studentUpdates.village || adminEditForm.studentUpdates.trackName || ''}
+                        onChange={e => setAdminEditForm({
+                          ...adminEditForm,
+                          studentUpdates: { ...adminEditForm.studentUpdates, village: e.target.value, trackName: e.target.value }
+                        })}
+                        className="w-full bg-gray-50/50 hover:bg-gray-50 focus:bg-white border border-gray-200 focus:border-primary rounded-xl px-3.5 py-2 text-sm focus:outline-none focus:ring-4 focus:ring-primary/10 transition-all duration-200" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-500 mb-1.5">Branch</label>
+                      <input type="text" value={adminEditForm.studentUpdates.branch || ''}
+                        onChange={e => setAdminEditForm({
+                          ...adminEditForm,
+                          studentUpdates: { ...adminEditForm.studentUpdates, branch: e.target.value }
+                        })}
+                        className="w-full bg-gray-50/50 hover:bg-gray-50 focus:bg-white border border-gray-200 focus:border-primary rounded-xl px-3.5 py-2 text-sm focus:outline-none focus:ring-4 focus:ring-primary/10 transition-all duration-200" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-500 mb-1.5">Subject</label>
+                      <input type="text" value={adminEditForm.studentUpdates.subject || ''}
+                        onChange={e => setAdminEditForm({
+                          ...adminEditForm,
+                          studentUpdates: { ...adminEditForm.studentUpdates, subject: e.target.value }
+                        })}
+                        className="w-full bg-gray-50/50 hover:bg-gray-50 focus:bg-white border border-gray-200 focus:border-primary rounded-xl px-3.5 py-2 text-sm focus:outline-none focus:ring-4 focus:ring-primary/10 transition-all duration-200" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-500 mb-1.5">Admission Form No</label>
+                      <input type="text" value={adminEditForm.studentUpdates.admissionFormNo || ''}
+                        onChange={e => setAdminEditForm({
+                          ...adminEditForm,
+                          studentUpdates: { ...adminEditForm.studentUpdates, admissionFormNo: e.target.value }
+                        })}
+                        className="w-full bg-gray-50/50 hover:bg-gray-50 focus:bg-white border border-gray-200 focus:border-primary rounded-xl px-3.5 py-2 text-sm focus:outline-none focus:ring-4 focus:ring-primary/10 transition-all duration-200" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-500 mb-1.5">Email</label>
+                      <input type="email" value={adminEditForm.studentUpdates.email || ''}
+                        onChange={e => setAdminEditForm({
+                          ...adminEditForm,
+                          studentUpdates: { ...adminEditForm.studentUpdates, email: e.target.value }
+                        })}
+                        className="w-full bg-gray-50/50 hover:bg-gray-50 focus:bg-white border border-gray-200 focus:border-primary rounded-xl px-3.5 py-2 text-sm focus:outline-none focus:ring-4 focus:ring-primary/10 transition-all duration-200" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-500 mb-1.5">Gender</label>
+                      <select value={adminEditForm.studentUpdates.gender || ''}
+                        onChange={e => setAdminEditForm({
+                          ...adminEditForm,
+                          studentUpdates: { ...adminEditForm.studentUpdates, gender: e.target.value }
+                        })}
+                        className="w-full bg-gray-50/50 hover:bg-gray-50 focus:bg-white border border-gray-200 focus:border-primary rounded-xl px-3.5 py-2 text-sm focus:outline-none focus:ring-4 focus:ring-primary/10 transition-all duration-200 cursor-pointer bg-white">
+                        <option value="">Select</option>
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                        <option value="Other">Other</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-500 mb-1.5">Date of Birth</label>
+                      <input type="date" value={formatDateForInput(adminEditForm.studentUpdates.dob)}
+                        onChange={e => setAdminEditForm({
+                          ...adminEditForm,
+                          studentUpdates: { ...adminEditForm.studentUpdates, dob: e.target.value }
+                        })}
+                        className="w-full bg-gray-50/50 hover:bg-gray-50 focus:bg-white border border-gray-200 focus:border-primary rounded-xl px-3.5 py-2 text-sm focus:outline-none focus:ring-4 focus:ring-primary/10 transition-all duration-200" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-500 mb-1.5">Category</label>
+                      <input type="text" value={adminEditForm.studentUpdates.category || ''}
+                        onChange={e => setAdminEditForm({
+                          ...adminEditForm,
+                          studentUpdates: { ...adminEditForm.studentUpdates, category: e.target.value }
+                        })}
+                        className="w-full bg-gray-50/50 hover:bg-gray-50 focus:bg-white border border-gray-200 focus:border-primary rounded-xl px-3.5 py-2 text-sm focus:outline-none focus:ring-4 focus:ring-primary/10 transition-all duration-200" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-500 mb-1.5">Aadhar Number</label>
+                      <input type="text" value={adminEditForm.studentUpdates.aadharNo || ''}
+                        onChange={e => setAdminEditForm({
+                          ...adminEditForm,
+                          studentUpdates: { ...adminEditForm.studentUpdates, aadharNo: e.target.value }
+                        })}
+                        className="w-full bg-gray-50/50 hover:bg-gray-50 focus:bg-white border border-gray-200 focus:border-primary rounded-xl px-3.5 py-2 text-sm focus:outline-none focus:ring-4 focus:ring-primary/10 transition-all duration-200" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-500 mb-1.5">Tehsil</label>
+                      <input type="text" value={adminEditForm.studentUpdates.tehsil || ''}
+                        onChange={e => setAdminEditForm({
+                          ...adminEditForm,
+                          studentUpdates: { ...adminEditForm.studentUpdates, tehsil: e.target.value }
+                        })}
+                        className="w-full bg-gray-50/50 hover:bg-gray-50 focus:bg-white border border-gray-200 focus:border-primary rounded-xl px-3.5 py-2 text-sm focus:outline-none focus:ring-4 focus:ring-primary/10 transition-all duration-200" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-500 mb-1.5">District</label>
+                      <input type="text" value={adminEditForm.studentUpdates.district || ''}
+                        onChange={e => setAdminEditForm({
+                          ...adminEditForm,
+                          studentUpdates: { ...adminEditForm.studentUpdates, district: e.target.value }
+                        })}
+                        className="w-full bg-gray-50/50 hover:bg-gray-50 focus:bg-white border border-gray-200 focus:border-primary rounded-xl px-3.5 py-2 text-sm focus:outline-none focus:ring-4 focus:ring-primary/10 transition-all duration-200" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-500 mb-1.5">Pincode</label>
+                      <input type="number" value={adminEditForm.studentUpdates.pincode || ''}
+                        onChange={e => setAdminEditForm({
+                          ...adminEditForm,
+                          studentUpdates: { ...adminEditForm.studentUpdates, pincode: e.target.value }
+                        })}
+                        className="w-full bg-gray-50/50 hover:bg-gray-50 focus:bg-white border border-gray-200 focus:border-primary rounded-xl px-3.5 py-2 text-sm focus:outline-none focus:ring-4 focus:ring-primary/10 transition-all duration-200" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-500 mb-1.5">Father's Contact Number</label>
+                      <input type="text" value={adminEditForm.studentUpdates.fatherContactNumber || ''}
+                        onChange={e => setAdminEditForm({
+                          ...adminEditForm,
+                          studentUpdates: { ...adminEditForm.studentUpdates, fatherContactNumber: e.target.value }
+                        })}
+                        className="w-full bg-gray-50/50 hover:bg-gray-50 focus:bg-white border border-gray-200 focus:border-primary rounded-xl px-3.5 py-2 text-sm focus:outline-none focus:ring-4 focus:ring-primary/10 transition-all duration-200" />
+                    </div>
+                    <div className="sm:col-span-3">
+                      <label className="block text-xs font-semibold text-gray-500 mb-1.5">Full Address</label>
+                      <textarea rows={2} value={adminEditForm.studentUpdates.fullAddress || ''}
+                        onChange={e => setAdminEditForm({
+                          ...adminEditForm,
+                          studentUpdates: { ...adminEditForm.studentUpdates, fullAddress: e.target.value }
+                        })}
+                        className="w-full bg-gray-50/50 hover:bg-gray-50 focus:bg-white border border-gray-200 focus:border-primary rounded-xl px-3.5 py-2 text-sm focus:outline-none focus:ring-4 focus:ring-primary/10 transition-all duration-200 resize-none" />
+                    </div>
+                  </div>
+                )}
+
+                {editTab === 'academic' && (
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-1">
+                    <div className="sm:col-span-3">
+                      <label className="block text-xs font-semibold text-gray-500 mb-1.5">School Name</label>
+                      <input type="text" value={adminEditForm.studentUpdates.schoolName || ''}
+                        onChange={e => setAdminEditForm({
+                          ...adminEditForm,
+                          studentUpdates: { ...adminEditForm.studentUpdates, schoolName: e.target.value }
+                        })}
+                        className="w-full bg-gray-50/50 hover:bg-gray-50 focus:bg-white border border-gray-200 focus:border-primary rounded-xl px-3.5 py-2 text-sm focus:outline-none focus:ring-4 focus:ring-primary/10 transition-all duration-200" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-500 mb-1.5">12th Subject</label>
+                      <input type="text" value={adminEditForm.studentUpdates.school12Sub || ''}
+                        onChange={e => setAdminEditForm({
+                          ...adminEditForm,
+                          studentUpdates: { ...adminEditForm.studentUpdates, school12Sub: e.target.value }
+                        })}
+                        className="w-full bg-gray-50/50 hover:bg-gray-50 focus:bg-white border border-gray-200 focus:border-primary rounded-xl px-3.5 py-2 text-sm focus:outline-none focus:ring-4 focus:ring-primary/10 transition-all duration-200" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-500 mb-1.5">10th %</label>
+                      <input type="number" step="0.01" value={adminEditForm.studentUpdates.persentage10 || ''}
+                        onChange={e => setAdminEditForm({
+                          ...adminEditForm,
+                          studentUpdates: { ...adminEditForm.studentUpdates, persentage10: e.target.value }
+                        })}
+                        className="w-full bg-gray-50/50 hover:bg-gray-50 focus:bg-white border border-gray-200 focus:border-primary rounded-xl px-3.5 py-2 text-sm focus:outline-none focus:ring-4 focus:ring-primary/10 transition-all duration-200" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-500 mb-1.5">11th %</label>
+                      <input type="text" value={adminEditForm.studentUpdates.persentage11 || ''}
+                        onChange={e => setAdminEditForm({
+                          ...adminEditForm,
+                          studentUpdates: { ...adminEditForm.studentUpdates, persentage11: e.target.value }
+                        })}
+                        className="w-full bg-gray-50/50 hover:bg-gray-50 focus:bg-white border border-gray-200 focus:border-primary rounded-xl px-3.5 py-2 text-sm focus:outline-none focus:ring-4 focus:ring-primary/10 transition-all duration-200" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-500 mb-1.5">12th %</label>
+                      <input type="number" step="0.01" value={adminEditForm.studentUpdates.persentage12 || ''}
+                        onChange={e => setAdminEditForm({
+                          ...adminEditForm,
+                          studentUpdates: { ...adminEditForm.studentUpdates, persentage12: e.target.value }
+                        })}
+                        className="w-full bg-gray-50/50 hover:bg-gray-50 focus:bg-white border border-gray-200 focus:border-primary rounded-xl px-3.5 py-2 text-sm focus:outline-none focus:ring-4 focus:ring-primary/10 transition-all duration-200" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-500 mb-1.5">JEE Score</label>
+                      <input type="number" step="0.01" value={adminEditForm.studentUpdates.jeeScore || ''}
+                        onChange={e => setAdminEditForm({
+                          ...adminEditForm,
+                          studentUpdates: { ...adminEditForm.studentUpdates, jeeScore: e.target.value }
+                        })}
+                        className="w-full bg-gray-50/50 hover:bg-gray-50 focus:bg-white border border-gray-200 focus:border-primary rounded-xl px-3.5 py-2 text-sm focus:outline-none focus:ring-4 focus:ring-primary/10 transition-all duration-200" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-500 mb-1.5">Join Batch (Year)</label>
+                      <input type="number" value={adminEditForm.studentUpdates.joinBatch || ''}
+                        onChange={e => setAdminEditForm({
+                          ...adminEditForm,
+                          studentUpdates: { ...adminEditForm.studentUpdates, joinBatch: e.target.value }
+                        })}
+                        className="w-full bg-gray-50/50 hover:bg-gray-50 focus:bg-white border border-gray-200 focus:border-primary rounded-xl px-3.5 py-2 text-sm focus:outline-none focus:ring-4 focus:ring-primary/10 transition-all duration-200" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-500 mb-1.5">Fees Scheme</label>
+                      <input type="text" value={adminEditForm.studentUpdates.feesScheme || ''}
+                        onChange={e => setAdminEditForm({
+                          ...adminEditForm,
+                          studentUpdates: { ...adminEditForm.studentUpdates, feesScheme: e.target.value }
+                        })}
+                        className="w-full bg-gray-50/50 hover:bg-gray-50 focus:bg-white border border-gray-200 focus:border-primary rounded-xl px-3.5 py-2 text-sm focus:outline-none focus:ring-4 focus:ring-primary/10 transition-all duration-200" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-500 mb-1.5">Admission Type</label>
+                      <select value={adminEditForm.studentUpdates.admissionType || ''}
+                        onChange={e => setAdminEditForm({
+                          ...adminEditForm,
+                          studentUpdates: { ...adminEditForm.studentUpdates, admissionType: e.target.value || null }
+                        })}
+                        className="w-full bg-gray-50/50 hover:bg-gray-50 focus:bg-white border border-gray-200 focus:border-primary rounded-xl px-3.5 py-2 text-sm focus:outline-none focus:ring-4 focus:ring-primary/10 transition-all duration-200 cursor-pointer bg-white">
+                        <option value="">Full Fees / None</option>
+                        <option value="SNS">SNS</option>
+                        <option value="SVS">SVS</option>
+                        <option value="Shri Ram">Shri Ram</option>
+                        <option value="Full Fees">Full Fees</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-500 mb-1.5">Form Source</label>
+                      <select value={adminEditForm.studentUpdates.formSource || ''}
+                        onChange={e => setAdminEditForm({
+                          ...adminEditForm,
+                          studentUpdates: { ...adminEditForm.studentUpdates, formSource: e.target.value || null }
+                        })}
+                        className="w-full bg-gray-50/50 hover:bg-gray-50 focus:bg-white border border-gray-200 focus:border-primary rounded-xl px-3.5 py-2 text-sm focus:outline-none focus:ring-4 focus:ring-primary/10 transition-all duration-200 cursor-pointer bg-white">
+                        <option value="">None</option>
+                        <option value="ssism">ssism</option>
+                        <option value="btech">btech</option>
+                        <option value="manual">manual</option>
+                      </select>
+                    </div>
+                  </div>
+                )}
+
+                {editTab === 'reception' && (
+                  <div className="space-y-4">
+                    {adminEditForm.receptionUpdates.length === 0 ? (
+                      <div className="text-center py-12 text-gray-400 border border-dashed border-gray-200 rounded-2xl bg-gray-50/30">
+                        <FiCalendar size={32} className="mx-auto mb-2 opacity-30 text-gray-400" />
+                        <p className="text-sm font-medium">Koi visit history nahi mili.</p>
+                      </div>
+                    ) : (
+                      adminEditForm.receptionUpdates.map((entry, idx) => (
+                        <div key={entry._id} className="border border-gray-100 rounded-2xl p-5 bg-white shadow-sm hover:shadow-md transition-all duration-300 space-y-4 relative">
+                          <div className="flex items-center justify-between border-b border-gray-50 pb-3">
+                            <span className="text-xs font-bold text-primary flex items-center gap-1.5">
+                              <FiCalendar size={13} /> Visit Entry #{idx + 1}
+                            </span>
+                            <div className="flex items-center gap-2">
+                              <span className="text-[10px] text-gray-400 font-mono bg-gray-50 px-2.5 py-0.5 rounded-lg border border-gray-100">ID: {entry._id}</span>
+                              <button type="button" onClick={() => handleDeleteReception(entry._id, idx)}
+                                className="text-xs font-semibold px-2 py-0.5 text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 rounded-lg flex items-center gap-1 transition-colors" title="Delete Visit Entry">
+                                <FiTrash2 size={11} /> Delete
+                              </button>
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+                            <div>
+                              <label className="block text-xs font-semibold text-gray-500 mb-1.5">Date</label>
+                              <input type="date" required value={formatDateForInput(entry.date)}
+                                onChange={e => {
+                                  const list = [...adminEditForm.receptionUpdates];
+                                  list[idx].date = e.target.value;
+                                  setAdminEditForm({ ...adminEditForm, receptionUpdates: list });
+                                }}
+                                className="w-full bg-gray-50/50 hover:bg-gray-50 focus:bg-white border border-gray-200 focus:border-primary rounded-xl px-3 py-1.5 text-xs focus:outline-none focus:ring-4 focus:ring-primary/10 transition-all duration-200" />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-semibold text-gray-500 mb-1.5">Town</label>
+                              <input type="text" required value={entry.town}
+                                onChange={e => {
+                                  const list = [...adminEditForm.receptionUpdates];
+                                  list[idx].town = e.target.value;
+                                  setAdminEditForm({ ...adminEditForm, receptionUpdates: list });
+                                }}
+                                className="w-full bg-gray-50/50 hover:bg-gray-50 focus:bg-white border border-gray-200 focus:border-primary rounded-xl px-3 py-1.5 text-xs focus:outline-none focus:ring-4 focus:ring-primary/10 transition-all duration-200" />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-semibold text-gray-500 mb-1.5">Purpose</label>
+                              <select value={entry.visitPurpose}
+                                onChange={e => {
+                                  const list = [...adminEditForm.receptionUpdates];
+                                  list[idx].visitPurpose = e.target.value;
+                                  setAdminEditForm({ ...adminEditForm, receptionUpdates: list });
+                                }}
+                                className="w-full bg-gray-50/50 hover:bg-gray-50 focus:bg-white border border-gray-200 focus:border-primary rounded-xl px-3 py-1.5 text-xs focus:outline-none focus:ring-4 focus:ring-primary/10 transition-all duration-200 cursor-pointer bg-white">
+                                {['Visit', 'Inquiry', 'Interview', 'Re-Interview'].map(p => <option key={p}>{p}</option>)}
+                              </select>
+                            </div>
+                            <div>
+                              <label className="block text-xs font-semibold text-gray-500 mb-1.5">Branch / Course</label>
+                              <input type="text" value={entry.branch || ''}
+                                onChange={e => {
+                                  const list = [...adminEditForm.receptionUpdates];
+                                  list[idx].branch = e.target.value;
+                                  setAdminEditForm({ ...adminEditForm, receptionUpdates: list });
+                                }}
+                                className="w-full bg-gray-50/50 hover:bg-gray-50 focus:bg-white border border-gray-200 focus:border-primary rounded-xl px-3 py-1.5 text-xs focus:outline-none focus:ring-4 focus:ring-primary/10 transition-all duration-200" />
+                            </div>
+                            <div className="sm:col-span-2">
+                              <label className="block text-xs font-semibold text-gray-500 mb-1.5">Admission Form No</label>
+                              <input type="text" required value={entry.admissionFormNo}
+                                onChange={e => {
+                                  const list = [...adminEditForm.receptionUpdates];
+                                  list[idx].admissionFormNo = e.target.value;
+                                  setAdminEditForm({ ...adminEditForm, receptionUpdates: list });
+                                }}
+                                className="w-full bg-gray-50/50 hover:bg-gray-50 focus:bg-white border border-gray-200 focus:border-primary rounded-xl px-3 py-1.5 text-xs focus:outline-none focus:ring-4 focus:ring-primary/10 transition-all duration-200" />
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                )}
+
+                {editTab === 'interviews' && (
+                  <div className="space-y-6">
+                    {adminEditForm.interviewUpdates.length === 0 ? (
+                      <div className="text-center py-12 text-gray-400 border border-dashed border-gray-200 rounded-2xl bg-gray-50/30">
+                        <FiAward size={32} className="mx-auto mb-2 opacity-30 text-gray-400" />
+                        <p className="text-sm font-medium">Koi interview history nahi mili.</p>
+                      </div>
+                    ) : (
+                      adminEditForm.interviewUpdates.map((inv, idx) => (
+                        <div key={inv._id} className="border border-primary/20 rounded-2xl p-5 bg-primary/5 hover:bg-primary/10 transition-all duration-300 space-y-5 relative">
+                          <div className="flex items-center justify-between border-b border-primary/20 pb-3">
+                            <span className="text-sm font-bold text-primary flex items-center gap-1.5">
+                              <FiAward size={15} /> Technical Round {inv.round}
+                            </span>
+                            <div className="flex items-center gap-2">
+                              <span className="text-[10px] text-primary/60 font-mono bg-primary/10 px-2.5 py-0.5 rounded-lg border border-primary/20">ID: {inv._id}</span>
+                              <button type="button" onClick={() => handleDeleteInterview(inv._id, idx)}
+                                className="text-xs font-semibold px-2 py-0.5 text-red-600 hover:text-red-700 bg-white hover:bg-red-50 rounded-lg flex items-center gap-1 border border-red-200 transition-colors" title="Delete Technical Round">
+                                <FiTrash2 size={11} /> Delete
+                              </button>
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                            <div>
+                              <label className="block text-xs font-semibold text-gray-500 mb-1.5">Date</label>
+                              <input type="date" required value={formatDateForInput(inv.date)}
+                                onChange={e => {
+                                  const list = [...adminEditForm.interviewUpdates];
+                                  list[idx].date = e.target.value;
+                                  setAdminEditForm({ ...adminEditForm, interviewUpdates: list });
+                                }}
+                                className="w-full bg-white border border-gray-200 focus:border-primary rounded-xl px-3 py-1.5 text-xs focus:outline-none focus:ring-4 focus:ring-primary/10 transition-all duration-200" />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-semibold text-gray-500 mb-1.5">Interview Type</label>
+                              <select value={inv.interviewType || ''}
+                                onChange={e => {
+                                  const list = [...adminEditForm.interviewUpdates];
+                                  list[idx].interviewType = e.target.value || null;
+                                  setAdminEditForm({ ...adminEditForm, interviewUpdates: list });
+                                }}
+                                className="w-full bg-white border border-gray-200 focus:border-primary rounded-xl px-3 py-1.5 text-xs focus:outline-none focus:ring-4 focus:ring-primary/10 transition-all duration-200 cursor-pointer">
+                                <option value="">Select</option>
+                                <option value="Online">Online</option>
+                                <option value="On Campus">On Campus</option>
+                              </select>
+                            </div>
+                            <div>
+                              <label className="block text-xs font-semibold text-gray-500 mb-1.5">Result</label>
+                              <select value={inv.result}
+                                onChange={e => {
+                                  const list = [...adminEditForm.interviewUpdates];
+                                  list[idx].result = e.target.value;
+                                  setAdminEditForm({ ...adminEditForm, interviewUpdates: list });
+                                }}
+                                className="w-full bg-white border border-gray-200 focus:border-primary rounded-xl px-3 py-1.5 text-xs focus:outline-none focus:ring-4 focus:ring-primary/10 transition-all duration-200 cursor-pointer">
+                                <option value="Pending">Pending</option>
+                                <option value="Pass">Pass</option>
+                                <option value="Fail">Fail</option>
+                              </select>
+                            </div>
+                            <div>
+                              <label className="block text-xs font-semibold text-gray-500 mb-1.5">Round No</label>
+                              <input type="number" required value={inv.round}
+                                onChange={e => {
+                                  const list = [...adminEditForm.interviewUpdates];
+                                  list[idx].round = Number(e.target.value);
+                                  setAdminEditForm({ ...adminEditForm, interviewUpdates: list });
+                                }}
+                                className="w-full bg-white border border-gray-200 focus:border-primary rounded-xl px-3 py-1.5 text-xs focus:outline-none focus:ring-4 focus:ring-primary/10 transition-all duration-200" />
+                            </div>
+                          </div>
+
+                          {/* Marks breakdown 1-5 */}
+                          <div className="space-y-2">
+                            <p className="text-[11px] font-bold text-gray-700 uppercase tracking-wider flex items-center gap-1">
+                              <span>⚡ Round Ratings (1-5)</span>
+                            </p>
+                            <div className="grid grid-cols-4 sm:grid-cols-8 gap-2 bg-white/50 border border-primary/10 rounded-2xl p-3.5">
+                              {[
+                                ['Maths', 'mathematicsMarks'],
+                                ['Subject', 'subjectiveKnowledge'],
+                                ['Reasoning', 'reasoningMarks'],
+                                ['Goal', 'goalClarity'],
+                                ['Sincerity', 'sincerity'],
+                                ['Comm.', 'communicationLevel'],
+                                ['Confidence', 'confidenceLevel'],
+                                ['Assignment', 'assignmentMarks']
+                              ].map(([label, key]) => (
+                                <div key={key}>
+                                  <label className="block text-[10px] text-gray-500 text-center font-medium truncate mb-1">{label}</label>
+                                  <select value={inv[key] !== null ? inv[key] : ''}
+                                    onChange={e => {
+                                      const list = [...adminEditForm.interviewUpdates];
+                                      list[idx][key] = e.target.value !== '' ? Number(e.target.value) : null;
+                                      setAdminEditForm({ ...adminEditForm, interviewUpdates: list });
+                                    }}
+                                    className="w-full border border-gray-200 hover:border-primary/40 focus:border-primary rounded-xl py-1.5 px-2 text-xs text-center focus:outline-none focus:ring-4 focus:ring-primary/10 bg-white cursor-pointer transition-all duration-200">
+                                    <option value="">—</option>
+                                    {[1, 2, 3, 4, 5].map(v => <option key={v} value={v}>{v}</option>)}
+                                  </select>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+
+                          <div>
+                            <label className="block text-xs font-semibold text-gray-500 mb-1.5">Remarks</label>
+                            <textarea rows={2} value={inv.remarks || ''}
+                              onChange={e => {
+                                const list = [...adminEditForm.interviewUpdates];
+                                list[idx].remarks = e.target.value;
+                                setAdminEditForm({ ...adminEditForm, interviewUpdates: list });
+                              }}
+                              className="w-full bg-white border border-gray-200 focus:border-primary rounded-xl px-3.5 py-2 text-xs focus:outline-none focus:ring-4 focus:ring-primary/10 transition-all duration-200 resize-none" />
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                )}
+
+                {editTab === 'final' && (
+                  <div className="space-y-4">
+                    {/* Final Interview Card Header with Delete Badge */}
+                    <div className="border border-primary/20 rounded-2xl p-5 bg-primary/5 hover:bg-primary/10 transition-all duration-300 space-y-4">
+                      <div className="flex items-center justify-between border-b border-primary/20 pb-3">
+                        <span className="text-sm font-bold text-primary flex items-center gap-1.5">
+                          <FiCheckCircle size={15} /> Final Interview Record
+                        </span>
+                        {adminEditForm.studentUpdates.finalInterview?.result && (
+                          <button type="button" onClick={handleDeleteFinalInterview}
+                            className="text-xs font-semibold px-2 py-0.5 text-red-600 hover:text-red-700 bg-white hover:bg-red-50 rounded-lg flex items-center gap-1 border border-red-200 transition-colors" title="Delete Final Interview">
+                            <FiTrash2 size={11} /> Delete
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-1">
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-500 mb-1.5">Final Result</label>
+                          <select value={adminEditForm.studentUpdates.finalInterview?.result || ''}
+                            onChange={e => setAdminEditForm({
+                              ...adminEditForm,
+                              studentUpdates: {
+                                ...adminEditForm.studentUpdates,
+                                finalInterview: {
+                                  ...adminEditForm.studentUpdates.finalInterview,
+                                  result: e.target.value || null
+                                }
+                              }
+                            })}
+                            className="w-full bg-white hover:bg-gray-50 focus:bg-white border border-gray-200 focus:border-primary rounded-xl px-3.5 py-2 text-sm focus:outline-none focus:ring-4 focus:ring-primary/10 transition-all duration-200 cursor-pointer bg-white">
+                            <option value="">No Final Interview / None</option>
+                            <option value="Pending">Pending</option>
+                            <option value="Pass">Pass</option>
+                            <option value="Fail">Fail</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-500 mb-1.5">Interview Type</label>
+                          <select value={adminEditForm.studentUpdates.finalInterview?.interviewType || ''}
+                            onChange={e => setAdminEditForm({
+                              ...adminEditForm,
+                              studentUpdates: {
+                                ...adminEditForm.studentUpdates,
+                                finalInterview: {
+                                  ...adminEditForm.studentUpdates.finalInterview,
+                                  interviewType: e.target.value || null
+                                }
+                              }
+                            })}
+                            className="w-full bg-white hover:bg-gray-50 focus:bg-white border border-gray-200 focus:border-primary rounded-xl px-3.5 py-2 text-sm focus:outline-none focus:ring-4 focus:ring-primary/10 transition-all duration-200 cursor-pointer bg-white">
+                            <option value="">Select</option>
+                            <option value="Online">Online</option>
+                            <option value="On Campus">On Campus</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-500 mb-1.5">Round No</label>
+                          <input type="number" value={adminEditForm.studentUpdates.finalInterview?.round || ''}
+                            onChange={e => setAdminEditForm({
+                              ...adminEditForm,
+                              studentUpdates: {
+                                ...adminEditForm.studentUpdates,
+                                finalInterview: {
+                                  ...adminEditForm.studentUpdates.finalInterview,
+                                  round: e.target.value !== '' ? Number(e.target.value) : null
+                                }
+                              }
+                            })}
+                            className="w-full bg-white border border-gray-200 focus:border-primary rounded-xl px-3.5 py-2 text-sm focus:outline-none focus:ring-4 focus:ring-primary/10 transition-all duration-200" />
+                        </div>
+                        <div className="sm:col-span-3">
+                          <label className="block text-xs font-semibold text-gray-500 mb-1.5">Final Interview Remarks</label>
+                          <textarea rows={3} value={adminEditForm.studentUpdates.finalInterview?.remarks || ''}
+                            onChange={e => setAdminEditForm({
+                              ...adminEditForm,
+                              studentUpdates: {
+                                ...adminEditForm.studentUpdates,
+                                finalInterview: {
+                                  ...adminEditForm.studentUpdates.finalInterview,
+                                  remarks: e.target.value
+                                }
+                              }
+                            })}
+                            className="w-full bg-white border border-gray-200 focus:border-primary rounded-xl px-3.5 py-2 text-sm focus:outline-none focus:ring-4 focus:ring-primary/10 transition-all duration-200 resize-none" />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-3 pt-5 border-t border-gray-100 shrink-0 bg-white">
+                <button type="button" onClick={() => { setAdminEditOpen(false); setAdminEditForm(null); }}
+                  className="flex-1 border border-gray-200 text-gray-500 py-3 rounded-2xl text-sm font-semibold hover:bg-gray-50 hover:text-gray-700 active:scale-[0.98] transition-all duration-200">
+                  Cancel
+                </button>
+                <button type="submit" disabled={adminSaving}
+                  className="flex-1 bg-primary text-white py-3 rounded-2xl text-sm font-semibold hover:bg-primary-dark hover:shadow-lg hover:shadow-primary/25 active:scale-[0.98] disabled:opacity-60 disabled:pointer-events-none transition-all duration-200">
+                  {adminSaving ? 'Saving Changes...' : 'Save All Changes'}
+                </button>
+              </div>
+            </form>
           </div>
         </BottomSheet>
       )}

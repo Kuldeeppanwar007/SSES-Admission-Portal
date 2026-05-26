@@ -105,4 +105,47 @@ const getLastDates = async (req, res) => {
   }
 };
 
-module.exports = { addInterview, getInterviews, addFinalInterview, getLastDates };
+const deleteInterview = async (req, res) => {
+  try {
+    const interview = await Interview.findById(req.params.id);
+    if (!interview) {
+      return res.status(404).json({ message: 'Interview round not found' });
+    }
+    const studentId = interview.student;
+    await Interview.findByIdAndDelete(req.params.id);
+
+    // Re-index remaining technical rounds chronologically
+    const remainingInterviews = await Interview.find({ student: studentId }).sort({ date: 1, createdAt: 1 });
+    for (let i = 0; i < remainingInterviews.length; i++) {
+      remainingInterviews[i].round = i + 1;
+      await remainingInterviews[i].save();
+    }
+
+    res.json({ message: 'Technical round successfully deleted and re-indexed!' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+const deleteFinalInterview = async (req, res) => {
+  try {
+    const student = await Student.findById(req.params.studentId);
+    if (!student) {
+      return res.status(404).json({ message: 'Student not found' });
+    }
+    student.finalInterview = {
+      round: null,
+      remarks: '',
+      result: null,
+      interviewType: null,
+      doneBy: null,
+      doneAt: null
+    };
+    await student.save();
+    res.json({ message: 'Final interview successfully deleted!', finalInterview: student.finalInterview });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+module.exports = { addInterview, getInterviews, addFinalInterview, getLastDates, deleteInterview, deleteFinalInterview };

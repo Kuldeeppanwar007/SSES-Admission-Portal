@@ -39,6 +39,7 @@ const login = async (req, res) => {
   res.json({
     _id: user._id, name: user.name, email: user.email,
     role: user.role, track: user.track,
+    canEditStudent: user.canEditStudent || false,
     token: accessToken,
     refreshToken,
   });

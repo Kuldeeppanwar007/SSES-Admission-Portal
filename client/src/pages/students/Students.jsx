@@ -4,7 +4,7 @@ import api from '../../api/axios';
 import { TRACKS, STATUSES, STATUS_COLORS, TRACK_TOWNS, TOWN_TO_MAIN_TRACK } from '../../utils/constants';
 import useAuthStore from '../../store/authStore';
 import toast from 'react-hot-toast';
-import { FiPlus, FiUpload, FiSearch, FiEdit2, FiDownload, FiFilter, FiSlash, FiClipboard, FiExternalLink, FiChevronDown, FiSend, FiClock, FiX, FiFileText } from 'react-icons/fi';
+import { FiPlus, FiUpload, FiSearch, FiEdit2, FiDownload, FiFilter, FiSlash, FiClipboard, FiExternalLink, FiChevronDown, FiSend, FiClock, FiX, FiFileText, FiAlertCircle } from 'react-icons/fi';
 import BottomSheet from '../../components/BottomSheet';
 import DatePicker from '../../components/DatePicker';
 import ReceptionEntryModal from '../../components/ReceptionEntryModal';
@@ -56,6 +56,7 @@ function InterviewModal({ student, user, onClose, onSaved }) {
   const [loading, setLoading] = useState(false);
   const [prevRound, setPrevRound] = useState(null);
   const [nextRound, setNextRound] = useState(1);
+  const [showConfirm, setShowConfirm] = useState(false);
 
   useEffect(() => {
     api.get(`/interviews/${student._id}`).then(({ data }) => {
@@ -84,8 +85,13 @@ function InterviewModal({ student, user, onClose, onSaved }) {
     communicationLevel: 'Communication', confidenceLevel: 'Confidence', assignmentMarks: 'Assignment',
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
+    setShowConfirm(true);
+  };
+
+  const handleConfirmSubmit = async () => {
+    setShowConfirm(false);
     setLoading(true);
     try {
       await api.post(`/interviews/${student._id}`, { ...form, totalMark });
@@ -231,6 +237,116 @@ function InterviewModal({ student, user, onClose, onSaved }) {
             {loading ? 'Saving...' : 'Submit'}
           </button>
         </form>
+
+        {showConfirm && (
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 overflow-y-auto">
+            <div className="bg-white rounded-3xl shadow-2xl border border-slate-100 max-w-md w-full overflow-hidden animate-in fade-in zoom-in-95 duration-200 flex flex-col my-auto max-h-[90vh] text-left">
+              {/* Header */}
+              <div className="px-6 py-5 border-b border-slate-100 flex items-center gap-3 bg-gradient-to-r from-orange-50/50 to-white">
+                <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center text-primary shrink-0">
+                  <FiAlertCircle size={20} />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-gray-900">Confirm Technical Interview</h3>
+                  <p className="text-xs text-gray-500 font-medium">Please review details before final submission</p>
+                </div>
+              </div>
+
+              {/* Content List */}
+              <div className="px-6 py-5 overflow-y-auto space-y-4 flex-1">
+                <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100/80 space-y-2.5">
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-gray-400 font-semibold uppercase tracking-wide">Candidate</span>
+                    <span className="text-gray-800 font-bold">{student.name}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-gray-400 font-semibold uppercase tracking-wide">Date</span>
+                    <span className="text-gray-700 font-bold">{form.date}</span>
+                  </div>
+                  {form.visitPurpose && (
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="text-gray-400 font-semibold uppercase tracking-wide">Visit Purpose</span>
+                      <span className="text-gray-700 font-bold">{form.visitPurpose}</span>
+                    </div>
+                  )}
+                  {form.interviewType && (
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="text-gray-400 font-semibold uppercase tracking-wide">Type</span>
+                      <span className="text-gray-700 font-bold">{form.interviewType}</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Ratings */}
+                <div className="space-y-2">
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Ratings & Scores</p>
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    {[
+                      ['Mathematics', form.mathematicsMarks],
+                      ['Subject Knowledge', form.subjectiveKnowledge],
+                      ['Reasoning', form.reasoningMarks],
+                      ['Goal Clarity', form.goalClarity],
+                      ['Sincerity', form.sincerity],
+                      ['Communication', form.communicationLevel],
+                      ['Confidence', form.confidenceLevel],
+                      ['Assignment', form.assignmentMarks]
+                    ].map(([label, val]) => (
+                      val && (
+                        <div key={label} className="bg-slate-50/50 rounded-xl px-3 py-2 border border-slate-100 flex justify-between items-center">
+                          <span className="text-gray-500 font-semibold">{label}</span>
+                          <span className="font-bold text-gray-700">{val}/5</span>
+                        </div>
+                      )
+                    ))}
+                  </div>
+                </div>
+
+                {/* Total & Decision */}
+                <div className="bg-orange-50/50 border border-orange-100 rounded-2xl p-4 space-y-2.5">
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs text-gray-600 font-semibold">Total Score</span>
+                    <span className="text-base font-bold text-primary">{totalMark} / 40</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs text-gray-600 font-semibold">Result Decision</span>
+                    <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full ${
+                      form.result === 'Pass' ? 'bg-emerald-100 text-emerald-700' :
+                      form.result === 'Fail' ? 'bg-rose-100 text-rose-700' : 'bg-amber-100 text-amber-700'
+                    }`}>{form.result}</span>
+                  </div>
+                </div>
+
+                {/* Remarks */}
+                {form.remarks && (
+                  <div className="space-y-1">
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Remarks</p>
+                    <p className="text-xs text-gray-600 bg-slate-50 border border-slate-100 rounded-xl px-3 py-2.5 italic">
+                      "{form.remarks}"
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Footer Actions */}
+              <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex gap-3 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setShowConfirm(false)}
+                  className="flex-1 border border-slate-200 bg-white text-gray-500 py-2.5 rounded-xl text-xs font-bold hover:bg-slate-50 active:scale-95 transition-all duration-200"
+                >
+                  Cancel / Edit
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmSubmit}
+                  className="flex-1 bg-primary text-white py-2.5 rounded-xl text-xs font-bold hover:bg-primary-dark hover:shadow-lg active:scale-95 transition-all duration-200"
+                >
+                  Confirm & Submit
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
     </BottomSheet>
   );
 }

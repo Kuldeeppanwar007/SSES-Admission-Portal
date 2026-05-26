@@ -95,6 +95,8 @@ const addUserSchema = Joi.object({
   password: Joi.string().min(6).max(100).required(),
   role:     Joi.string().valid('admin', 'manager', 'track_incharge', 'interviewer', 'receptionist').required(),
   track:    Joi.string().max(60).optional().allow(''),
+  canEditStudent: Joi.boolean().optional(),
+  isActive: Joi.boolean().optional(),
 });
 
 const updateStatusSchema = Joi.object({

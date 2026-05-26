@@ -1769,4 +1769,149 @@ const getDistinctSchools = async (req, res) => {
   }
 };
 
-module.exports = { getStudents, getStudent, addStudent, updateStudent, deleteStudent, updateStatus, getStatusHistory, getActivityLog, bulkUpload, downloadTemplate, downloadCSVTemplate, exportStudents, getStats, getTrackStats, selfRegister, getDistinctBranches, getDistinctVillages, getDistinctSchools };
+// Admin Unified Student Profile Edit
+const adminEditStudent = async (req, res) => {
+  try {
+    if (!req.user.canEditStudent) {
+      return res.status(403).json({ message: 'Aapko student profile edit karne ki permission nahi hai. Apne administrator se permission mark karwayein.' });
+    }
+
+    const studentId = req.params.id;
+    const { studentUpdates, interviewUpdates, receptionUpdates } = req.body;
+
+    // 1. Update Student
+    if (studentUpdates) {
+      const ALLOWED_STUDENT_FIELDS = [
+        'name', 'fatherName', 'track', 'mobileNo', 'whatsappNo', 'subject', 'fullAddress', 'otherTrack',
+        'email', 'schoolName', 'district', 'village', 'whatsappNumber', 'jeeScore', 'persentage12', 'persentage10',
+        'persentage11', 'branch', 'year', 'joinBatch', 'feesScheme', 'category', 'gender', 'school12Sub', 'dob',
+        'aadharNo', 'fatherOccupation', 'fatherIncome', 'fatherContactNumber', 'pincode', 'tehsil', 'trackName',
+        'isTopper', 'isPriority', 'bookNo', 'receiptNo', 'admissionFormNo', 'status', 'remarks', 'funnelStage',
+        'applicationType', 'regFees', 'regFeesStatus', 'regFeeReceiptNo', 'regFeeDate', 'formSource', 'admissionType'
+      ];
+      
+      const updates = {};
+      ALLOWED_STUDENT_FIELDS.forEach(f => {
+        if (studentUpdates[f] !== undefined) {
+          updates[f] = studentUpdates[f];
+        }
+      });
+
+      if (studentUpdates.finalInterview) {
+        updates.finalInterview = {
+          round: studentUpdates.finalInterview.round,
+          remarks: studentUpdates.finalInterview.remarks || '',
+          result: studentUpdates.finalInterview.result || null,
+          interviewType: studentUpdates.finalInterview.interviewType || null,
+          doneBy: studentUpdates.finalInterview.doneBy || req.user._id,
+          doneAt: studentUpdates.finalInterview.doneAt || new Date()
+        };
+      }
+
+      if (updates.status === 'Disabled') updates.isDisabled = true;
+      else if (updates.status && updates.status !== 'Disabled') updates.isDisabled = false;
+
+      await Student.findByIdAndUpdate(studentId, updates);
+    }
+
+    // 2. Update Interviews (Round wise)
+    if (interviewUpdates && Array.isArray(interviewUpdates)) {
+      const Interview = require('../models/Interview');
+      for (const inv of interviewUpdates) {
+        if (!inv._id) continue;
+        const totalMark =
+          Number(inv.mathematicsMarks || 0) +
+          Number(inv.subjectiveKnowledge || 0) +
+          Number(inv.reasoningMarks || 0) +
+          Number(inv.goalClarity || 0) +
+          Number(inv.sincerity || 0) +
+          Number(inv.communicationLevel || 0) +
+          Number(inv.confidenceLevel || 0) +
+          Number(inv.assignmentMarks || 0);
+
+        await Interview.findByIdAndUpdate(inv._id, {
+          round: inv.round,
+          date: inv.date ? new Date(inv.date) : undefined,
+          mathematicsMarks: inv.mathematicsMarks,
+          subjectiveKnowledge: inv.subjectiveKnowledge,
+          reasoningMarks: inv.reasoningMarks,
+          goalClarity: inv.goalClarity,
+          sincerity: inv.sincerity,
+          communicationLevel: inv.communicationLevel,
+          confidenceLevel: inv.confidenceLevel,
+          assignmentMarks: inv.assignmentMarks || null,
+          totalMark,
+          result: inv.result || 'Pending',
+          remarks: inv.remarks || '',
+          interviewType: inv.interviewType || null
+        });
+      }
+    }
+
+    // 3. Update Reception Entries
+    if (receptionUpdates && Array.isArray(receptionUpdates)) {
+      const ReceptionEntry = require('../models/ReceptionEntry');
+      for (const entry of receptionUpdates) {
+        if (!entry._id) continue;
+        await ReceptionEntry.findByIdAndUpdate(entry._id, {
+          date: entry.date ? new Date(entry.date) : undefined,
+          town: entry.town,
+          admissionFormNo: entry.admissionFormNo,
+          visitPurpose: entry.visitPurpose,
+          branch: entry.branch,
+          interviewer: entry.interviewer || null
+        });
+      }
+    }
+
+    // 4. Log changes
+    const StatusHistory = require('../models/StatusHistory');
+    const updatedStudent = await Student.findById(studentId).populate('addedBy', 'name');
+    
+    await StatusHistory.create({
+      student: studentId,
+      status: updatedStudent.status,
+      funnelStage: updatedStudent.funnelStage,
+      remarks: `Admin Profile Edit by ${req.user.name}`,
+      changedBy: req.user._id
+    });
+
+    // 5. Points Recalculate (to keep everything synced)
+    try {
+      const TrackPoints = require('../models/TrackPoints');
+      const Target      = require('../models/Target');
+      const BTECH_SUBJECTS = ['B.Tech(CS)', 'B.Tech(IT)', 'B.Tech(ECE)', 'B.Tech(AI/ML)'];
+      
+      const targets = await Target.find({});
+      const pointsPerSubject = {};
+      targets.forEach(({ track, subject, points }) => {
+        if (!pointsPerSubject[track]) pointsPerSubject[track] = {};
+        pointsPerSubject[track][subject] = points || 0;
+      });
+
+      const admittedStudents = await Student.find({ status: 'Admitted', isDisabled: { $ne: true } });
+      const pointsMap = {};
+      admittedStudents.forEach(({ track, subject }) => {
+        if (!track || !subject) return;
+        const subjectKey = BTECH_SUBJECTS.includes(subject) ? 'B.Tech' : subject;
+        const pts = pointsPerSubject[track]?.[subjectKey] || 0;
+        pointsMap[track] = (pointsMap[track] || 0) + pts;
+      });
+
+      await TrackPoints.updateMany({}, { points: 0 });
+      await Promise.all(Object.entries(pointsMap).map(([track, points]) =>
+        TrackPoints.findOneAndUpdate({ track }, { points }, { upsert: true })
+      ));
+    } catch (_) { /* ignore recalculate fail */ }
+
+    res.json({
+      message: 'Student profile, interviews, and reception entries successfully updated by Admin!',
+      student: updatedStudent
+    });
+
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+module.exports = { getStudents, getStudent, addStudent, updateStudent, deleteStudent, updateStatus, getStatusHistory, getActivityLog, bulkUpload, downloadTemplate, downloadCSVTemplate, exportStudents, getStats, getTrackStats, selfRegister, getDistinctBranches, getDistinctVillages, getDistinctSchools, adminEditStudent };
