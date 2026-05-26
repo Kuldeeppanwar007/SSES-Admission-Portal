@@ -41,12 +41,12 @@ const FUNNEL_COLORS = {
 };
 
 const STAT_META = [
-  { key: 'total',    label: 'Total',       icon: FiUsers,    iconBg: 'bg-blue-100',    iconColor: 'text-blue-500',   text: 'text-blue-600' },
-  { key: 'applied',  label: 'Not Calling', icon: FiFileText, iconBg: 'bg-amber-100',   iconColor: 'text-amber-500',  text: 'text-amber-600' },
-  { key: 'calling',  label: 'Calling',     icon: FiPhone,    iconBg: 'bg-sky-100',     iconColor: 'text-sky-500',    text: 'text-sky-600' },
-  { key: 'admitted', label: 'Admission Done',    icon: FiAward,    iconBg: 'bg-emerald-100', iconColor: 'text-emerald-500',text: 'text-emerald-600' },
-  { key: 'rejected', label: 'Rejected',    icon: FiXCircle,  iconBg: 'bg-rose-100',    iconColor: 'text-rose-500',   text: 'text-rose-600' },
-  { key: 'disabled', label: 'Disabled',    icon: FiSlash,    iconBg: 'bg-gray-100',    iconColor: 'text-gray-400',   text: 'text-gray-500' },
+  { key: 'total',    label: 'Total',       icon: FiUsers,    iconBg: 'bg-blue-50/80',    iconColor: 'text-blue-500',   text: 'text-blue-600',    border: 'border-blue-100', hoverShadow: 'hover:shadow-[0_12px_24px_-4px_rgba(59,130,246,0.12)] hover:border-blue-300 hover:bg-blue-50/10' },
+  { key: 'applied',  label: 'Not Calling', icon: FiFileText, iconBg: 'bg-amber-50/80',   iconColor: 'text-amber-500',  text: 'text-amber-600',   border: 'border-amber-100', hoverShadow: 'hover:shadow-[0_12px_24px_-4px_rgba(245,158,11,0.12)] hover:border-amber-300 hover:bg-amber-50/10' },
+  { key: 'calling',  label: 'Calling',     icon: FiPhone,    iconBg: 'bg-sky-50/80',     iconColor: 'text-sky-500',    text: 'text-sky-600',     border: 'border-sky-100', hoverShadow: 'hover:shadow-[0_12px_24px_-4px_rgba(14,165,233,0.12)] hover:border-sky-300 hover:bg-sky-50/10' },
+  { key: 'admitted', label: 'Admission Done',    icon: FiAward,    iconBg: 'bg-emerald-50/80', iconColor: 'text-emerald-500',text: 'text-emerald-600', border: 'border-emerald-100', hoverShadow: 'hover:shadow-[0_12px_24px_-4px_rgba(16,185,129,0.12)] hover:border-emerald-300 hover:bg-emerald-50/10' },
+  { key: 'rejected', label: 'Rejected',    icon: FiXCircle,  iconBg: 'bg-rose-50/80',    iconColor: 'text-rose-500',   text: 'text-rose-600',    border: 'border-rose-100', hoverShadow: 'hover:shadow-[0_12px_24px_-4px_rgba(244,63,94,0.12)] hover:border-rose-300 hover:bg-rose-50/10' },
+  { key: 'disabled', label: 'Disabled',    icon: FiSlash,    iconBg: 'bg-gray-50/80',    iconColor: 'text-gray-400',   text: 'text-gray-500',    border: 'border-gray-200', hoverShadow: 'hover:shadow-[0_12px_24px_-4px_rgba(107,114,128,0.12)] hover:border-gray-300 hover:bg-gray-50/10' },
 ];
 
 export default function AdminTrackDashboard() {
@@ -104,16 +104,19 @@ export default function AdminTrackDashboard() {
         </div>
       ) : (
         <>
-          {/* Stat Cards */}
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
-            {STAT_META.map(({ key, label, icon: Icon, iconBg, iconColor, text }) => (
-              <div key={key} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex flex-col gap-3 hover:shadow-md transition-shadow">
-                <div className={`w-10 h-10 rounded-xl ${iconBg} flex items-center justify-center`}>
-                  <Icon size={18} className={iconColor} />
+            {STAT_META.map(({ key, label, icon: Icon, iconBg, iconColor, text, border, hoverShadow }) => (
+              <div key={key} className={`group relative h-[130px] bg-white rounded-2xl border ${border} ${hoverShadow} shadow-sm p-4 flex flex-col transition-all duration-300 hover:-translate-y-1 cursor-pointer`}>
+                <div className="flex items-start justify-between w-full">
+                  <div className={`w-10 h-10 rounded-xl ${iconBg} border border-transparent group-hover:border-white/50 flex items-center justify-center transition-all duration-300`}>
+                    <Icon size={18} className={`${iconColor} group-hover:scale-110 transition-transform duration-300`} />
+                  </div>
                 </div>
-                <div>
-                  <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">{label}</p>
-                  <p className={`text-3xl font-bold mt-0.5 ${text}`}>{stats[key] ?? 0}</p>
+                <div className="mt-2.5">
+                  <p className={`text-[10px] font-bold uppercase tracking-wide leading-tight ${text}`}>{label}</p>
+                </div>
+                <div className="absolute bottom-[10px] left-4">
+                  <p className="text-2xl font-bold text-gray-800">{stats[key] ?? 0}</p>
                 </div>
               </div>
             ))}

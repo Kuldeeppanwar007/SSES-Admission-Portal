@@ -16,13 +16,26 @@ const SSISM_BRANCHES = [
   { label: 'ITEG DIPLOMA', subject: 'ITEG Diploma', limit: null, color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-200', bar: 'bg-blue-500' },
 ];
 
+const SHADOW_MAP = {
+  'text-violet-600': 'hover:shadow-[0_12px_24px_-4px_rgba(139,92,246,0.12)] hover:border-violet-300 hover:bg-violet-50/10',
+  'text-amber-600': 'hover:shadow-[0_12px_24px_-4px_rgba(245,158,11,0.12)] hover:border-amber-300 hover:bg-amber-50/10',
+  'text-rose-600': 'hover:shadow-[0_12px_24px_-4px_rgba(244,63,94,0.12)] hover:border-rose-300 hover:bg-rose-50/10',
+  'text-cyan-600': 'hover:shadow-[0_12px_24px_-4px_rgba(6,182,212,0.12)] hover:border-cyan-300 hover:bg-cyan-50/10',
+  'text-emerald-600': 'hover:shadow-[0_12px_24px_-4px_rgba(16,185,129,0.12)] hover:border-emerald-300 hover:bg-emerald-50/10',
+  'text-blue-600': 'hover:shadow-[0_12px_24px_-4px_rgba(59,130,246,0.12)] hover:border-blue-300 hover:bg-blue-50/10',
+  'text-indigo-600': 'hover:shadow-[0_12px_24px_-4px_rgba(79,70,229,0.12)] hover:border-indigo-300 hover:bg-indigo-50/10',
+  'text-teal-600': 'hover:shadow-[0_12px_24px_-4px_rgba(13,148,136,0.12)] hover:border-teal-300 hover:bg-teal-50/10',
+  'text-purple-600': 'hover:shadow-[0_12px_24px_-4px_rgba(147,51,234,0.12)] hover:border-purple-300 hover:bg-purple-50/10',
+};
+
 function CapacityCard({ label, admitted, finalCleared, limit, color, bg, border, bar, onClick, onPendingClick }) {
   const remaining = limit !== null ? Math.max(0, limit - admitted) : null;
   const pct = limit ? Math.min(Math.round((admitted / limit) * 100), 100) : null;
   const isFull = limit !== null && remaining === 0;
+  const hoverStyle = SHADOW_MAP[color] || 'hover:shadow-[0_12px_24px_-4px_rgba(249,115,22,0.12)] hover:border-orange-300 hover:bg-orange-50/10';
   return (
-    <div onClick={onClick} className={`bg-white rounded-2xl border ${border} shadow-sm p-4 flex flex-col gap-2 ${onClick ? 'cursor-pointer hover:shadow-md hover:border-orange-200 transition-shadow' : ''}`}>
-      <p className={`text-xs font-bold uppercase tracking-wide ${color}`}>{label}</p>
+    <div onClick={onClick} className={`bg-white rounded-2xl border ${border} ${hoverStyle} shadow-sm p-4 flex flex-col gap-2 transition-all duration-300 hover:-translate-y-1 ${onClick ? 'cursor-pointer' : ''}`}>
+      <p className={`text-[10px] font-bold uppercase tracking-wide leading-tight ${color}`}>{label}</p>
       <div className="flex items-end justify-between">
         <div>
           <p className="text-2xl font-bold text-gray-800">{admitted}</p>
@@ -123,10 +136,10 @@ function BTechCapacityCards({ btechByBranch, finalClearedBySubject, navigate }) 
 }
 
 const ADMISSION_TYPES = [
-  { key: 'SNS', color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-200' },
-  { key: 'SVS', color: 'text-violet-600', bg: 'bg-violet-50', border: 'border-violet-200' },
-  { key: 'PSRDMS', color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-200' },
-  { key: 'Full Fees', color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-200' },
+  { key: 'SNS', color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-200', hoverShadow: 'hover:shadow-[0_12px_24px_-4px_rgba(59,130,246,0.12)] hover:border-blue-300 hover:bg-blue-50/10' },
+  { key: 'SVS', color: 'text-violet-600', bg: 'bg-violet-50', border: 'border-violet-200', hoverShadow: 'hover:shadow-[0_12px_24px_-4px_rgba(139,92,246,0.12)] hover:border-violet-300 hover:bg-violet-50/10' },
+  { key: 'PSRDMS', color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-200', hoverShadow: 'hover:shadow-[0_12px_24px_-4px_rgba(245,158,11,0.12)] hover:border-amber-300 hover:bg-amber-50/10' },
+  { key: 'Full Fees', color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-200', hoverShadow: 'hover:shadow-[0_12px_24px_-4px_rgba(16,185,129,0.12)] hover:border-emerald-300 hover:bg-emerald-50/10' },
 ];
 
 function AdmissionTypeCards({ admissionTypeBreakdown, navigate }) {
@@ -137,13 +150,22 @@ function AdmissionTypeCards({ admissionTypeBreakdown, navigate }) {
         <div className="flex-1 h-px bg-gray-200" />
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {ADMISSION_TYPES.map(({ key, color, bg, border }) => (
+        {ADMISSION_TYPES.map(({ key, color, bg, border, hoverShadow }) => (
           <div key={key}
             onClick={() => navigate(`/students?admissionType=${encodeURIComponent(key)}`)}
-            className={`bg-white rounded-2xl border ${border} shadow-sm p-4 cursor-pointer hover:shadow-md hover:border-orange-200 transition-shadow`}>
-            <p className={`text-xs font-bold uppercase tracking-wide ${color}`}>{key}</p>
-            <p className="text-2xl font-bold text-gray-800 mt-1">{admissionTypeBreakdown?.[key] || 0}</p>
-            <p className="text-xs text-gray-400">admitted</p>
+            className={`group relative h-[130px] bg-white rounded-2xl border ${border} ${hoverShadow} shadow-sm p-4 flex flex-col transition-all duration-300 hover:-translate-y-1 cursor-pointer`}>
+            <div className="flex items-start justify-between w-full">
+              <div className={`w-10 h-10 rounded-xl ${bg} border border-transparent group-hover:border-white/50 flex items-center justify-center transition-all duration-300`}>
+                <FiAward size={18} className={`${color} group-hover:scale-110 transition-transform duration-300`} />
+              </div>
+            </div>
+            <div className="mt-2.5">
+              <p className={`text-[10px] font-bold uppercase tracking-wide leading-tight ${color}`}>{key}</p>
+            </div>
+            <div className="absolute bottom-[10px] left-4 flex items-baseline gap-1">
+              <p className="text-2xl font-bold text-gray-800">{admissionTypeBreakdown?.[key] || 0}</p>
+              <span className="text-[10px] text-gray-400 font-semibold lowercase">admitted</span>
+            </div>
           </div>
         ))}
       </div>
@@ -175,10 +197,10 @@ function TrackScholarshipBreakdown({ trackAdmissionTypeBreakdown, navigate }) {
             sum + Object.values(typeData[t] || {}).reduce((s, c) => s + c, 0), 0);
           if (totalScholarship === 0) return null;
           return (
-            <div key={track} className="bg-white rounded-2xl border border-orange-100 shadow-sm overflow-hidden hover:shadow-md hover:border-orange-200 transition-shadow">
+            <div key={track} className="bg-white rounded-2xl border border-orange-100 hover:shadow-[0_12px_24px_-4px_rgba(249,115,22,0.12)] hover:border-orange-300 hover:bg-orange-50/5 shadow-sm overflow-hidden transition-all duration-300 hover:-translate-y-1">
               {/* Header */}
               <div className="px-4 py-3 bg-gradient-to-r from-gray-50 to-white border-b border-gray-100 flex items-center justify-between">
-                <p className="font-bold text-gray-800 text-sm">{track}</p>
+                <p className="text-xs font-bold text-gray-800 uppercase tracking-wide">{track}</p>
                 <span className="text-xs bg-orange-50 text-primary font-bold px-2 py-0.5 rounded-full border border-orange-100">{totalScholarship} total</span>
               </div>
               {/* Scholarship type rows */}
@@ -189,18 +211,18 @@ function TrackScholarshipBreakdown({ trackAdmissionTypeBreakdown, navigate }) {
                   if (total === 0) return null;
                   const { text, badge } = SCHOLARSHIP_COLORS[type];
                   return (
-                    <div key={type}
+                     <div key={type}
                       onClick={() => navigate(`/students?admissionType=${encodeURIComponent(type)}&status=Admitted&track=${encodeURIComponent(track)}`)}
                       className="px-4 py-3 hover:bg-gray-50/60 transition-colors cursor-pointer">
                       <div className="flex items-center justify-between mb-1.5">
-                        <span className={`text-xs font-bold uppercase tracking-wide ${text}`}>{type}</span>
+                        <span className={`text-[10px] font-bold uppercase tracking-wide leading-tight ${text}`}>{type}</span>
                         <span className={`text-xs font-bold px-1.5 py-0.5 rounded-md ${badge}`}>{total}</span>
                       </div>
                       <div className="flex flex-wrap gap-1">
                         {Object.entries(subjects).map(([subject, count]) => (
                           <span key={subject}
                             onClick={(e) => { e.stopPropagation(); navigate(`/students?subjectFilter=${encodeURIComponent(subject)}&admissionType=${encodeURIComponent(type)}&status=Admitted&track=${encodeURIComponent(track)}`); }}
-                            className={`text-[11px] font-semibold px-2 py-0.5 rounded-full cursor-pointer hover:opacity-80 transition-opacity ${badge}`}>
+                            className={`text-[9px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full cursor-pointer hover:opacity-80 transition-opacity ${badge}`}>
                             {subject}: {count}
                           </span>
                         ))}
@@ -229,27 +251,27 @@ const SUBJECT_COLORS = {
 };
 
 const STAT_META = [
-  { key: 'total', label: 'Total Students', icon: FiUsers, iconBg: 'bg-blue-100', iconColor: 'text-blue-500', text: 'text-blue-600', href: '/students' },
-  { key: 'applied', label: 'Not Calling', icon: FiFileText, iconBg: 'bg-amber-100', iconColor: 'text-amber-500', text: 'text-amber-600', href: '/students?status=Applied' },
-  { key: 'calling', label: 'Calling', icon: FiPhone, iconBg: 'bg-sky-100', iconColor: 'text-sky-500', text: 'text-sky-600', href: '/students?status=Calling' },
-  { key: 'interviewAttempts', label: 'Interview Attempts', icon: FiCheckCircle, iconBg: 'bg-violet-100', iconColor: 'text-violet-500', text: 'text-violet-600', href: '/students?interviewFilter=hasAttempts' },
-  { key: 'finalCleared', label: 'Final Interview Cleared', icon: FiCheckCircle, iconBg: 'bg-green-100', iconColor: 'text-green-500', text: 'text-green-600', href: '/students?interviewFilter=finalCleared' },
-  { key: 'admitted', label: 'Admission Done', icon: FiAward, iconBg: 'bg-emerald-100', iconColor: 'text-emerald-500', text: 'text-emerald-600', href: '/students?status=Admitted' },
-  { key: 'rejected', label: 'Rejected', icon: FiXCircle, iconBg: 'bg-rose-100', iconColor: 'text-rose-500', text: 'text-rose-600', href: '/students?status=Rejected' },
-  { key: 'disabled', label: 'Disabled', icon: FiSlash, iconBg: 'bg-gray-100', iconColor: 'text-gray-400', text: 'text-gray-500', href: '/students?tab=disabled' },
+  { key: 'total', label: 'Total Students', icon: FiUsers, iconBg: 'bg-blue-50/80', iconColor: 'text-blue-500', text: 'text-blue-600', border: 'border-blue-100', hoverShadow: 'hover:shadow-[0_12px_24px_-4px_rgba(59,130,246,0.12)] hover:border-blue-300 hover:bg-blue-50/10', href: '/students' },
+  { key: 'applied', label: 'Not Calling', icon: FiFileText, iconBg: 'bg-amber-50/80', iconColor: 'text-amber-500', text: 'text-amber-600', border: 'border-amber-100', hoverShadow: 'hover:shadow-[0_12px_24px_-4px_rgba(245,158,11,0.12)] hover:border-amber-300 hover:bg-amber-50/10', href: '/students?status=Applied' },
+  { key: 'calling', label: 'Calling', icon: FiPhone, iconBg: 'bg-sky-50/80', iconColor: 'text-sky-500', text: 'text-sky-600', border: 'border-sky-100', hoverShadow: 'hover:shadow-[0_12px_24px_-4px_rgba(14,165,233,0.12)] hover:border-sky-300 hover:bg-sky-50/10', href: '/students?status=Calling' },
+  { key: 'interviewAttempts', label: 'Interview Attempts', icon: FiCheckCircle, iconBg: 'bg-violet-50/80', iconColor: 'text-violet-500', text: 'text-violet-600', border: 'border-violet-100', hoverShadow: 'hover:shadow-[0_12px_24px_-4px_rgba(139,92,246,0.12)] hover:border-violet-300 hover:bg-violet-50/10', href: '/students?interviewFilter=hasAttempts' },
+  { key: 'finalCleared', label: 'Final Interview Cleared', icon: FiCheckCircle, iconBg: 'bg-green-50/80', iconColor: 'text-green-500', text: 'text-green-600', border: 'border-green-100', hoverShadow: 'hover:shadow-[0_12px_24px_-4px_rgba(34,197,94,0.12)] hover:border-green-300 hover:bg-green-50/10', href: '/students?interviewFilter=finalCleared' },
+  { key: 'admitted', label: 'Admission Done', icon: FiAward, iconBg: 'bg-emerald-50/80', iconColor: 'text-emerald-500', text: 'text-emerald-600', border: 'border-emerald-100', hoverShadow: 'hover:shadow-[0_12px_24px_-4px_rgba(16,185,129,0.12)] hover:border-emerald-300 hover:bg-emerald-50/10', href: '/students?status=Admitted' },
+  { key: 'rejected', label: 'Rejected', icon: FiXCircle, iconBg: 'bg-rose-50/80', iconColor: 'text-rose-500', text: 'text-rose-600', border: 'border-rose-100', hoverShadow: 'hover:shadow-[0_12px_24px_-4px_rgba(244,63,94,0.12)] hover:border-rose-300 hover:bg-rose-50/10', href: '/students?status=Rejected' },
+  { key: 'disabled', label: 'Disabled', icon: FiSlash, iconBg: 'bg-gray-50/80', iconColor: 'text-gray-400', text: 'text-gray-500', border: 'border-gray-200', hoverShadow: 'hover:shadow-[0_12px_24px_-4px_rgba(107,114,128,0.12)] hover:border-gray-300 hover:bg-gray-50/10', href: '/students?tab=disabled' },
 ];
 
 const FUNNEL_STAGE_META = [
-  { key: 'Call Not Received', label: 'Call Not Received', icon: FiPhoneMissed, iconBg: 'bg-rose-100', iconColor: 'text-rose-500', text: 'text-rose-600', border: 'border-rose-100' },
-  { key: 'Call Completed', label: 'Call Completed', icon: FiCheckCircle, iconBg: 'bg-emerald-100', iconColor: 'text-emerald-500', text: 'text-emerald-600', border: 'border-emerald-100' },
-  { key: 'Lead Interested', label: 'Lead Interested', icon: FiTrendingUp, iconBg: 'bg-blue-100', iconColor: 'text-blue-500', text: 'text-blue-600', border: 'border-blue-100' },
-  { key: 'Wrong Number', label: 'Wrong Number', icon: FiAlertCircle, iconBg: 'bg-amber-100', iconColor: 'text-amber-500', text: 'text-amber-600', border: 'border-amber-100' },
-  { key: 'Switch Off', label: 'Switch Off', icon: FiPhoneOff, iconBg: 'bg-gray-100', iconColor: 'text-gray-400', text: 'text-gray-500', border: 'border-gray-100' },
-  { key: 'Admission Closed', label: 'Admission Closed', icon: FiLock, iconBg: 'bg-violet-100', iconColor: 'text-violet-500', text: 'text-violet-600', border: 'border-violet-100' },
-  { key: 'Repeated No Response', label: 'No Response', icon: FiPhoneMissed, iconBg: 'bg-orange-100', iconColor: 'text-orange-500', text: 'text-orange-600', border: 'border-orange-100' },
-  { key: 'Not Interested', label: 'Not Interested', icon: FiXCircle, iconBg: 'bg-red-100', iconColor: 'text-red-500', text: 'text-red-600', border: 'border-red-100' },
-  { key: 'Joined Elsewhere', label: 'Joined Elsewhere', icon: FiSlash, iconBg: 'bg-slate-100', iconColor: 'text-slate-500', text: 'text-slate-600', border: 'border-slate-100' },
-  { key: 'No Stage', label: 'No Stage Set', icon: FiSlash, iconBg: 'bg-gray-100', iconColor: 'text-gray-400', text: 'text-gray-500', border: 'border-gray-100' },
+  { key: 'Call Not Received', label: 'Call Not Received', icon: FiPhoneMissed, iconBg: 'bg-rose-50/80', iconColor: 'text-rose-500', text: 'text-rose-600', border: 'border-rose-100', hoverShadow: 'hover:shadow-[0_12px_24px_-4px_rgba(244,63,94,0.12)] hover:border-rose-300 hover:bg-rose-50/10' },
+  { key: 'Call Completed', label: 'Call Completed', icon: FiCheckCircle, iconBg: 'bg-emerald-50/80', iconColor: 'text-emerald-500', text: 'text-emerald-600', border: 'border-emerald-100', hoverShadow: 'hover:shadow-[0_12px_24px_-4px_rgba(16,185,129,0.12)] hover:border-emerald-300 hover:bg-emerald-50/10' },
+  { key: 'Lead Interested', label: 'Lead Interested', icon: FiTrendingUp, iconBg: 'bg-blue-50/80', iconColor: 'text-blue-500', text: 'text-blue-600', border: 'border-blue-100', hoverShadow: 'hover:shadow-[0_12px_24px_-4px_rgba(59,130,246,0.12)] hover:border-blue-300 hover:bg-blue-50/10' },
+  { key: 'Wrong Number', label: 'Wrong Number', icon: FiAlertCircle, iconBg: 'bg-amber-50/80', iconColor: 'text-amber-500', text: 'text-amber-600', border: 'border-amber-100', hoverShadow: 'hover:shadow-[0_12px_24px_-4px_rgba(245,158,11,0.12)] hover:border-amber-300 hover:bg-amber-50/10' },
+  { key: 'Switch Off', label: 'Switch Off', icon: FiPhoneOff, iconBg: 'bg-gray-50/80', iconColor: 'text-gray-400', text: 'text-gray-500', border: 'border-gray-200', hoverShadow: 'hover:shadow-[0_12px_24px_-4px_rgba(107,114,128,0.12)] hover:border-gray-300 hover:bg-gray-50/10' },
+  { key: 'Admission Closed', label: 'Admission Closed', icon: FiLock, iconBg: 'bg-violet-50/80', iconColor: 'text-violet-500', text: 'text-violet-600', border: 'border-violet-100', hoverShadow: 'hover:shadow-[0_12px_24px_-4px_rgba(139,92,246,0.12)] hover:border-violet-300 hover:bg-violet-50/10' },
+  { key: 'Repeated No Response', label: 'No Response', icon: FiPhoneMissed, iconBg: 'bg-orange-50/80', iconColor: 'text-orange-500', text: 'text-orange-600', border: 'border-orange-100', hoverShadow: 'hover:shadow-[0_12px_24px_-4px_rgba(249,115,22,0.12)] hover:border-orange-300 hover:bg-orange-50/10' },
+  { key: 'Not Interested', label: 'Not Interested', icon: FiXCircle, iconBg: 'bg-red-50/80', iconColor: 'text-red-500', text: 'text-red-600', border: 'border-red-100', hoverShadow: 'hover:shadow-[0_12px_24px_-4px_rgba(239,68,68,0.12)] hover:border-red-300 hover:bg-red-50/10' },
+  { key: 'Joined Elsewhere', label: 'Joined Elsewhere', icon: FiSlash, iconBg: 'bg-slate-50/80', iconColor: 'text-slate-500', text: 'text-slate-600', border: 'border-slate-200', hoverShadow: 'hover:shadow-[0_12px_24px_-4px_rgba(71,85,105,0.12)] hover:border-slate-300 hover:bg-slate-50/10' },
+  { key: 'No Stage', label: 'No Stage Set', icon: FiSlash, iconBg: 'bg-gray-50/80', iconColor: 'text-gray-400', text: 'text-gray-500', border: 'border-gray-200', hoverShadow: 'hover:shadow-[0_12px_24px_-4px_rgba(107,114,128,0.12)] hover:border-gray-300 hover:bg-gray-50/10' },
 ];
 
 function FunnelStageCards({ funnelStageBreakdown, trackFunnelBreakdown, navigate, user }) {
@@ -284,20 +306,24 @@ function FunnelStageCards({ funnelStageBreakdown, trackFunnelBreakdown, navigate
         )}
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
-        {FUNNEL_STAGE_META.map(({ key, label, icon: Icon, iconBg, iconColor, text, border }) => (
+        {FUNNEL_STAGE_META.map(({ key, label, icon: Icon, iconBg, iconColor, text, border, hoverShadow }) => (
           <div key={key}
             onClick={() => navigate(
               key === 'No Stage'
                 ? `/students?status=Calling&noFunnelStage=1${selectedTrack ? `&track=${encodeURIComponent(selectedTrack)}` : ''}`
                 : `/students?funnelStage=${encodeURIComponent(key)}${selectedTrack ? `&track=${encodeURIComponent(selectedTrack)}` : ''}`
             )}
-            className={`bg-white rounded-2xl border ${border} shadow-sm p-4 flex flex-col gap-3 hover:shadow-md hover:border-orange-200 transition-shadow cursor-pointer`}>
-            <div className={`w-10 h-10 rounded-xl ${iconBg} flex items-center justify-center`}>
-              <Icon size={18} className={iconColor} />
+            className={`group relative h-[130px] bg-white rounded-2xl border ${border} ${hoverShadow} shadow-sm p-4 flex flex-col transition-all duration-300 hover:-translate-y-1 cursor-pointer`}>
+            <div className="flex items-start justify-between w-full">
+              <div className={`w-10 h-10 rounded-xl ${iconBg} border border-transparent group-hover:border-white/50 flex items-center justify-center transition-all duration-300`}>
+                <Icon size={18} className={`${iconColor} group-hover:scale-110 transition-transform duration-300`} />
+              </div>
             </div>
-            <div>
-              <p className="text-xs text-gray-400 font-medium uppercase tracking-wide leading-tight">{label}</p>
-              <p className={`text-3xl font-bold mt-0.5 ${text}`}>{activeBreakdown[key] || 0}</p>
+            <div className="mt-2.5">
+              <p className={`text-[10px] font-bold uppercase tracking-wide leading-tight ${text}`}>{label}</p>
+            </div>
+            <div className="absolute bottom-[10px] left-4">
+              <p className="text-2xl font-bold text-gray-800">{activeBreakdown[key] || 0}</p>
             </div>
           </div>
         ))}
@@ -351,17 +377,17 @@ function PointsTable({ trackWise }) {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-100">
-                <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500 whitespace-nowrap">#</th>
-                <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500 whitespace-nowrap">Center ↓ / Course →</th>
+                <th className="px-3 py-3 text-left text-[10px] font-bold text-gray-500 uppercase tracking-wide whitespace-nowrap">#</th>
+                <th className="px-3 py-3 text-left text-[10px] font-bold text-gray-500 uppercase tracking-wide whitespace-nowrap">Center ↓ / Course →</th>
                 {SUBJECTS.map((s) => (
-                  <th key={s} className="px-3 py-3 text-center text-xs font-semibold text-gray-500 whitespace-nowrap">
+                  <th key={s} className="px-3 py-3 text-center text-[10px] font-bold text-gray-500 uppercase tracking-wide whitespace-nowrap">
                     {SUBJECT_LABELS[s]}
                   </th>
                 ))}
-                <th className="px-3 py-3 text-center text-xs font-semibold text-gray-500 whitespace-nowrap">Adm. Pts</th>
-                <th className="px-3 py-3 text-center text-xs font-semibold text-emerald-600 whitespace-nowrap">₹ Branch-wise Reward Earned</th>
-                <th className="px-3 py-3 text-center text-xs font-semibold text-amber-500 whitespace-nowrap">🎁 Bonus Pts</th>
-                <th className="px-3 py-3 text-center text-xs font-semibold text-gray-500 whitespace-nowrap">Total Pts</th>
+                <th className="px-3 py-3 text-center text-[10px] font-bold text-gray-500 uppercase tracking-wide whitespace-nowrap">Adm. Pts</th>
+                <th className="px-3 py-3 text-center text-[10px] font-bold text-emerald-600 uppercase tracking-wide whitespace-nowrap">₹ Branch-wise Reward Earned</th>
+                <th className="px-3 py-3 text-center text-[10px] font-bold text-amber-500 uppercase tracking-wide whitespace-nowrap">🎁 Bonus Pts</th>
+                <th className="px-3 py-3 text-center text-[10px] font-bold text-gray-500 uppercase tracking-wide whitespace-nowrap">Total Pts</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
@@ -380,7 +406,7 @@ function PointsTable({ trackWise }) {
                     <td className="px-3 py-3 text-base">
                       {RANK_BADGE[i] || <span className="text-xs text-gray-400 font-semibold">{i + 1}</span>}
                     </td>
-                    <td className="px-3 py-3 font-bold text-gray-800 whitespace-nowrap">
+                    <td className="px-3 py-3 font-bold text-xs uppercase tracking-wide text-gray-800 whitespace-nowrap">
                       {track.toUpperCase()}
                     </td>
                     {SUBJECTS.map((s) => {
@@ -471,9 +497,9 @@ function LeaderboardSection({ stats, user }) {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className={`text-sm font-semibold ${isMe ? 'text-primary' : 'text-gray-800'}`}>{track}</span>
-                      {isMe && <span className="text-xs bg-orange-100 text-primary font-bold px-1.5 py-0.5 rounded-full">You</span>}
-                      {totalCount > 0 && <span className="text-xs text-gray-400">📞 {calledCount}/{totalCount}</span>}
+                      <span className={`text-xs font-bold uppercase tracking-wide ${isMe ? 'text-primary' : 'text-gray-800'}`}>{track}</span>
+                      {isMe && <span className="text-[10px] bg-orange-100 text-primary font-bold px-1.5 py-0.5 rounded-full uppercase tracking-wide">You</span>}
+                      {totalCount > 0 && <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">📞 {calledCount}/{totalCount}</span>}
                     </div>
                     <div className="w-full bg-gray-100 rounded-full h-1.5 mt-1.5">
                       <div className={`h-1.5 rounded-full transition-all duration-700 ${isMe ? 'bg-primary' : 'bg-gray-400'}`}
@@ -489,14 +515,14 @@ function LeaderboardSection({ stats, user }) {
                 {/* Breakdown row — admin only */}
                 {user?.role === 'admin' && (
                   <div className="flex gap-3 mt-2 ml-11 flex-wrap">
-                    <span className="text-[11px] text-gray-500">
-                      🏅 Admission: <span className="font-semibold text-gray-700">{admissionPts}</span>
+                    <span className="text-[9px] font-bold text-gray-500 uppercase tracking-wide">
+                      🏅 Admission: <span className="text-gray-800 font-semibold">{admissionPts}</span>
                     </span>
-                    <span className="text-[11px] text-gray-500">
-                      📞 Calling: <span className="font-semibold text-gray-700">{callingPts}</span>
+                    <span className="text-[9px] font-bold text-gray-500 uppercase tracking-wide">
+                      📞 Calling: <span className="text-gray-800 font-semibold">{callingPts}</span>
                     </span>
-                    <span className="text-[11px] text-gray-500">
-                      📈 Funnel: <span className="font-semibold text-gray-700">{Math.max(0, funnelPts)}</span>
+                    <span className="text-[9px] font-bold text-gray-500 uppercase tracking-wide">
+                      📈 Funnel: <span className="text-gray-800 font-semibold">{Math.max(0, funnelPts)}</span>
                     </span>
                   </div>
                 )}
@@ -608,32 +634,34 @@ export default function Dashboard() {
 
       {/* Stat Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-8 gap-4">
-        {STAT_META.map(({ key, label, icon: Icon, iconBg, iconColor, text, href }) => (
+        {STAT_META.map(({ key, label, icon: Icon, iconBg, iconColor, text, border, hoverShadow, href }) => (
           <div key={key}
             onClick={() => navigate(href)}
-            className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex flex-col gap-3 hover:shadow-md hover:border-orange-200 transition-shadow cursor-pointer">
-            <div className={`w-10 h-10 rounded-xl ${iconBg} flex items-center justify-center`}>
-              <Icon size={18} className={iconColor} />
-            </div>
-            <div className="flex items-start justify-between gap-1">
-              <div>
-                <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">{label}</p>
-                <p className={`text-3xl font-bold mt-0.5 ${text}`}>{stats[key] ?? 0}</p>
+            className={`group relative h-[130px] bg-white rounded-2xl border ${border} ${hoverShadow} shadow-sm p-4 flex flex-col transition-all duration-300 hover:-translate-y-1 cursor-pointer`}>
+            <div className="flex items-start justify-between w-full">
+              <div className={`w-10 h-10 rounded-xl ${iconBg} border border-transparent group-hover:border-white/50 flex items-center justify-center transition-all duration-300`}>
+                <Icon size={18} className={`${iconColor} group-hover:scale-110 transition-transform duration-300`} />
               </div>
               {key === 'admitted' && (stats.admittedNoFunnelCount || 0) > 0 && (
                 <button
                   onClick={(e) => { e.stopPropagation(); navigate('/students?admittedNoFunnel=1'); }}
-                  className="text-[10px] font-semibold bg-rose-50 text-rose-600 border border-rose-200 px-1.5 py-1 rounded-lg hover:bg-rose-100 transition-colors text-center leading-tight shrink-0">
+                  className="text-[9px] font-semibold bg-rose-50 text-rose-600 border border-rose-200 px-1.5 py-0.5 rounded-lg hover:bg-rose-100 transition-colors text-center leading-tight shrink-0 mt-1">
                   ⚠️ {stats.admittedNoFunnelCount}<br />pending
                 </button>
               )}
               {key === 'finalCleared' && (stats.finalClearedManual || 0) > 0 && (
                 <button
                   onClick={(e) => { e.stopPropagation(); navigate('/students?interviewFilter=finalCleared&formSource=manual'); }}
-                  className="text-[10px] font-semibold bg-blue-50 text-blue-600 border border-blue-200 px-1.5 py-1 rounded-lg hover:bg-blue-100 transition-colors text-center leading-tight shrink-0">
+                  className="text-[9px] font-semibold bg-blue-50 text-blue-600 border border-blue-200 px-1.5 py-0.5 rounded-lg hover:bg-blue-100 transition-colors text-center leading-tight shrink-0 mt-1">
                   📋 {stats.finalClearedManual}<br />manual
                 </button>
               )}
+            </div>
+            <div className="mt-2.5">
+              <p className={`text-[10px] font-bold uppercase tracking-wide leading-tight ${text}`}>{label}</p>
+            </div>
+            <div className="absolute bottom-[10px] left-4">
+              <p className="text-2xl font-bold text-gray-800">{stats[key] ?? 0}</p>
             </div>
           </div>
         ))}
@@ -750,11 +778,11 @@ export default function Dashboard() {
               return (
                 <div key={track}
                   onClick={() => navigate(`/admin-track/${track}`)}
-                  className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden hover:shadow-md hover:border-orange-200 transition-shadow cursor-pointer">
+                  className="bg-white rounded-2xl border border-orange-100/60 shadow-sm overflow-hidden hover:shadow-[0_12px_24px_-4px_rgba(249,115,22,0.12)] hover:border-orange-300 hover:bg-orange-50/5 transition-all duration-300 hover:-translate-y-1 cursor-pointer">
                   {/* Card Header */}
                   <div className="px-4 py-3 bg-gradient-to-r from-gray-50 to-white border-b border-gray-100">
                     <div className="flex items-center justify-between mb-1">
-                      <p className="font-bold text-gray-800 text-sm">{track}</p>
+                      <p className="text-xs font-bold text-gray-800 uppercase tracking-wide">{track}</p>
                       <div className="flex items-center gap-1.5">
                         <span className="text-xs bg-orange-50 text-primary font-bold px-2 py-0.5 rounded-full border border-orange-100">
                           🏆 {points || 0}
@@ -772,14 +800,14 @@ export default function Dashboard() {
                         </span>
                       ))}
                     </div>
-                    <p className="text-xs text-gray-400">{totalAdmitted} / {totalTarget} admitted</p>
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide mt-0.5">{totalAdmitted} / {totalTarget} admitted</p>
                   </div>
 
                   {/* Overall progress bar */}
                   <div className="px-5 pt-3 pb-1">
-                    <div className="flex justify-between text-xs mb-1">
-                      <span className="text-gray-400">Overall Progress</span>
-                      <span className="font-semibold text-gray-600">{pct}%</span>
+                    <div className="flex justify-between mb-1">
+                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">Overall Progress</span>
+                      <span className="text-xs font-bold text-gray-700">{pct}%</span>
                     </div>
                     <div className="w-full bg-gray-100 rounded-full h-2">
                       <div className={`h-2 rounded-full transition-all duration-700 ${pctColor}`}
@@ -793,7 +821,7 @@ export default function Dashboard() {
                       const sPct = target > 0 ? Math.round((admitted / target) * 100) : 0;
                       return (
                         <div key={subject} className="flex items-center justify-between px-5 py-3 hover:bg-gray-50/70 transition-colors">
-                          <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${SUBJECT_COLORS[subject] || 'bg-gray-100 text-gray-600'}`}>
+                          <span className={`text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full ${SUBJECT_COLORS[subject] || 'bg-gray-100 text-gray-600'}`}>
                             {subject}
                           </span>
                           <div className="flex items-center gap-3">
@@ -802,7 +830,7 @@ export default function Dashboard() {
                                 style={{ width: `${Math.min(sPct, 100)}%` }} />
                             </div>
                             <span className="text-xs font-bold tabular-nums text-gray-700">{admitted}/{target}</span>
-                            <span className={`text-xs font-bold tabular-nums px-1.5 py-0.5 rounded-md ${sPct >= 75 ? 'bg-emerald-50 text-emerald-600' :
+                            <span className={`text-[10px] font-bold uppercase tracking-wide tabular-nums px-1.5 py-0.5 rounded-md ${sPct >= 75 ? 'bg-emerald-50 text-emerald-600' :
                                 sPct >= 40 ? 'bg-amber-50 text-amber-600' :
                                   'bg-rose-50 text-rose-500'
                               }`}>{sPct}%</span>
