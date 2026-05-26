@@ -443,7 +443,10 @@ const updateStudent = async (req, res) => {
     if (prevAllowed.includes(prevFunnel) && !newAllowed.includes(prevFunnel)) {
       pointsDelta -= await getFunnelPoints(prevFunnel, prevTrack, student.subject);
       await Student.findByIdAndUpdate(req.params.id, { $pull: { awardedFunnelStages: prevFunnel } });
-      updates.funnelStage = '';
+      // Only reset funnelStage to '' if a new valid funnelStage wasn't sent in this update
+      if (!updates.funnelStage) {
+        updates.funnelStage = '';
+      }
     }
   }
   if (updates.status === 'Disabled') updates.isDisabled = true;
