@@ -81,8 +81,9 @@ function CapacityCard({ label, admitted, finalCleared, limit, color, bg, border,
   );
 }
 
-function SSISMCapacityCards({ trackWise, finalClearedBySubject, navigate, selectedTrack, setSelectedTrack, tracks, user }) {
+function SSISMCapacityCards({ trackWise, finalClearedBySubject, trackFinalClearedBySubject, navigate, tracks, user }) {
   const isTrackIncharge = user?.role === 'track_incharge';
+  const [selectedTrack, setSelectedTrack] = useState(isTrackIncharge ? (user?.track || '') : '');
   const activeTrackWise = selectedTrack
     ? (trackWise || []).filter((t) => t.track === selectedTrack)
     : (trackWise || []);
@@ -93,6 +94,10 @@ function SSISMCapacityCards({ trackWise, finalClearedBySubject, navigate, select
       admittedBySubject[subject] = (admittedBySubject[subject] || 0) + (admitted || 0);
     });
   });
+
+  const activeFinalCleared = selectedTrack
+    ? (trackFinalClearedBySubject?.[selectedTrack] || {})
+    : (finalClearedBySubject || {});
 
   return (
     <div>
@@ -118,7 +123,7 @@ function SSISMCapacityCards({ trackWise, finalClearedBySubject, navigate, select
         {SSISM_BRANCHES.map((b) => (
           <CapacityCard key={b.label} {...b}
             admitted={admittedBySubject[b.subject] || 0}
-            finalCleared={finalClearedBySubject?.[b.subject] || 0}
+            finalCleared={activeFinalCleared[b.subject] || 0}
             onClick={() => navigate(`/students?subjectFilter=${encodeURIComponent(b.subject)}&status=Admitted${selectedTrack ? `&track=${encodeURIComponent(selectedTrack)}` : ''}`)}
             onPendingClick={() => navigate(`/students?subjectFilter=${encodeURIComponent(b.subject)}&interviewFilter=finalCleared${selectedTrack ? `&track=${encodeURIComponent(selectedTrack)}` : ''}`)} />
         ))}
@@ -134,8 +139,9 @@ const BTECH_BRANCHES = [
   { label: 'B.Tech (AI/ML)', subject: 'B.Tech(AI/ML)', limit: 60, color: 'text-purple-600', bg: 'bg-purple-50', border: 'border-purple-200', bar: 'bg-purple-500' },
 ];
 
-function BTechCapacityCards({ btechByBranch, trackBtechBreakdown, finalClearedBySubject, navigate, selectedTrack, setSelectedTrack, tracks, user }) {
+function BTechCapacityCards({ btechByBranch, trackBtechBreakdown, finalClearedBySubject, trackFinalClearedBySubject, navigate, tracks, user }) {
   const isTrackIncharge = user?.role === 'track_incharge';
+  const [selectedTrack, setSelectedTrack] = useState(isTrackIncharge ? (user?.track || '') : '');
 
   let activeBtech = btechByBranch || {};
   if (selectedTrack && trackBtechBreakdown?.[selectedTrack]) {
@@ -143,6 +149,10 @@ function BTechCapacityCards({ btechByBranch, trackBtechBreakdown, finalClearedBy
   } else if (selectedTrack) {
     activeBtech = {};
   }
+
+  const activeFinalCleared = selectedTrack
+    ? (trackFinalClearedBySubject?.[selectedTrack] || {})
+    : (finalClearedBySubject || {});
 
   return (
     <div>
@@ -168,7 +178,7 @@ function BTechCapacityCards({ btechByBranch, trackBtechBreakdown, finalClearedBy
         {BTECH_BRANCHES.map((b) => (
           <CapacityCard key={b.label} {...b}
             admitted={activeBtech[b.subject] || 0}
-            finalCleared={finalClearedBySubject?.[b.subject] || 0}
+            finalCleared={activeFinalCleared[b.subject] || 0}
             onClick={() => navigate(`/students?subjectFilter=${encodeURIComponent(b.subject)}&status=Admitted${selectedTrack ? `&track=${encodeURIComponent(selectedTrack)}` : ''}`)}
             onPendingClick={() => navigate(`/students?subjectFilter=${encodeURIComponent(b.subject)}&interviewFilter=finalCleared${selectedTrack ? `&track=${encodeURIComponent(selectedTrack)}` : ''}`)} />
         ))}
@@ -184,8 +194,9 @@ const ADMISSION_TYPES = [
   { key: 'Full Fees', color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-200', hoverShadow: 'hover:shadow-[0_12px_24px_-4px_rgba(16,185,129,0.12)] hover:border-emerald-300 hover:bg-emerald-50/10' },
 ];
 
-function AdmissionTypeCards({ admissionTypeBreakdown, trackAdmissionTypeBreakdown, navigate, selectedTrack, setSelectedTrack, tracks, user }) {
+function AdmissionTypeCards({ admissionTypeBreakdown, trackAdmissionTypeBreakdown, navigate, tracks, user }) {
   const isTrackIncharge = user?.role === 'track_incharge';
+  const [selectedTrack, setSelectedTrack] = useState(isTrackIncharge ? (user?.track || '') : '');
 
   let activeBreakdown = admissionTypeBreakdown || {};
   if (selectedTrack && trackAdmissionTypeBreakdown?.[selectedTrack]) {
@@ -341,8 +352,9 @@ const FUNNEL_STAGE_META = [
   { key: 'No Stage', label: 'No Stage Set', icon: FiSlash, iconBg: 'bg-gray-50/80', iconColor: 'text-gray-400', text: 'text-gray-500', border: 'border-gray-200', hoverShadow: 'hover:shadow-[0_12px_24px_-4px_rgba(107,114,128,0.12)] hover:border-gray-300 hover:bg-gray-50/10' },
 ];
 
-function FunnelStageCards({ funnelStageBreakdown, trackFunnelBreakdown, navigate, user, selectedTrack, setSelectedTrack }) {
+function FunnelStageCards({ funnelStageBreakdown, trackFunnelBreakdown, navigate, user }) {
   const isTrackIncharge = user?.role === 'track_incharge';
+  const [selectedTrack, setSelectedTrack] = useState(isTrackIncharge ? (user?.track || '') : '');
   const tracks = Object.keys(trackFunnelBreakdown || {}).sort();
 
   const activeBreakdown = selectedTrack
@@ -609,8 +621,6 @@ export default function Dashboard() {
   const [distributing, setDistributing] = useState(false);
   const [bonusOpen, setBonusOpen] = useState(false);
 
-  const isTrackIncharge = user?.role === 'track_incharge';
-  const [selectedTrack, setSelectedTrack] = useState(isTrackIncharge ? (user?.track || '') : '');
   const tracks = Object.keys(stats?.trackFunnelBreakdown || {}).sort();
 
   const fetchStats = () =>
@@ -738,16 +748,16 @@ export default function Dashboard() {
       </div>
 
       {/* Funnel Stage Cards */}
-      <FunnelStageCards funnelStageBreakdown={stats.funnelStageBreakdown || {}} trackFunnelBreakdown={stats.trackFunnelBreakdown || {}} navigate={navigate} user={user} selectedTrack={selectedTrack} setSelectedTrack={setSelectedTrack} />
+      <FunnelStageCards funnelStageBreakdown={stats.funnelStageBreakdown || {}} trackFunnelBreakdown={stats.trackFunnelBreakdown || {}} navigate={navigate} user={user} />
 
       {/* SSISM Branch Capacity */}
-      <SSISMCapacityCards trackWise={stats.trackWise || []} finalClearedBySubject={stats.finalClearedBySubject || {}} navigate={navigate} selectedTrack={selectedTrack} setSelectedTrack={setSelectedTrack} tracks={tracks} user={user} />
+      <SSISMCapacityCards trackWise={stats.trackWise || []} finalClearedBySubject={stats.finalClearedBySubject || {}} trackFinalClearedBySubject={stats.trackFinalClearedBySubject || {}} navigate={navigate} tracks={tracks} user={user} />
 
       {/* B.Tech Branch Capacity */}
-      <BTechCapacityCards btechByBranch={stats.btechByBranch || {}} trackBtechBreakdown={stats.trackBtechBreakdown || {}} finalClearedBySubject={stats.finalClearedBySubject || {}} navigate={navigate} selectedTrack={selectedTrack} setSelectedTrack={setSelectedTrack} tracks={tracks} user={user} />
+      <BTechCapacityCards btechByBranch={stats.btechByBranch || {}} trackBtechBreakdown={stats.trackBtechBreakdown || {}} finalClearedBySubject={stats.finalClearedBySubject || {}} trackFinalClearedBySubject={stats.trackFinalClearedBySubject || {}} navigate={navigate} tracks={tracks} user={user} />
 
       {/* Admission Type Breakdown */}
-      <AdmissionTypeCards admissionTypeBreakdown={stats.admissionTypeBreakdown || {}} trackAdmissionTypeBreakdown={stats.trackAdmissionTypeBreakdown || {}} navigate={navigate} selectedTrack={selectedTrack} setSelectedTrack={setSelectedTrack} tracks={tracks} user={user} />
+      <AdmissionTypeCards admissionTypeBreakdown={stats.admissionTypeBreakdown || {}} trackAdmissionTypeBreakdown={stats.trackAdmissionTypeBreakdown || {}} navigate={navigate} tracks={tracks} user={user} />
 
       {/* Track-wise Scholarship Breakdown */}
       <TrackScholarshipBreakdown trackAdmissionTypeBreakdown={stats.trackAdmissionTypeBreakdown || {}} navigate={navigate} />

@@ -1444,10 +1444,11 @@ const getStats = async (req, res) => {
     // branch field bhi check karo (SSISM students mein branch se normalize karo)
     const finalClearedRaw = await Student.find(
       { 'finalInterview.result': 'Pass', status: { $ne: 'Admitted' }, isDisabled: { $ne: true } },
-      { subject: 1, branch: 1 }
+      { subject: 1, branch: 1, track: 1 }
     ).lean();
     const finalClearedBySubject = {};
-    finalClearedRaw.forEach(({ subject, branch }) => {
+    const trackFinalClearedBySubject = {};
+    finalClearedRaw.forEach(({ subject, branch, track }) => {
       // Branch se resolve karo (primary), subject fallback
       const BRANCH_TO_CANONICAL = {
         'BCA': 'BCA', 'BCA(ITEG)': 'BCA', 'bca': 'BCA', 'bca(iteg)': 'BCA',
@@ -1466,7 +1467,14 @@ const getStats = async (req, res) => {
       };
       // Branch se pehle resolve karo, warna subject se
       const resolved = (branch && BRANCH_TO_CANONICAL[branch]) || BRANCH_TO_CANONICAL[subject] || null;
-      if (resolved) finalClearedBySubject[resolved] = (finalClearedBySubject[resolved] || 0) + 1;
+      if (resolved) {
+        finalClearedBySubject[resolved] = (finalClearedBySubject[resolved] || 0) + 1;
+        if (track) {
+          const mainTrack = resolveMainTrack(track);
+          if (!trackFinalClearedBySubject[mainTrack]) trackFinalClearedBySubject[mainTrack] = {};
+          trackFinalClearedBySubject[mainTrack][resolved] = (trackFinalClearedBySubject[mainTrack][resolved] || 0) + 1;
+        }
+      }
     });
 
     // Admitted but Admission Closed funnel stage set nahi
@@ -1541,7 +1549,7 @@ const getStats = async (req, res) => {
 
     // Track-wise admission type breakdown (subject-wise)
     const trackAdmissionTypeData = await Student.aggregate([
-      { $match: { status: 'Admitted', admissionType: { $in: ['SNS', 'SVS', 'Shri Ram'] }, isDisabled: { $ne: true } } },
+      { $match: { status: 'Admitted', admissionType: { $in: ['SNS', 'SVS', 'Shri Ram', 'Full Fees'] }, isDisabled: { $ne: true } } },
       { $group: { _id: { track: '$track', admissionType: '$admissionType', subject: '$subject' }, count: { $sum: 1 } } },
     ]);
     // { track -> { admissionType -> { subject -> count } } }
@@ -1569,7 +1577,7 @@ const getStats = async (req, res) => {
       trackBtechBreakdown[track][subject] = (trackBtechBreakdown[track][subject] || 0) + admitted;
     });
 
-    res.json({ total, applied, calling, admitted, rejected, disabled, unassigned, admittedNoFunnelCount, finalCleared, finalClearedManual, interviewAttempts, trackWise, btechByBranch, finalClearedBySubject, admissionTypeBreakdown, trackAdmissionTypeBreakdown, funnelStageBreakdown, trackFunnelBreakdown, trackBtechBreakdown });
+    res.json({ total, applied, calling, admitted, rejected, disabled, unassigned, admittedNoFunnelCount, finalCleared, finalClearedManual, interviewAttempts, trackWise, btechByBranch, finalClearedBySubject, trackFinalClearedBySubject, admissionTypeBreakdown, trackAdmissionTypeBreakdown, funnelStageBreakdown, trackFunnelBreakdown, trackBtechBreakdown });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
