@@ -81,9 +81,14 @@ function CapacityCard({ label, admitted, finalCleared, limit, color, bg, border,
   );
 }
 
-function SSISMCapacityCards({ trackWise, finalClearedBySubject, navigate }) {
+function SSISMCapacityCards({ trackWise, finalClearedBySubject, navigate, selectedTrack, setSelectedTrack, tracks, user }) {
+  const isTrackIncharge = user?.role === 'track_incharge';
+  const activeTrackWise = selectedTrack
+    ? (trackWise || []).filter((t) => t.track === selectedTrack)
+    : (trackWise || []);
+
   const admittedBySubject = {};
-  (trackWise || []).forEach(({ subjects }) => {
+  activeTrackWise.forEach(({ subjects }) => {
     (subjects || []).forEach(({ subject, admitted }) => {
       admittedBySubject[subject] = (admittedBySubject[subject] || 0) + (admitted || 0);
     });
@@ -91,17 +96,31 @@ function SSISMCapacityCards({ trackWise, finalClearedBySubject, navigate }) {
 
   return (
     <div>
-      <div className="flex items-center gap-2 mb-3">
+      <div className="flex items-center gap-2 mb-3 flex-wrap">
         <span className="text-sm font-bold text-gray-700 uppercase tracking-wide">SSISM Branch Capacity</span>
         <div className="flex-1 h-px bg-gray-200" />
+        {user?.role === 'admin' && tracks.length > 0 && (
+          <select
+            value={selectedTrack}
+            onChange={(e) => setSelectedTrack(e.target.value)}
+            className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm outline-none bg-white">
+            <option value="">All Tracks</option>
+            {tracks.map((t) => <option key={t} value={t}>{t}</option>)}
+          </select>
+        )}
+        {isTrackIncharge && selectedTrack && (
+          <span className="text-xs bg-orange-50 text-primary font-bold px-2 py-1 rounded-full border border-orange-100">
+            {selectedTrack}
+          </span>
+        )}
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         {SSISM_BRANCHES.map((b) => (
           <CapacityCard key={b.label} {...b}
             admitted={admittedBySubject[b.subject] || 0}
             finalCleared={finalClearedBySubject?.[b.subject] || 0}
-            onClick={() => navigate(`/students?subjectFilter=${encodeURIComponent(b.subject)}&status=Admitted`)}
-            onPendingClick={() => navigate(`/students?subjectFilter=${encodeURIComponent(b.subject)}&interviewFilter=finalCleared`)} />
+            onClick={() => navigate(`/students?subjectFilter=${encodeURIComponent(b.subject)}&status=Admitted${selectedTrack ? `&track=${encodeURIComponent(selectedTrack)}` : ''}`)}
+            onPendingClick={() => navigate(`/students?subjectFilter=${encodeURIComponent(b.subject)}&interviewFilter=finalCleared${selectedTrack ? `&track=${encodeURIComponent(selectedTrack)}` : ''}`)} />
         ))}
       </div>
     </div>
@@ -115,20 +134,43 @@ const BTECH_BRANCHES = [
   { label: 'B.Tech (AI/ML)', subject: 'B.Tech(AI/ML)', limit: 60, color: 'text-purple-600', bg: 'bg-purple-50', border: 'border-purple-200', bar: 'bg-purple-500' },
 ];
 
-function BTechCapacityCards({ btechByBranch, finalClearedBySubject, navigate }) {
+function BTechCapacityCards({ btechByBranch, trackBtechBreakdown, finalClearedBySubject, navigate, selectedTrack, setSelectedTrack, tracks, user }) {
+  const isTrackIncharge = user?.role === 'track_incharge';
+
+  let activeBtech = btechByBranch || {};
+  if (selectedTrack && trackBtechBreakdown?.[selectedTrack]) {
+    activeBtech = trackBtechBreakdown[selectedTrack];
+  } else if (selectedTrack) {
+    activeBtech = {};
+  }
+
   return (
     <div>
-      <div className="flex items-center gap-2 mb-3">
+      <div className="flex items-center gap-2 mb-3 flex-wrap">
         <span className="text-sm font-bold text-gray-700 uppercase tracking-wide">B.Tech Branch Capacity</span>
         <div className="flex-1 h-px bg-gray-200" />
+        {user?.role === 'admin' && tracks.length > 0 && (
+          <select
+            value={selectedTrack}
+            onChange={(e) => setSelectedTrack(e.target.value)}
+            className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm outline-none bg-white">
+            <option value="">All Tracks</option>
+            {tracks.map((t) => <option key={t} value={t}>{t}</option>)}
+          </select>
+        )}
+        {isTrackIncharge && selectedTrack && (
+          <span className="text-xs bg-orange-50 text-primary font-bold px-2 py-1 rounded-full border border-orange-100">
+            {selectedTrack}
+          </span>
+        )}
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {BTECH_BRANCHES.map((b) => (
           <CapacityCard key={b.label} {...b}
-            admitted={btechByBranch?.[b.subject] || 0}
+            admitted={activeBtech[b.subject] || 0}
             finalCleared={finalClearedBySubject?.[b.subject] || 0}
-            onClick={() => navigate(`/students?subjectFilter=${encodeURIComponent(b.subject)}&status=Admitted`)}
-            onPendingClick={() => navigate(`/students?subjectFilter=${encodeURIComponent(b.subject)}&interviewFilter=finalCleared`)} />
+            onClick={() => navigate(`/students?subjectFilter=${encodeURIComponent(b.subject)}&status=Admitted${selectedTrack ? `&track=${encodeURIComponent(selectedTrack)}` : ''}`)}
+            onPendingClick={() => navigate(`/students?subjectFilter=${encodeURIComponent(b.subject)}&interviewFilter=finalCleared${selectedTrack ? `&track=${encodeURIComponent(selectedTrack)}` : ''}`)} />
         ))}
       </div>
     </div>
@@ -142,17 +184,42 @@ const ADMISSION_TYPES = [
   { key: 'Full Fees', color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-200', hoverShadow: 'hover:shadow-[0_12px_24px_-4px_rgba(16,185,129,0.12)] hover:border-emerald-300 hover:bg-emerald-50/10' },
 ];
 
-function AdmissionTypeCards({ admissionTypeBreakdown, navigate }) {
+function AdmissionTypeCards({ admissionTypeBreakdown, trackAdmissionTypeBreakdown, navigate, selectedTrack, setSelectedTrack, tracks, user }) {
+  const isTrackIncharge = user?.role === 'track_incharge';
+
+  let activeBreakdown = admissionTypeBreakdown || {};
+  if (selectedTrack && trackAdmissionTypeBreakdown?.[selectedTrack]) {
+    activeBreakdown = {};
+    const typeData = trackAdmissionTypeBreakdown[selectedTrack];
+    Object.entries(typeData).forEach(([type, subjects]) => {
+      activeBreakdown[type] = Object.values(subjects).reduce((sum, count) => sum + count, 0);
+    });
+  }
+
   return (
     <div>
-      <div className="flex items-center gap-2 mb-3">
+      <div className="flex items-center gap-2 mb-3 flex-wrap">
         <span className="text-sm font-bold text-gray-700 uppercase tracking-wide">Admission Type Breakdown</span>
         <div className="flex-1 h-px bg-gray-200" />
+        {user?.role === 'admin' && tracks.length > 0 && (
+          <select
+            value={selectedTrack}
+            onChange={(e) => setSelectedTrack(e.target.value)}
+            className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm outline-none bg-white">
+            <option value="">All Tracks</option>
+            {tracks.map((t) => <option key={t} value={t}>{t}</option>)}
+          </select>
+        )}
+        {isTrackIncharge && selectedTrack && (
+          <span className="text-xs bg-orange-50 text-primary font-bold px-2 py-1 rounded-full border border-orange-100">
+            {selectedTrack}
+          </span>
+        )}
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {ADMISSION_TYPES.map(({ key, color, bg, border, hoverShadow }) => (
           <div key={key}
-            onClick={() => navigate(`/students?admissionType=${encodeURIComponent(key)}`)}
+            onClick={() => navigate(`/students?admissionType=${encodeURIComponent(key)}&status=Admitted${selectedTrack ? `&track=${encodeURIComponent(selectedTrack)}` : ''}`)}
             className={`group relative h-[130px] bg-white rounded-2xl border ${border} ${hoverShadow} shadow-sm p-4 flex flex-col transition-all duration-300 hover:-translate-y-1 cursor-pointer`}>
             <div className="flex items-start justify-between w-full">
               <div className={`w-10 h-10 rounded-xl ${bg} border border-transparent group-hover:border-white/50 flex items-center justify-center transition-all duration-300`}>
@@ -163,7 +230,7 @@ function AdmissionTypeCards({ admissionTypeBreakdown, navigate }) {
               <p className={`text-[10px] font-bold uppercase tracking-wide leading-tight ${color}`}>{key}</p>
             </div>
             <div className="absolute bottom-[10px] left-4 flex items-baseline gap-1">
-              <p className="text-2xl font-bold text-gray-800">{admissionTypeBreakdown?.[key] || 0}</p>
+              <p className="text-2xl font-bold text-gray-800">{activeBreakdown[key] || 0}</p>
               <span className="text-[10px] text-gray-400 font-semibold lowercase">admitted</span>
             </div>
           </div>
@@ -274,9 +341,8 @@ const FUNNEL_STAGE_META = [
   { key: 'No Stage', label: 'No Stage Set', icon: FiSlash, iconBg: 'bg-gray-50/80', iconColor: 'text-gray-400', text: 'text-gray-500', border: 'border-gray-200', hoverShadow: 'hover:shadow-[0_12px_24px_-4px_rgba(107,114,128,0.12)] hover:border-gray-300 hover:bg-gray-50/10' },
 ];
 
-function FunnelStageCards({ funnelStageBreakdown, trackFunnelBreakdown, navigate, user }) {
+function FunnelStageCards({ funnelStageBreakdown, trackFunnelBreakdown, navigate, user, selectedTrack, setSelectedTrack }) {
   const isTrackIncharge = user?.role === 'track_incharge';
-  const [selectedTrack, setSelectedTrack] = useState(isTrackIncharge ? (user?.track || '') : '');
   const tracks = Object.keys(trackFunnelBreakdown || {}).sort();
 
   const activeBreakdown = selectedTrack
@@ -543,6 +609,10 @@ export default function Dashboard() {
   const [distributing, setDistributing] = useState(false);
   const [bonusOpen, setBonusOpen] = useState(false);
 
+  const isTrackIncharge = user?.role === 'track_incharge';
+  const [selectedTrack, setSelectedTrack] = useState(isTrackIncharge ? (user?.track || '') : '');
+  const tracks = Object.keys(stats?.trackFunnelBreakdown || {}).sort();
+
   const fetchStats = () =>
     api.get('/students/stats').then((r) => setStats(r.data)).catch(() => toast.error('Failed to load stats'));
 
@@ -668,16 +738,16 @@ export default function Dashboard() {
       </div>
 
       {/* Funnel Stage Cards */}
-      <FunnelStageCards funnelStageBreakdown={stats.funnelStageBreakdown || {}} trackFunnelBreakdown={stats.trackFunnelBreakdown || {}} navigate={navigate} user={user} />
+      <FunnelStageCards funnelStageBreakdown={stats.funnelStageBreakdown || {}} trackFunnelBreakdown={stats.trackFunnelBreakdown || {}} navigate={navigate} user={user} selectedTrack={selectedTrack} setSelectedTrack={setSelectedTrack} />
 
       {/* SSISM Branch Capacity */}
-      <SSISMCapacityCards trackWise={stats.trackWise || []} finalClearedBySubject={stats.finalClearedBySubject || {}} navigate={navigate} />
+      <SSISMCapacityCards trackWise={stats.trackWise || []} finalClearedBySubject={stats.finalClearedBySubject || {}} navigate={navigate} selectedTrack={selectedTrack} setSelectedTrack={setSelectedTrack} tracks={tracks} user={user} />
 
       {/* B.Tech Branch Capacity */}
-      <BTechCapacityCards btechByBranch={stats.btechByBranch || {}} finalClearedBySubject={stats.finalClearedBySubject || {}} navigate={navigate} />
+      <BTechCapacityCards btechByBranch={stats.btechByBranch || {}} trackBtechBreakdown={stats.trackBtechBreakdown || {}} finalClearedBySubject={stats.finalClearedBySubject || {}} navigate={navigate} selectedTrack={selectedTrack} setSelectedTrack={setSelectedTrack} tracks={tracks} user={user} />
 
       {/* Admission Type Breakdown */}
-      <AdmissionTypeCards admissionTypeBreakdown={stats.admissionTypeBreakdown || {}} navigate={navigate} />
+      <AdmissionTypeCards admissionTypeBreakdown={stats.admissionTypeBreakdown || {}} trackAdmissionTypeBreakdown={stats.trackAdmissionTypeBreakdown || {}} navigate={navigate} selectedTrack={selectedTrack} setSelectedTrack={setSelectedTrack} tracks={tracks} user={user} />
 
       {/* Track-wise Scholarship Breakdown */}
       <TrackScholarshipBreakdown trackAdmissionTypeBreakdown={stats.trackAdmissionTypeBreakdown || {}} navigate={navigate} />

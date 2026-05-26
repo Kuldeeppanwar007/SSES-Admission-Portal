@@ -1555,7 +1555,21 @@ const getStats = async (req, res) => {
       trackAdmissionTypeBreakdown[track][typeKey][subject || 'Unknown'] = (trackAdmissionTypeBreakdown[track][typeKey][subject || 'Unknown'] || 0) + count;
     });
 
-    res.json({ total, applied, calling, admitted, rejected, disabled, unassigned, admittedNoFunnelCount, finalCleared, finalClearedManual, interviewAttempts, trackWise, btechByBranch, finalClearedBySubject, admissionTypeBreakdown, trackAdmissionTypeBreakdown, funnelStageBreakdown, trackFunnelBreakdown });
+    // Track-wise B.Tech breakdown
+    const trackBtechRaw = await Student.aggregate([
+      { $match: { status: 'Admitted', subject: { $in: BTECH_SUBJECTS }, isDisabled: { $ne: true } } },
+      { $group: { _id: { track: '$track', subject: '$subject' }, admitted: { $sum: 1 } } },
+    ]);
+    const trackBtechBreakdown = {};
+    trackBtechRaw.forEach(({ _id, admitted }) => {
+      let { track, subject } = _id;
+      if (!track) return;
+      track = resolveMainTrack(track);
+      if (!trackBtechBreakdown[track]) trackBtechBreakdown[track] = {};
+      trackBtechBreakdown[track][subject] = (trackBtechBreakdown[track][subject] || 0) + admitted;
+    });
+
+    res.json({ total, applied, calling, admitted, rejected, disabled, unassigned, admittedNoFunnelCount, finalCleared, finalClearedManual, interviewAttempts, trackWise, btechByBranch, finalClearedBySubject, admissionTypeBreakdown, trackAdmissionTypeBreakdown, funnelStageBreakdown, trackFunnelBreakdown, trackBtechBreakdown });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
