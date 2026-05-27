@@ -31,6 +31,11 @@ const loginOtpSchema = Joi.object({
            .messages({ 'string.pattern.base': 'OTP must be a 6-digit number' }),
 });
 
+const googleLoginSchema = Joi.object({
+  idToken: Joi.string().optional(),
+  accessToken: Joi.string().optional(),
+}).or('idToken', 'accessToken');
+
 const selfRegisterSchema = Joi.object({
   formSource:          Joi.string().valid('btech', 'ssism').optional(),
   firstName:           Joi.string().min(2).max(60).required(),
@@ -127,6 +132,7 @@ module.exports = {
     login:          loginSchema,
     sendOtp:        sendOtpSchema,
     loginOtp:       loginOtpSchema,
+    googleLogin:    googleLoginSchema,
     selfRegister:   selfRegisterSchema,
     addUser:        addUserSchema,
     updateStatus:   updateStatusSchema,

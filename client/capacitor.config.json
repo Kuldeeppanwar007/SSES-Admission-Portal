@@ -19,6 +19,11 @@
       "showSpinner": false,
       "splashFullScreen": true,
       "splashImmersive": true
+    },
+    "GoogleAuth": {
+      "scopes": ["profile", "email"],
+      "serverClientId": "582014715224-6vfss07lfrolhgogmpg1kftnoehpo2ub.apps.googleusercontent.com",
+      "forceCodeForRefreshToken": true
     }
   }
 }

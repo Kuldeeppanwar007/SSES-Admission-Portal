@@ -48,6 +48,20 @@ const useAuthStore = create((set) => ({
     return data;
   },
 
+  loginWithGoogle: async (credentials) => {
+    const { data } = await api.post('/auth/google-login', credentials);
+    localStorage.setItem('sses_user', JSON.stringify(data));
+    set({ user: data });
+    // Fetch & apply this user's saved theme from DB
+    api.get('/users/me/theme').then(({ data: t }) => {
+      localStorage.setItem('theme', t.theme);
+      applyTheme(t.theme);
+    }).catch(() => {});
+    if (data.role === 'track_incharge')
+      startLocationTracking(data.token, data.refreshToken, API_URL);
+    return data;
+  },
+
   logout: async () => {
     stopLocationTracking();
     await api.post('/auth/logout').catch(() => {});

@@ -7,6 +7,7 @@ import { FiEye, FiEyeOff, FiMapPin, FiMail, FiLock } from 'react-icons/fi';
 import { FcGoogle } from 'react-icons/fc';
 import { Capacitor } from '@capacitor/core';
 import { Geolocation } from '@capacitor/geolocation';
+import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth';
 
 async function checkLocationPermission() {
   try {
@@ -30,9 +31,83 @@ export default function Login() {
   const [emailForOtp, setEmailForOtp] = useState('');
   const [otpValue, setOtpValue] = useState('');
   const [countdown, setCountdown] = useState(0);
+  const [googleClient, setGoogleClient] = useState(null);
 
-  const { login, sendOtp, loginWithOtp } = useAuthStore();
+  const { login, sendOtp, loginWithOtp, loginWithGoogle } = useAuthStore();
   const navigate = useNavigate();
+
+  // Handle Google OAuth callback
+  const handleGoogleLogin = async (credentials) => {
+    setLoading(true);
+    try {
+      const data = await loginWithGoogle(credentials);
+
+      // track_incharge ke liye location check
+      if (data.role === 'track_incharge') {
+        const granted = await checkLocationPermission();
+        if (!granted) {
+          setLocationBlocked(true);
+          setLoading(false);
+          return;
+        }
+      }
+
+      toast.success('Login successful via Google!');
+      navigate('/dashboard');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to sign in with Google.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Switch between Native Google SDK on Android/iOS and Web Popup Flow on Browser
+  const handleGoogleClick = async () => {
+    if (Capacitor.isNativePlatform()) {
+      setLoading(true);
+      try {
+        const user = await GoogleAuth.signIn();
+        if (user && user.authentication.idToken) {
+          await handleGoogleLogin({ idToken: user.authentication.idToken });
+        } else {
+          toast.error('Google Sign-In failed on mobile.');
+        }
+      } catch (err) {
+        console.error('Mobile Google Login Error:', err);
+        toast.error('Google login cancelled or failed.');
+      } finally {
+        setLoading(false);
+      }
+    } else {
+      if (googleClient) {
+        googleClient.requestAccessToken();
+      } else {
+        toast.error('Google client is loading, please try again.');
+      }
+    }
+  };
+
+  // Initialize Google OAuth Token Client (Implicit Popup Flow)
+  useEffect(() => {
+    const initGoogleOAuth = () => {
+      if (window.google?.accounts?.oauth2) {
+        const client = window.google.accounts.oauth2.initTokenClient({
+          client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
+          scope: 'https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile',
+          callback: async (tokenResponse) => {
+             if (tokenResponse && tokenResponse.access_token) {
+               handleGoogleLogin({ accessToken: tokenResponse.access_token });
+             }
+          },
+        });
+        setGoogleClient(client);
+      } else {
+        setTimeout(initGoogleOAuth, 500);
+      }
+    };
+
+    initGoogleOAuth();
+  }, []);
 
   // Handle resend countdown timer
   useEffect(() => {
@@ -343,9 +418,7 @@ export default function Login() {
 
               <button
                 type="button"
-                onClick={() => {
-                  toast('Google login feature is coming soon!', { icon: 'ℹ️' });
-                }}
+                onClick={handleGoogleClick}
                 className="w-full flex items-center justify-center gap-3 border border-gray-200 hover:border-gray-300 bg-white hover:bg-gray-50 text-gray-700 font-semibold py-2.5 px-4 rounded-xl shadow-sm transition-all duration-200 text-sm"
               >
                 <FcGoogle className="text-lg" />

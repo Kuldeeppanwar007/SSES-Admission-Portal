@@ -83,7 +83,8 @@ app.use(rateLimit({
     req.path.startsWith('/api/auth/login') || 
     req.path.startsWith('/api/auth/refresh') || 
     req.path.startsWith('/api/auth/send-otp') || 
-    req.path.startsWith('/api/auth/login-otp'),
+    req.path.startsWith('/api/auth/login-otp') ||
+    req.path.startsWith('/api/auth/google-login'),
 }));
 
 // Login — max 30 attempts per 15 min per IP (user ID nahi hoga yahan)
@@ -91,6 +92,15 @@ app.use('/api/auth/login', rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 30,
   message: { message: 'Too many login attempts. Try again after 15 minutes.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+}));
+
+// Google Login — max 30 attempts per 15 min per IP
+app.use('/api/auth/google-login', rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  message: { message: 'Too many Google login attempts. Try again after 15 minutes.' },
   standardHeaders: true,
   legacyHeaders: false,
 }));

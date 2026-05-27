@@ -178,4 +178,78 @@ const loginWithOtp = async (req, res) => {
   });
 };
 
-module.exports = { register, login, refreshToken, logout, getMe, changePassword, sendOtp, loginWithOtp };
+const googleLogin = async (req, res) => {
+  const { idToken, accessToken } = req.body;
+  if (!idToken && !accessToken) {
+    return res.status(400).json({ message: 'Google credentials are required.' });
+  }
+
+  try {
+    let email;
+
+    if (idToken) {
+      // Verify ID Token with Google OAuth API
+      const response = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${idToken}`);
+      const payload = await response.json();
+
+      if (payload.error || !payload.email) {
+        return res.status(400).json({ message: 'Invalid Google token. Please try again.' });
+      }
+
+      if (payload.aud !== process.env.GOOGLE_CLIENT_ID) {
+        return res.status(400).json({ message: 'Google Client ID mismatch.' });
+      }
+
+      email = payload.email.toLowerCase();
+    } else if (accessToken) {
+      // Verify Access Token using Google UserInfo API
+      const response = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+        headers: { Authorization: `Bearer ${accessToken}` }
+      });
+      const payload = await response.json();
+
+      if (payload.error || !payload.email) {
+        return res.status(400).json({ message: 'Invalid Google access token. Please try again.' });
+      }
+
+      email = payload.email.toLowerCase();
+    }
+
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      return res.status(404).json({ message: 'This Google email is not registered in our admission system.' });
+    }
+
+    if (!user.isActive) {
+      return res.status(403).json({ message: 'Your account is deactivated. Please contact administrator.' });
+    }
+
+    // Success! Generate JWTs
+    const accessTokenJWT  = generateAccessToken(user._id);
+    const refreshToken = generateRefreshToken(user._id);
+
+    user.refreshToken = refreshToken;
+    await user.save();
+
+    res.cookie('refreshToken', refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
+      maxAge: 30 * 24 * 60 * 60 * 1000,
+    });
+
+    res.json({
+      _id: user._id, name: user.name, email: user.email,
+      role: user.role, track: user.track,
+      canEditStudent: user.canEditStudent || false,
+      token: accessTokenJWT,
+      refreshToken,
+    });
+  } catch (error) {
+    console.error('Google Auth Error:', error);
+    res.status(500).json({ message: 'Failed to authenticate Google account.' });
+  }
+};
+
+module.exports = { register, login, refreshToken, logout, getMe, changePassword, sendOtp, loginWithOtp, googleLogin };
