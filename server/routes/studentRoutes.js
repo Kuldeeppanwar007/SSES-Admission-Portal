@@ -84,15 +84,40 @@ router.post('/recalculate-points', protect, authorizeRoles('admin'), async (req,
     const Student     = require('../models/Student');
     const TrackPoints = require('../models/TrackPoints');
     const Target      = require('../models/Target');
+    const WeeklyBonus = require('../models/WeeklyBonus');
 
     const BTECH_SUBJECTS = ['B.Tech(CS)', 'B.Tech(IT)', 'B.Tech(ECE)', 'B.Tech(AI/ML)'];
+
+    const TOWN_TO_MAIN_TRACK = {
+      'harda':        'Harda',
+      'timarni':      'Harda',
+      'seoni malwa':  'Harda',
+      'seoni malav':  'Harda',
+      'khategaon':    'Khategaon',
+      'nemawar':      'Khategaon',
+      'sandalpur':    'Khategaon',
+      'rehti':        'Rehti',
+      'gopalpur':     'Rehti',
+      'bherunda':     'Rehti',
+      'nasrullaganj': 'Rehti',
+      'narmadapuram': 'Rehti',
+      'satwas':       'Satwas & Kannod',
+      'kannod':       'Satwas & Kannod',
+    };
+
+    const resolveMainTrack = (track) => {
+      if (!track) return track;
+      const key = track.toLowerCase().trim();
+      return TOWN_TO_MAIN_TRACK[key] || track;
+    };
 
     // Target model se points fetch karo (same as getStats + weeklyBonus)
     const targets = await Target.find({});
     const pointsPerSubject = {}; // { track: { subject: pts } }
     targets.forEach(({ track, subject, points }) => {
-      if (!pointsPerSubject[track]) pointsPerSubject[track] = {};
-      pointsPerSubject[track][subject] = points || 0;
+      let resolvedTrack = resolveMainTrack(track);
+      if (!pointsPerSubject[resolvedTrack]) pointsPerSubject[resolvedTrack] = {};
+      pointsPerSubject[resolvedTrack][subject] = points || 0;
     });
 
     // Reset all track points to 0
@@ -101,15 +126,26 @@ router.post('/recalculate-points', protect, authorizeRoles('admin'), async (req,
     // Admission points recalculate — Target model se
     const admittedStudents = await Student.find({ status: 'Admitted', isDisabled: { $ne: true } });
     const pointsMap = {};
+    
     admittedStudents.forEach(({ track, subject }) => {
       if (!track || !subject) return;
+      const resolvedTrack = resolveMainTrack(track);
       const subjectKey = BTECH_SUBJECTS.includes(subject) ? 'B.Tech' : subject;
-      const pts = pointsPerSubject[track]?.[subjectKey] || 0;
-      pointsMap[track] = (pointsMap[track] || 0) + pts;
+      const pts = pointsPerSubject[resolvedTrack]?.[subjectKey] || 0;
+      
+      pointsMap[resolvedTrack] = (pointsMap[resolvedTrack] || 0) + pts;
     });
 
-    // Weekly bonus points preserve karo (TrackPoints mein jo extra points hain wo bonus se aaye hain)
-    // Note: recalculate sirf admission points reset karta hai, bonus history WeeklyBonus model mein safe hai
+    // Weekly bonus points preserve karo (WeeklyBonus model se)
+    const allBonuses = await WeeklyBonus.find({}).lean();
+    allBonuses.forEach(({ bonuses }) => {
+      bonuses.forEach(({ track, points }) => {
+        if (track) {
+          const resolvedTrack = resolveMainTrack(track);
+          pointsMap[resolvedTrack] = (pointsMap[resolvedTrack] || 0) + (points || 0);
+        }
+      });
+    });
 
     // Save
     await Promise.all(Object.entries(pointsMap).map(([track, points]) =>
