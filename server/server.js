@@ -79,11 +79,33 @@ app.use(rateLimit({
   message: { message: 'Too many requests. Try again later.' },
   standardHeaders: true,
   legacyHeaders: false,
-  skip: (req) => req.path.startsWith('/api/auth/login') || req.path.startsWith('/api/auth/refresh'),
+  skip: (req) => 
+    req.path.startsWith('/api/auth/login') || 
+    req.path.startsWith('/api/auth/refresh') || 
+    req.path.startsWith('/api/auth/send-otp') || 
+    req.path.startsWith('/api/auth/login-otp'),
 }));
 
 // Login — max 30 attempts per 15 min per IP (user ID nahi hoga yahan)
 app.use('/api/auth/login', rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  message: { message: 'Too many login attempts. Try again after 15 minutes.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+}));
+
+// Send OTP — max 5 requests per 15 min per IP (prevent email spam)
+app.use('/api/auth/send-otp', rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: { message: 'Too many OTP requests. Try again after 15 minutes.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+}));
+
+// Login OTP — max 30 attempts per 15 min per IP
+app.use('/api/auth/login-otp', rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 30,
   message: { message: 'Too many login attempts. Try again after 15 minutes.' },

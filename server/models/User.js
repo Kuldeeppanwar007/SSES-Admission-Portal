@@ -21,6 +21,8 @@ const userSchema = new mongoose.Schema({
   theme: { type: String, default: 'orange' },
   points: { type: Number, default: 0 },
   refreshToken: { type: String, default: null },
+  otp: { type: String, default: null },
+  otpExpires: { type: Date, default: null },
 }, { timestamps: true });
 
 userSchema.pre('save', async function () {

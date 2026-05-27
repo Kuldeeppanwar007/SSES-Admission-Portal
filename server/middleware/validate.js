@@ -21,6 +21,16 @@ const loginSchema = Joi.object({
   password: Joi.string().min(4).max(100).required(),
 });
 
+const sendOtpSchema = Joi.object({
+  email: Joi.string().email().required(),
+});
+
+const loginOtpSchema = Joi.object({
+  email: Joi.string().email().required(),
+  otp:   Joi.string().length(6).pattern(/^\d{6}$/).required()
+           .messages({ 'string.pattern.base': 'OTP must be a 6-digit number' }),
+});
+
 const selfRegisterSchema = Joi.object({
   formSource:          Joi.string().valid('btech', 'ssism').optional(),
   firstName:           Joi.string().min(2).max(60).required(),
@@ -115,6 +125,8 @@ module.exports = {
   validate,
   schemas: {
     login:          loginSchema,
+    sendOtp:        sendOtpSchema,
+    loginOtp:       loginOtpSchema,
     selfRegister:   selfRegisterSchema,
     addUser:        addUserSchema,
     updateStatus:   updateStatusSchema,

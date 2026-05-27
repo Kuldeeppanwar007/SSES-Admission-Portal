@@ -1,5 +1,6 @@
 const User = require('../models/User');
 const jwt = require('jsonwebtoken');
+const { sendOtpEmail } = require('../utils/mailer');
 
 const generateAccessToken  = (id) =>
   jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: '1h' });
@@ -106,4 +107,75 @@ const changePassword = async (req, res) => {
   res.json({ message: 'Password updated successfully' });
 };
 
-module.exports = { register, login, refreshToken, logout, getMe, changePassword };
+const sendOtp = async (req, res) => {
+  const { email } = req.body;
+  const user = await User.findOne({ email });
+  
+  if (!user) {
+    return res.status(404).json({ message: 'Email id is not registered in the system.' });
+  }
+  
+  if (!user.isActive) {
+    return res.status(403).json({ message: 'Your account is deactivated. Please contact administrator.' });
+  }
+
+  // Generate 6-digit numeric OTP
+  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+  
+  // Set expiration (10 minutes from now)
+  user.otp = otp;
+  user.otpExpires = new Date(Date.now() + 10 * 60 * 1000);
+  await user.save();
+
+  try {
+    await sendOtpEmail({ email: user.email, otp, name: user.name });
+    res.json({ message: 'Verification code sent to your registered email address successfully.' });
+  } catch (error) {
+    console.error('Error sending OTP email:', error);
+    res.status(500).json({ message: 'Failed to send verification code. Please try again later.' });
+  }
+};
+
+const loginWithOtp = async (req, res) => {
+  const { email, otp } = req.body;
+  const user = await User.findOne({ email });
+
+  if (!user) {
+    return res.status(404).json({ message: 'Email id is not registered in the system.' });
+  }
+
+  if (!user.isActive) {
+    return res.status(403).json({ message: 'Your account is deactivated.' });
+  }
+
+  if (!user.otp || user.otp !== otp || !user.otpExpires || user.otpExpires < new Date()) {
+    return res.status(400).json({ message: 'Invalid or expired OTP. Please try again.' });
+  }
+
+  // Clear OTP fields upon successful login
+  user.otp = null;
+  user.otpExpires = null;
+
+  const accessToken  = generateAccessToken(user._id);
+  const refreshToken = generateRefreshToken(user._id);
+
+  user.refreshToken = refreshToken;
+  await user.save();
+
+  res.cookie('refreshToken', refreshToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
+    maxAge: 30 * 24 * 60 * 60 * 1000,
+  });
+
+  res.json({
+    _id: user._id, name: user.name, email: user.email,
+    role: user.role, track: user.track,
+    canEditStudent: user.canEditStudent || false,
+    token: accessToken,
+    refreshToken,
+  });
+};
+
+module.exports = { register, login, refreshToken, logout, getMe, changePassword, sendOtp, loginWithOtp };

@@ -78,4 +78,159 @@ const sendPriorityAlert = async ({ studentName, fatherName, track, mobileNo, sub
   });
 };
 
-module.exports = { sendPriorityAlert };
+const sendOtpEmail = async ({ email, otp, name }) => {
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Secure Verification Code</title>
+      <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+      <style>
+        body {
+          margin: 0;
+          padding: 0;
+          background-color: #f8fafc;
+          font-family: 'Outfit', 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+          -webkit-font-smoothing: antialiased;
+        }
+        .container {
+          max-width: 580px;
+          margin: 40px auto;
+          background: #ffffff;
+          border-radius: 16px;
+          overflow: hidden;
+          box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+          border: 1px solid #e2e8f0;
+        }
+        .header {
+          background: linear-gradient(135deg, #f97316, #ea580c);
+          padding: 32px;
+          text-align: center;
+        }
+        .header h1 {
+          color: #ffffff;
+          margin: 0;
+          font-size: 24px;
+          font-weight: 700;
+          letter-spacing: 0.5px;
+        }
+        .header p {
+          color: #ffedd5;
+          margin: 8px 0 0;
+          font-size: 14px;
+          font-weight: 500;
+        }
+        .body-content {
+          padding: 40px 32px;
+          color: #334155;
+          line-height: 1.6;
+        }
+        .greeting {
+          font-size: 18px;
+          font-weight: 700;
+          margin-top: 0;
+          margin-bottom: 12px;
+          color: #1e293b;
+        }
+        .text {
+          font-size: 15px;
+          margin-bottom: 24px;
+        }
+        .otp-card {
+          background-color: #fff7ed;
+          border: 2px dashed #f97316;
+          border-radius: 12px;
+          padding: 24px;
+          text-align: center;
+          margin: 32px 0;
+        }
+        .otp-code {
+          font-family: 'Courier New', Courier, monospace;
+          font-size: 38px;
+          font-weight: 800;
+          letter-spacing: 8px;
+          color: #ea580c;
+          margin: 0;
+        }
+        .otp-expiry {
+          font-size: 12px;
+          color: #c2410c;
+          margin-top: 8px;
+          font-weight: 600;
+          text-transform: uppercase;
+          letter-spacing: 1px;
+        }
+        .divider {
+          border: 0;
+          border-top: 1px solid #e2e8f0;
+          margin: 24px 0;
+        }
+        .security-note {
+          font-size: 13px;
+          color: #64748b;
+          background-color: #f1f5f9;
+          border-left: 4px solid #94a3b8;
+          padding: 12px 16px;
+          border-radius: 4px;
+          margin-top: 24px;
+        }
+        .footer {
+          background-color: #f8fafc;
+          padding: 24px;
+          text-align: center;
+          border-top: 1px solid #e2e8f0;
+        }
+        .footer p {
+          color: #94a3b8;
+          font-size: 12px;
+          margin: 0 0 6px 0;
+        }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>🔑 Secure Verification Code</h1>
+          <p>SSES Admission Portal — Auth Service</p>
+        </div>
+        <div class="body-content">
+          <p class="greeting">Hello ${name},</p>
+          <p class="text">
+            A request was made to log in to your account on the <strong>SSES Admission Portal</strong>. Use the secure verification code below to authorize this session.
+          </p>
+          
+          <div class="otp-card">
+            <div class="otp-code">${otp}</div>
+            <div class="otp-expiry">Valid for 10 minutes only</div>
+          </div>
+          
+          <div class="security-note">
+            <strong>🔒 Security Reminder:</strong> For your security, never share this OTP with anyone, including SSES administrators. If you did not request this verification, please ignore this email.
+          </div>
+          
+          <hr class="divider">
+          
+          <p style="font-size: 13px; color: #64748b; margin: 0;">
+            Need help? Please contact your system administrator or IT helpdesk.
+          </p>
+        </div>
+        <div class="footer">
+          <p>© 2026 SSES Admission Portal. All rights reserved.</p>
+          <p>This is an automated security transmission. Please do not reply to this message.</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  await transporter.sendMail({
+    from: `"SSES Admission Portal" <${process.env.MAIL_USER}>`,
+    to: email,
+    subject: `🔑 ${otp} is your SSES Admission Portal Login Code`,
+    html,
+  });
+};
+
+module.exports = { sendPriorityAlert, sendOtpEmail };
