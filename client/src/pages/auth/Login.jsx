@@ -92,7 +92,7 @@ export default function Login() {
     const initGoogleOAuth = () => {
       if (window.google?.accounts?.oauth2) {
         const client = window.google.accounts.oauth2.initTokenClient({
-          client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
+          client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID || '582014715224-6vfss07lfrolhgogmpg1kftnoehpo2ub.apps.googleusercontent.com',
           scope: 'https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile',
           callback: async (tokenResponse) => {
              if (tokenResponse && tokenResponse.access_token) {

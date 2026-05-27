@@ -196,7 +196,8 @@ const googleLogin = async (req, res) => {
         return res.status(400).json({ message: 'Invalid Google token. Please try again.' });
       }
 
-      if (payload.aud !== process.env.GOOGLE_CLIENT_ID) {
+      const googleClientId = process.env.GOOGLE_CLIENT_ID || '582014715224-6vfss07lfrolhgogmpg1kftnoehpo2ub.apps.googleusercontent.com';
+      if (payload.aud !== googleClientId) {
         return res.status(400).json({ message: 'Google Client ID mismatch.' });
       }
 
