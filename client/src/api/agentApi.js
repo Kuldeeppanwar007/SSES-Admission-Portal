@@ -26,4 +26,7 @@ export const agent = {
 
   cancelCallback: (id) =>
     agentApi.patch(`/agent/callbacks/${id}/cancel`).then(r => r.data),
+
+  sendWhatsApp: (phone, text) =>
+    agentApi.post('/agent/whatsapp', { phone, text }).then(r => r.data),
 };

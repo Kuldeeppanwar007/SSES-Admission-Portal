@@ -997,14 +997,17 @@ export default function StudentDetail() {
 
   // ─── AI Agent Card ─────────────────────────────────────────────────────────
   const AIAgentCard = () => {
-    const [agentData, setAgentData]     = useState(null);
-    const [loading, setLoading]         = useState(true);
-    const [calling, setCalling]         = useState(false);
+    const [agentData, setAgentData]       = useState(null);
+    const [loading, setLoading]           = useState(true);
+    const [calling, setCalling]           = useState(false);
     const [showSchedule, setShowSchedule] = useState(false);
-    const [schedDate, setSchedDate]     = useState('');
-    const [schedTime, setSchedTime]     = useState('');
-    const [schedNotes, setSchedNotes]   = useState('');
-    const [scheduling, setScheduling]   = useState(false);
+    const [schedDate, setSchedDate]       = useState('');
+    const [schedTime, setSchedTime]       = useState('');
+    const [schedNotes, setSchedNotes]     = useState('');
+    const [scheduling, setScheduling]     = useState(false);
+    const [waText, setWaText]             = useState('');
+    const [sendingWa, setSendingWa]       = useState(false);
+    const [expandedTx, setExpandedTx]     = useState({});
 
     const fetchHistory = useCallback(async () => {
       if (!student?.mobile) return;
@@ -1035,7 +1038,7 @@ export default function StudentDetail() {
       setScheduling(true);
       try {
         const iso = new Date(`${schedDate}T${schedTime}:00+05:30`).toISOString();
-        await agent.scheduleCallback(student.mobile, student.name, iso, schedNotes, 'human');
+        await agent.scheduleCallback(student.mobile, student.name, iso, schedNotes, 'agent');
         toast.success('Callback scheduled!');
         setShowSchedule(false);
         setSchedDate(''); setSchedTime(''); setSchedNotes('');
@@ -1045,128 +1048,251 @@ export default function StudentDetail() {
       } finally { setScheduling(false); }
     };
 
-    const STATUS_BADGE = {
-      interested:         'bg-green-100 text-green-700',
-      not_interested:     'bg-red-100 text-red-700',
-      callback_scheduled: 'bg-blue-100 text-blue-700',
-      not_answered:       'bg-yellow-100 text-yellow-700',
-      calling:            'bg-orange-100 text-orange-700',
-      converted:          'bg-purple-100 text-purple-700',
-      pending:            'bg-gray-100 text-gray-600',
+    const handleSendWa = async () => {
+      if (!waText.trim() || !student?.mobile) return;
+      setSendingWa(true);
+      try {
+        await agent.sendWhatsApp(student.mobile, waText.trim());
+        toast.success('WhatsApp message sent!');
+        setWaText('');
+        setTimeout(fetchHistory, 2000);
+      } catch (e) {
+        toast.error(e?.response?.data?.detail || 'Failed to send');
+      } finally { setSendingWa(false); }
     };
 
-    const lead = agentData?.lead;
+    const STATUS_BADGE = {
+      interested:         'bg-green-100 text-green-700 border-green-200',
+      not_interested:     'bg-red-100 text-red-700 border-red-200',
+      callback_scheduled: 'bg-blue-100 text-blue-700 border-blue-200',
+      not_answered:       'bg-yellow-100 text-yellow-700 border-yellow-200',
+      calling:            'bg-orange-100 text-orange-700 border-orange-200',
+      converted:          'bg-purple-100 text-purple-700 border-purple-200',
+      pending:            'bg-gray-100 text-gray-600 border-gray-200',
+      failed:             'bg-red-50 text-red-500 border-red-200',
+    };
+
+    const lead  = agentData?.lead;
     const convs = agentData?.conversations ?? [];
     const cbs   = (agentData?.callbacks ?? []).filter(c => c.status === 'pending');
 
+    const fmtTime = (iso) => iso
+      ? new Date(iso).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', hour12: true })
+      : null;
+
+    const fmtDur = (s) => s ? (s >= 60 ? `${Math.floor(s/60)}m ${s%60}s` : `${s}s`) : null;
+
     return (
-      <div className="rounded-2xl border border-gray-100 shadow-sm bg-white overflow-hidden mt-4">
-        {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 bg-orange-50/40">
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center">
-              <FiPhone size={13} className="text-primary" />
-            </div>
-            <p className="text-sm font-semibold text-gray-800">AI Agent — Call History</p>
-            {lead && (
-              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${STATUS_BADGE[lead.status] ?? 'bg-gray-100 text-gray-600'}`}>
-                {lead.status?.replace(/_/g, ' ')}
-              </span>
-            )}
+      <div className="rounded-2xl border border-gray-100 shadow-sm bg-white overflow-hidden mb-4">
+        {/* Header bar */}
+        <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100 bg-orange-50/40">
+          <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+            <FiPhone size={13} className="text-primary" />
           </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setShowSchedule(s => !s)}
-              className="text-xs font-semibold px-3 py-1.5 rounded-xl border border-primary/30 text-primary hover:bg-primary/5 transition-colors"
-            >
-              <FiClock size={11} className="inline mr-1" />Schedule
-            </button>
-            <button
-              onClick={handleCall}
-              disabled={calling || !student?.mobile}
-              className="text-xs font-bold px-3 py-1.5 rounded-xl bg-primary text-white hover:bg-primary/90 disabled:opacity-50 transition-colors flex items-center gap-1"
-            >
-              <FiPhone size={11} />{calling ? 'Calling…' : 'Call Now'}
-            </button>
-          </div>
+          <p className="text-sm font-bold text-gray-800">AI Voice Agent</p>
+          {lead?.status && (
+            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${STATUS_BADGE[lead.status] ?? 'bg-gray-100 text-gray-600 border-gray-200'}`}>
+              {lead.status === 'interested' ? '✓ ' : ''}{lead.status.replace(/_/g, ' ')}
+            </span>
+          )}
         </div>
 
-        {/* Schedule form */}
-        {showSchedule && (
-          <form onSubmit={handleSchedule} className="px-4 py-3 bg-blue-50/40 border-b border-blue-100 flex flex-wrap gap-2 items-end">
-            <div>
-              <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1">Date</label>
-              <input type="date" value={schedDate} onChange={e => setSchedDate(e.target.value)} required
-                className="text-xs border border-gray-200 rounded-xl px-2.5 py-2 focus:outline-none focus:ring-2 focus:ring-primary/20" />
-            </div>
-            <div>
-              <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1">Time (IST)</label>
-              <input type="time" value={schedTime} onChange={e => setSchedTime(e.target.value)} required
-                className="text-xs border border-gray-200 rounded-xl px-2.5 py-2 focus:outline-none focus:ring-2 focus:ring-primary/20" />
-            </div>
-            <div className="flex-1 min-w-32">
-              <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1">Notes</label>
-              <input type="text" value={schedNotes} onChange={e => setSchedNotes(e.target.value)} placeholder="Optional notes"
-                className="w-full text-xs border border-gray-200 rounded-xl px-2.5 py-2 focus:outline-none focus:ring-2 focus:ring-primary/20" />
-            </div>
-            <button type="submit" disabled={scheduling}
-              className="text-xs font-bold px-3 py-2 rounded-xl bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 transition-colors">
-              {scheduling ? 'Saving…' : 'Save'}
-            </button>
-            <button type="button" onClick={() => setShowSchedule(false)}
-              className="text-xs font-semibold px-3 py-2 rounded-xl border border-gray-200 text-gray-500 hover:bg-gray-50 transition-colors">
-              Cancel
-            </button>
-          </form>
-        )}
+        {/* Two-column body */}
+        <div className="flex flex-col sm:flex-row">
 
-        {/* Pending callbacks */}
-        {cbs.length > 0 && (
-          <div className="px-4 py-2 bg-blue-50/60 border-b border-blue-100 flex flex-wrap gap-2">
-            {cbs.map(cb => (
-              <span key={cb.id} className="text-[10px] font-semibold px-2.5 py-1 rounded-full bg-blue-100 text-blue-700">
-                <FiClock size={9} className="inline mr-1" />
-                Callback: {new Date(cb.scheduled_at).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}
-                {cb.notes && ` — ${cb.notes}`}
-              </span>
-            ))}
-          </div>
-        )}
+          {/* ── Left: controls + memory + WhatsApp ─────────────────────────── */}
+          <div className="sm:w-56 shrink-0 border-b sm:border-b-0 sm:border-r border-gray-100 p-4 flex flex-col gap-3">
 
-        {/* Conversation history */}
-        <div className="divide-y divide-gray-50 max-h-72 overflow-y-auto">
-          {loading ? (
-            <div className="flex justify-center py-8">
-              <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-            </div>
-          ) : convs.length === 0 ? (
-            <p className="text-xs text-gray-400 text-center py-8">No AI calls or WhatsApp messages yet</p>
-          ) : (
-            convs.map(c => (
-              <div key={c.id} className="px-4 py-3 hover:bg-gray-50/60 transition-colors">
-                <div className="flex items-center justify-between mb-1">
-                  <div className="flex items-center gap-1.5">
-                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md ${c.channel === 'phone' ? 'bg-orange-100 text-orange-600' : 'bg-green-100 text-green-600'}`}>
-                      {c.channel === 'phone' ? '📞 Call' : '💬 WhatsApp'}
-                    </span>
-                    {c.outcome && (
-                      <span className="text-[10px] font-semibold text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded-md">
-                        {c.outcome.replace(/_/g, ' ')}
-                      </span>
-                    )}
-                    {c.duration && (
-                      <span className="text-[10px] text-gray-400">{Math.floor(c.duration / 60)}m {c.duration % 60}s</span>
-                    )}
-                  </div>
-                  <span className="text-[10px] text-gray-400">
-                    {new Date(c.created_at).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}
-                  </span>
+            {/* Stats row */}
+            <div className="grid grid-cols-3 gap-2 text-center">
+              {[
+                { label: 'Calls',     value: lead?.call_count ?? 0 },
+                { label: 'WhatsApp',  value: lead?.whatsapp_count ?? 0 },
+                { label: 'Callbacks', value: lead?.pending_callbacks ?? 0 },
+              ].map(({ label, value }) => (
+                <div key={label} className="bg-gray-50 rounded-xl py-2">
+                  <p className="text-base font-bold text-gray-800 leading-none">{value}</p>
+                  <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-wide mt-0.5">{label}</p>
                 </div>
-                {c.summary && <p className="text-xs text-gray-600 leading-relaxed">{c.summary}</p>}
-                {!c.summary && c.agent_reply && <p className="text-xs text-gray-500 italic truncate">{c.agent_reply}</p>}
+              ))}
+            </div>
+            {lead?.last_call_at && (
+              <p className="text-[10px] text-gray-400 text-center -mt-1">Last call: {fmtTime(lead.last_call_at)}</p>
+            )}
+
+            {/* Action buttons */}
+            <button onClick={handleCall} disabled={calling || !student?.mobile}
+              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-primary text-white text-sm font-bold hover:bg-primary/90 disabled:opacity-50 transition-colors shadow-sm shadow-primary/20">
+              <FiPhone size={14} />{calling ? 'Calling…' : 'Trigger Call'}
+            </button>
+
+            <button onClick={() => setShowSchedule(s => !s)}
+              className="w-full flex items-center justify-center gap-2 py-2 rounded-xl border border-gray-200 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors">
+              <FiClock size={13} />Schedule Callback
+            </button>
+
+            {showSchedule && (
+              <form onSubmit={handleSchedule} className="flex flex-col gap-2 p-3 bg-blue-50/60 rounded-xl border border-blue-100">
+                <input type="date" value={schedDate} onChange={e => setSchedDate(e.target.value)} required
+                  className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 outline-none focus:ring-2 focus:ring-primary/20 bg-white" />
+                <input type="time" value={schedTime} onChange={e => setSchedTime(e.target.value)} required
+                  className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 outline-none focus:ring-2 focus:ring-primary/20 bg-white" />
+                <input type="text" value={schedNotes} onChange={e => setSchedNotes(e.target.value)} placeholder="Notes (optional)"
+                  className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 outline-none focus:ring-2 focus:ring-primary/20 bg-white" />
+                <div className="flex gap-2">
+                  <button type="submit" disabled={scheduling}
+                    className="flex-1 py-1.5 rounded-lg bg-blue-600 text-white text-xs font-bold disabled:opacity-50">
+                    {scheduling ? 'Saving…' : 'Save'}
+                  </button>
+                  <button type="button" onClick={() => setShowSchedule(false)}
+                    className="flex-1 py-1.5 rounded-lg border border-gray-200 text-xs font-semibold text-gray-500">
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {/* Pending callbacks pills */}
+            {cbs.length > 0 && (
+              <div className="flex flex-col gap-1">
+                {cbs.map(cb => (
+                  <div key={cb.id} className="flex items-center gap-1 text-[10px] font-semibold px-2.5 py-1.5 rounded-lg bg-blue-50 text-blue-700 border border-blue-100">
+                    <FiClock size={9} className="shrink-0" />
+                    <span className="truncate">{fmtTime(cb.scheduled_at)}{cb.notes ? ` · ${cb.notes}` : ''}</span>
+                  </div>
+                ))}
               </div>
-            ))
-          )}
+            )}
+
+            {/* Memory */}
+            {lead?.memory_summary && (
+              <div className="bg-orange-50/60 rounded-xl p-3 border border-orange-100">
+                <div className="flex items-center justify-between mb-1.5">
+                  <p className="text-[10px] font-bold text-primary uppercase tracking-wide">Riya's Memory</p>
+                  {lead?.last_call_at && (
+                    <span className="text-[9px] text-gray-400">{fmtTime(lead.last_call_at)}</span>
+                  )}
+                </div>
+                <p className="text-[11px] text-gray-600 leading-relaxed whitespace-pre-line">{lead.memory_summary}</p>
+              </div>
+            )}
+
+            {/* Send WhatsApp */}
+            <div className="mt-auto">
+              <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wide mb-1.5">Send WhatsApp</p>
+              <div className="flex gap-2">
+                <textarea value={waText} onChange={e => setWaText(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendWa(); } }}
+                  rows={2} placeholder="Type message..."
+                  className="flex-1 text-xs border border-gray-200 rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-primary/20 resize-none" />
+                <button onClick={handleSendWa} disabled={sendingWa || !waText.trim()}
+                  className="w-9 h-9 self-end rounded-xl bg-primary text-white flex items-center justify-center disabled:opacity-40 hover:bg-primary/90 transition-colors shrink-0">
+                  {sendingWa
+                    ? <div className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                    : <FiPhone size={13} className="rotate-45 scale-x-[-1]" />}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* ── Right: conversation history ─────────────────────────────────── */}
+          <div className="flex-1 min-w-0">
+            {/* History header */}
+            <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+              <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">
+                Conversation History ({convs.length})
+              </p>
+            </div>
+
+            <div className="divide-y divide-gray-50 max-h-[420px] overflow-y-auto">
+              {loading ? (
+                <div className="flex justify-center py-10">
+                  <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                </div>
+              ) : convs.length === 0 ? (
+                <p className="text-xs text-gray-400 text-center py-10">No AI calls or WhatsApp messages yet</p>
+              ) : (
+                convs.map(c => {
+                  const isPhone = c.channel === 'phone';
+                  const txOpen  = expandedTx[c.id];
+                  return (
+                    <div key={c.id} className="px-4 py-4 hover:bg-gray-50/50 transition-colors">
+
+                      {/* Row: channel + direction + timestamp */}
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <span className={`w-6 h-6 rounded-lg flex items-center justify-center text-xs ${isPhone ? 'bg-orange-100 text-orange-600' : 'bg-green-100 text-green-600'}`}>
+                            {isPhone ? '📞' : '💬'}
+                          </span>
+                          <span className="text-xs font-semibold text-gray-600">
+                            {isPhone ? 'Phone' : 'WhatsApp'} · <span className="capitalize">{c.direction}</span>
+                          </span>
+                        </div>
+                        <span className="text-[10px] text-gray-400">{fmtTime(c.created_at)}</span>
+                      </div>
+
+                      {/* Intent badge + message */}
+                      {(c.intent || c.message) && (
+                        <div className="mb-2">
+                          {c.intent && (
+                            <span className="inline-block text-[10px] font-bold px-2 py-0.5 rounded-md bg-blue-100 text-blue-700 uppercase tracking-wide mb-1.5">
+                              INTENT &nbsp;{c.intent}
+                            </span>
+                          )}
+                          {c.message && (
+                            <p className="text-xs text-gray-600 leading-relaxed whitespace-pre-line">{c.message}</p>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Outcome + duration */}
+                      <div className="flex items-center gap-3 flex-wrap mb-2">
+                        {c.outcome && (
+                          <span className="text-[10px] text-gray-500">
+                            Riya: Outcome: <span className="font-semibold text-gray-700">{c.outcome.replace(/_/g, ' ')}</span>
+                          </span>
+                        )}
+                        {c.duration && (
+                          <span className="text-[10px] text-gray-400">Duration: {fmtDur(c.duration)}</span>
+                        )}
+                      </div>
+
+                      {/* Call Summary */}
+                      {c.summary && (
+                        <div className="bg-gray-50 rounded-xl p-3 mb-2">
+                          <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wide mb-1.5">Call Summary</p>
+                          <p className="text-xs text-gray-700 leading-relaxed whitespace-pre-line">{c.summary}</p>
+                        </div>
+                      )}
+
+                      {/* Recording + transcript toggle */}
+                      <div className="flex items-center gap-3 flex-wrap">
+                        {c.recording_url && (
+                          <a href={c.recording_url} target="_blank" rel="noopener noreferrer"
+                            className="flex items-center gap-1 text-[11px] font-semibold text-primary hover:underline">
+                            🎧 Listen to recording
+                          </a>
+                        )}
+                        {c.transcript && (
+                          <button onClick={() => setExpandedTx(p => ({ ...p, [c.id]: !p[c.id] }))}
+                            className="text-[11px] font-semibold text-gray-500 hover:text-gray-700 flex items-center gap-1">
+                            {txOpen ? '▲ Hide transcript' : '▾ Show transcript'}
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Transcript */}
+                      {txOpen && c.transcript && (
+                        <div className="mt-2 bg-gray-50 rounded-xl p-3 text-xs text-gray-700 leading-relaxed whitespace-pre-line max-h-60 overflow-y-auto font-mono">
+                          {c.transcript}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
         </div>
       </div>
     );
