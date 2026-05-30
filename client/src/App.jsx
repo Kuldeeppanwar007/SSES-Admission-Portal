@@ -25,6 +25,7 @@ import Settings from './pages/settings/Settings';
 import ActivityLog from './pages/activity/ActivityLog';
 import Profile from './pages/profile/Profile';
 import DailySummary from './pages/summary/DailySummary';
+import AICallbacks from './pages/aiCallbacks/AICallbacks';
 
 // Android back button handler
 function BackButtonHandler() {
@@ -138,6 +139,7 @@ export default function App() {
               <TrackManager />
             </ProtectedRoute>
           } />
+          <Route path="/ai-callbacks" element={<AICallbacks />} />
           <Route path="/settings" element={<Settings />} />
         </Route>
       </Routes>

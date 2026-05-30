@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 import useAuthStore from '../../store/authStore';
 import { FiUsers, FiFileText, FiAward, FiXCircle, FiTarget, FiSlash, FiChevronDown, FiGift, FiClock, FiPhone, FiPhoneMissed, FiPhoneOff, FiAlertCircle, FiCheckCircle, FiTrendingUp, FiLock } from 'react-icons/fi';
 import { TRACK_TOWNS } from '../../utils/constants';
+import { agent } from '../../api/agentApi';
 
 // SSISM branch capacity limits
 const SSISM_BRANCHES = [
@@ -613,6 +614,56 @@ function LeaderboardSection({ stats, user }) {
   );
 }
 
+function AIAgentStats({ navigate }) {
+  const [agentStats, setAgentStats] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    agent.getStats()
+      .then(setAgentStats)
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading || !agentStats) return null;
+
+  const cards = [
+    { label: 'AI Calls Today', value: agentStats.calls_today, icon: FiPhone, iconBg: 'bg-sky-50/80', iconColor: 'text-sky-500', text: 'text-sky-600', border: 'border-sky-100', hover: 'hover:shadow-[0_12px_24px_-4px_rgba(14,165,233,0.12)] hover:border-sky-300', href: '/ai-callbacks' },
+    { label: 'Pending Callbacks', value: agentStats.pending_callbacks, icon: FiClock, iconBg: 'bg-amber-50/80', iconColor: 'text-amber-500', text: 'text-amber-600', border: 'border-amber-100', hover: 'hover:shadow-[0_12px_24px_-4px_rgba(245,158,11,0.12)] hover:border-amber-300', href: '/ai-callbacks' },
+    { label: 'AI Interested', value: agentStats.interested, icon: FiTrendingUp, iconBg: 'bg-blue-50/80', iconColor: 'text-blue-500', text: 'text-blue-600', border: 'border-blue-100', hover: 'hover:shadow-[0_12px_24px_-4px_rgba(59,130,246,0.12)] hover:border-blue-300', href: null },
+    { label: 'AI Converted', value: agentStats.converted, icon: FiCheckCircle, iconBg: 'bg-emerald-50/80', iconColor: 'text-emerald-500', text: 'text-emerald-600', border: 'border-emerald-100', hover: 'hover:shadow-[0_12px_24px_-4px_rgba(16,185,129,0.12)] hover:border-emerald-300', href: null },
+  ];
+
+  return (
+    <div>
+      <div className="flex items-center gap-2 mb-3">
+        <span className="text-sm font-bold text-gray-700 uppercase tracking-wide">AI Voice Agent</span>
+        <div className="flex-1 h-px bg-gray-200" />
+        <button onClick={() => navigate('/ai-callbacks')} className="text-xs text-primary font-semibold hover:underline">View Callbacks</button>
+      </div>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        {cards.map(({ label, value, icon: Icon, iconBg, iconColor, text, border, hover, href }) => (
+          <div key={label}
+            onClick={() => href && navigate(href)}
+            className={`group relative h-[130px] bg-white rounded-2xl border ${border} ${hover} shadow-sm p-4 flex flex-col transition-all duration-300 hover:-translate-y-1 ${href ? 'cursor-pointer' : ''}`}>
+            <div className="flex items-start justify-between w-full">
+              <div className={`w-10 h-10 rounded-xl ${iconBg} border border-transparent group-hover:border-white/50 flex items-center justify-center transition-all duration-300`}>
+                <Icon size={18} className={`${iconColor} group-hover:scale-110 transition-transform duration-300`} />
+              </div>
+            </div>
+            <div className="mt-2.5">
+              <p className={`text-[10px] font-bold uppercase tracking-wide leading-tight ${text}`}>{label}</p>
+            </div>
+            <div className="absolute bottom-[10px] left-4">
+              <p className="text-2xl font-bold text-gray-800">{value ?? 0}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function Dashboard() {
   const { user } = useAuthStore();
   const navigate = useNavigate();
@@ -746,6 +797,9 @@ export default function Dashboard() {
           </div>
         ))}
       </div>
+
+      {/* AI Agent Stats */}
+      <AIAgentStats navigate={navigate} />
 
       {/* Funnel Stage Cards */}
       <FunnelStageCards funnelStageBreakdown={stats.funnelStageBreakdown || {}} trackFunnelBreakdown={stats.trackFunnelBreakdown || {}} navigate={navigate} user={user} />

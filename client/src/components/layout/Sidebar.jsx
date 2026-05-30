@@ -1,5 +1,5 @@
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
-import { FiHome, FiUsers, FiUserCheck, FiChevronLeft, FiChevronRight, FiFlag, FiPieChart, FiChevronDown, FiMap, FiCheckSquare, FiEdit, FiSettings, FiActivity, FiX, FiBarChart2 } from 'react-icons/fi';
+import { FiHome, FiUsers, FiUserCheck, FiChevronLeft, FiChevronRight, FiFlag, FiPieChart, FiChevronDown, FiMap, FiCheckSquare, FiEdit, FiSettings, FiActivity, FiX, FiBarChart2, FiPhone } from 'react-icons/fi';
 import { useState } from 'react';
 import useAuthStore from '../../store/authStore';
 import { TRACKS, MAIN_TRACKS } from '../../utils/constants';
@@ -20,6 +20,8 @@ const navItems = [
   { to: '/track-manager', Icon: FiSettings, label: 'Track Manager', adminOnly: true },
   { to: '/users', Icon: FiUserCheck, label: 'Users', adminOnly: true },
   { to: '/attendance', Icon: FiCheckSquare, label: 'Attendance', adminOnly: true },
+  { to: '/ai-callbacks', Icon: FiPhone, label: 'AI Callbacks', adminOnly: true },
+  { to: '/ai-callbacks', Icon: FiPhone, label: 'AI Callbacks', trackOnly: true },
 ];
 
 export default function Sidebar({ open, onClose, collapsed, onToggle }) {

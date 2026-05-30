@@ -1,5 +1,6 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { agent } from '../../api/agentApi';
 import api from '../../api/axios';
 import { STATUSES, STATUS_COLORS } from '../../utils/constants';
 import useAuthStore from '../../store/authStore';
@@ -994,6 +995,183 @@ export default function StudentDetail() {
     );
   };
 
+  // ─── AI Agent Card ─────────────────────────────────────────────────────────
+  const AIAgentCard = () => {
+    const [agentData, setAgentData]     = useState(null);
+    const [loading, setLoading]         = useState(true);
+    const [calling, setCalling]         = useState(false);
+    const [showSchedule, setShowSchedule] = useState(false);
+    const [schedDate, setSchedDate]     = useState('');
+    const [schedTime, setSchedTime]     = useState('');
+    const [schedNotes, setSchedNotes]   = useState('');
+    const [scheduling, setScheduling]   = useState(false);
+
+    const fetchHistory = useCallback(async () => {
+      if (!student?.mobile) return;
+      try {
+        const data = await agent.getHistory(student.mobile);
+        setAgentData(data);
+      } catch { /* agent backend unreachable */ }
+      finally { setLoading(false); }
+    }, []);
+
+    useEffect(() => { fetchHistory(); }, [fetchHistory]);
+
+    const handleCall = async () => {
+      if (!student?.mobile) return;
+      setCalling(true);
+      try {
+        await agent.triggerCall(student.mobile, student.name);
+        toast.success('AI call initiated!');
+        setTimeout(fetchHistory, 3000);
+      } catch (e) {
+        toast.error(e?.response?.data?.detail || 'Call failed');
+      } finally { setCalling(false); }
+    };
+
+    const handleSchedule = async (e) => {
+      e.preventDefault();
+      if (!schedDate || !schedTime) return;
+      setScheduling(true);
+      try {
+        const iso = new Date(`${schedDate}T${schedTime}:00+05:30`).toISOString();
+        await agent.scheduleCallback(student.mobile, student.name, iso, schedNotes, 'human');
+        toast.success('Callback scheduled!');
+        setShowSchedule(false);
+        setSchedDate(''); setSchedTime(''); setSchedNotes('');
+        fetchHistory();
+      } catch (e) {
+        toast.error(e?.response?.data?.detail || 'Failed to schedule');
+      } finally { setScheduling(false); }
+    };
+
+    const STATUS_BADGE = {
+      interested:         'bg-green-100 text-green-700',
+      not_interested:     'bg-red-100 text-red-700',
+      callback_scheduled: 'bg-blue-100 text-blue-700',
+      not_answered:       'bg-yellow-100 text-yellow-700',
+      calling:            'bg-orange-100 text-orange-700',
+      converted:          'bg-purple-100 text-purple-700',
+      pending:            'bg-gray-100 text-gray-600',
+    };
+
+    const lead = agentData?.lead;
+    const convs = agentData?.conversations ?? [];
+    const cbs   = (agentData?.callbacks ?? []).filter(c => c.status === 'pending');
+
+    return (
+      <div className="rounded-2xl border border-gray-100 shadow-sm bg-white overflow-hidden mt-4">
+        {/* Header */}
+        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 bg-orange-50/40">
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center">
+              <FiPhone size={13} className="text-primary" />
+            </div>
+            <p className="text-sm font-semibold text-gray-800">AI Agent — Call History</p>
+            {lead && (
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${STATUS_BADGE[lead.status] ?? 'bg-gray-100 text-gray-600'}`}>
+                {lead.status?.replace(/_/g, ' ')}
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowSchedule(s => !s)}
+              className="text-xs font-semibold px-3 py-1.5 rounded-xl border border-primary/30 text-primary hover:bg-primary/5 transition-colors"
+            >
+              <FiClock size={11} className="inline mr-1" />Schedule
+            </button>
+            <button
+              onClick={handleCall}
+              disabled={calling || !student?.mobile}
+              className="text-xs font-bold px-3 py-1.5 rounded-xl bg-primary text-white hover:bg-primary/90 disabled:opacity-50 transition-colors flex items-center gap-1"
+            >
+              <FiPhone size={11} />{calling ? 'Calling…' : 'Call Now'}
+            </button>
+          </div>
+        </div>
+
+        {/* Schedule form */}
+        {showSchedule && (
+          <form onSubmit={handleSchedule} className="px-4 py-3 bg-blue-50/40 border-b border-blue-100 flex flex-wrap gap-2 items-end">
+            <div>
+              <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1">Date</label>
+              <input type="date" value={schedDate} onChange={e => setSchedDate(e.target.value)} required
+                className="text-xs border border-gray-200 rounded-xl px-2.5 py-2 focus:outline-none focus:ring-2 focus:ring-primary/20" />
+            </div>
+            <div>
+              <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1">Time (IST)</label>
+              <input type="time" value={schedTime} onChange={e => setSchedTime(e.target.value)} required
+                className="text-xs border border-gray-200 rounded-xl px-2.5 py-2 focus:outline-none focus:ring-2 focus:ring-primary/20" />
+            </div>
+            <div className="flex-1 min-w-32">
+              <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1">Notes</label>
+              <input type="text" value={schedNotes} onChange={e => setSchedNotes(e.target.value)} placeholder="Optional notes"
+                className="w-full text-xs border border-gray-200 rounded-xl px-2.5 py-2 focus:outline-none focus:ring-2 focus:ring-primary/20" />
+            </div>
+            <button type="submit" disabled={scheduling}
+              className="text-xs font-bold px-3 py-2 rounded-xl bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 transition-colors">
+              {scheduling ? 'Saving…' : 'Save'}
+            </button>
+            <button type="button" onClick={() => setShowSchedule(false)}
+              className="text-xs font-semibold px-3 py-2 rounded-xl border border-gray-200 text-gray-500 hover:bg-gray-50 transition-colors">
+              Cancel
+            </button>
+          </form>
+        )}
+
+        {/* Pending callbacks */}
+        {cbs.length > 0 && (
+          <div className="px-4 py-2 bg-blue-50/60 border-b border-blue-100 flex flex-wrap gap-2">
+            {cbs.map(cb => (
+              <span key={cb.id} className="text-[10px] font-semibold px-2.5 py-1 rounded-full bg-blue-100 text-blue-700">
+                <FiClock size={9} className="inline mr-1" />
+                Callback: {new Date(cb.scheduled_at).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}
+                {cb.notes && ` — ${cb.notes}`}
+              </span>
+            ))}
+          </div>
+        )}
+
+        {/* Conversation history */}
+        <div className="divide-y divide-gray-50 max-h-72 overflow-y-auto">
+          {loading ? (
+            <div className="flex justify-center py-8">
+              <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : convs.length === 0 ? (
+            <p className="text-xs text-gray-400 text-center py-8">No AI calls or WhatsApp messages yet</p>
+          ) : (
+            convs.map(c => (
+              <div key={c.id} className="px-4 py-3 hover:bg-gray-50/60 transition-colors">
+                <div className="flex items-center justify-between mb-1">
+                  <div className="flex items-center gap-1.5">
+                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md ${c.channel === 'phone' ? 'bg-orange-100 text-orange-600' : 'bg-green-100 text-green-600'}`}>
+                      {c.channel === 'phone' ? '📞 Call' : '💬 WhatsApp'}
+                    </span>
+                    {c.outcome && (
+                      <span className="text-[10px] font-semibold text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded-md">
+                        {c.outcome.replace(/_/g, ' ')}
+                      </span>
+                    )}
+                    {c.duration && (
+                      <span className="text-[10px] text-gray-400">{Math.floor(c.duration / 60)}m {c.duration % 60}s</span>
+                    )}
+                  </div>
+                  <span className="text-[10px] text-gray-400">
+                    {new Date(c.created_at).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}
+                  </span>
+                </div>
+                {c.summary && <p className="text-xs text-gray-600 leading-relaxed">{c.summary}</p>}
+                {!c.summary && c.agent_reply && <p className="text-xs text-gray-500 italic truncate">{c.agent_reply}</p>}
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+    );
+  };
+
   // ─── Modals ────────────────────────────────────────────────────────────────
   return (
     <div className="px-2 pb-10">
@@ -1062,6 +1240,8 @@ export default function StudentDetail() {
       </div>
 
       <InterviewCard />
+
+      <AIAgentCard />
 
       {/* ── Modals ── */}
       {receptionOpen && (
