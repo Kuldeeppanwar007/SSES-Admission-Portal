@@ -1227,6 +1227,8 @@ export default function StudentDetail() {
 
       <ProfileHeader />
 
+      <AIAgentCard />
+
       {/* Row 1: Personal + Academic side by side */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4 items-start">
         <div className="h-80 overflow-y-auto rounded-2xl"><PersonalDetailsCard /></div>
@@ -1240,8 +1242,6 @@ export default function StudentDetail() {
       </div>
 
       <InterviewCard />
-
-      <AIAgentCard />
 
       {/* ── Modals ── */}
       {receptionOpen && (
