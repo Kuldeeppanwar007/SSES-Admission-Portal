@@ -16,6 +16,7 @@ import AdminTrackDashboard from './pages/dashboard/AdminTrackDashboard';
 import Students from './pages/students/Students';
 import StudentForm from './pages/students/StudentForm';
 import StudentDetail from './pages/students/StudentDetail';
+import StudentCalling from './pages/students/StudentCalling';
 import Users from './pages/users/Users';
 import Targets from './pages/targets/Targets';
 import Attendance from './pages/attendance/Attendance';
@@ -107,6 +108,7 @@ export default function App() {
           <Route path="/students/add" element={<StudentForm />} />
           <Route path="/students/:id" element={<StudentDetail />} />
           <Route path="/students/:id/edit" element={<StudentForm />} />
+          <Route path="/students/:id/calling" element={<StudentCalling />} />
           <Route path="/targets" element={
             <ProtectedRoute roles={['admin']}>
               <Targets />
