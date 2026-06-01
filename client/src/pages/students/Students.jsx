@@ -414,6 +414,7 @@ export default function Students() {
   const { user } = useAuthStore();
   const navigate = useNavigate();
   const [callingId, setCallingId] = useState(null);
+  const [confirmCallStudent, setConfirmCallStudent] = useState(null);
 
   const handleTriggerCall = async (s) => {
     const phone = s.mobileNo || s.mobile;
@@ -889,6 +890,57 @@ export default function Students() {
 
       {receptionOpen && <ReceptionEntryModal onClose={() => setReceptionOpen(null)} student={receptionOpen} onSaved={fetchStudents} />}
 
+      {/* Trigger AI Call Confirmation Modal */}
+      {confirmCallStudent && (
+        <div 
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 transition-opacity duration-300 animate-in fade-in duration-200"
+          onClick={() => setConfirmCallStudent(null)}
+        >
+          <div 
+            className="bg-white rounded-3xl border border-gray-100 max-w-sm w-full p-6 text-left shadow-2xl animate-in zoom-in-95 duration-200"
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Modal Header Card */}
+            <div className="flex items-center gap-3 mb-4 bg-orange-50/50 p-4 rounded-2xl border border-orange-100/50">
+              <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center text-primary shrink-0">
+                <FiPhone size={20} className="text-primary" />
+              </div>
+              <div>
+                <p className="text-sm font-bold text-gray-800 leading-tight">{confirmCallStudent.name}</p>
+                <p className="text-xs text-gray-400 font-semibold mt-0.5">{confirmCallStudent.mobileNo || confirmCallStudent.mobile}</p>
+              </div>
+            </div>
+            
+            <p className="text-xs sm:text-sm text-gray-500 leading-relaxed mb-6 font-semibold">
+              Kya aap sach mein is student ko AI Agent se call lagana chahte hain?
+            </p>
+
+            {/* Actions */}
+            <div className="flex gap-3 pt-3 border-t border-gray-100">
+              <button
+                type="button"
+                onClick={() => setConfirmCallStudent(null)}
+                className="flex-1 py-2.5 rounded-xl border border-gray-200 text-xs font-bold text-gray-600 hover:bg-gray-50 active:scale-95 transition-all duration-200 bg-white"
+              >
+                Cancel / Exit
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const studentToCall = confirmCallStudent;
+                  setConfirmCallStudent(null);
+                  handleTriggerCall(studentToCall);
+                }}
+                className="flex-1 py-2.5 rounded-xl bg-primary text-white text-xs font-bold hover:bg-primary-dark hover:shadow-lg hover:shadow-primary/20 active:scale-95 transition-all duration-200 flex items-center justify-center gap-1.5"
+              >
+                <FiPhone size={13} />
+                Confirm & Call
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* History Modal */}
       {historyStudent && (
         <BottomSheet open onClose={() => setHistoryStudent(null)} title="Activity History" subtitle={`${historyStudent.name} — ${history.length} update${history.length !== 1 ? 's' : ''}`}>
@@ -1352,7 +1404,7 @@ export default function Students() {
                     <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                       {s.mobileNo ? (
                         <button
-                          onClick={() => handleTriggerCall(s)}
+                          onClick={() => setConfirmCallStudent(s)}
                           disabled={callingId !== null}
                           className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all border shrink-0 ${
                             callingId === s._id
@@ -1505,7 +1557,7 @@ export default function Students() {
               {s.mobileNo && (
                 <div onClick={(e) => e.stopPropagation()} className="inline-block">
                   <button
-                    onClick={() => handleTriggerCall(s)}
+                    onClick={() => setConfirmCallStudent(s)}
                     disabled={callingId !== null}
                     className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold transition-all border shrink-0 ${
                       callingId === s._id
