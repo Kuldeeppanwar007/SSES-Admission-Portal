@@ -1422,10 +1422,10 @@ export default function Students() {
                         e.stopPropagation(); 
                         const scrollPosition = window.pageYOffset;
                         localStorage.setItem('studentsScrollPosition', scrollPosition.toString());
-                        navigate(`/students/${s._id}/edit`); 
+                        navigate(`/students/${s._id}/calling`); 
                       }}
-                        className="flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 bg-primary hover:bg-primary-dark text-white rounded-lg transition-colors">
-                        <FiEdit2 size={11} /> Edit
+                        className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1.5 bg-primary hover:bg-primary-dark text-white rounded-lg transition-colors">
+                        <FiPhone size={11} /> Calling History
                       </button>
                     </td>
                   </tr>
@@ -1545,10 +1545,10 @@ export default function Students() {
                 e.stopPropagation(); 
                 const scrollPosition = window.pageYOffset;
                 localStorage.setItem('studentsScrollPosition', scrollPosition.toString());
-                navigate(`/students/${s._id}/edit`); 
+                navigate(`/students/${s._id}/calling`); 
               }}
-                className="flex-1 flex items-center justify-center gap-1.5 text-sm text-white font-semibold py-2 bg-primary hover:bg-primary-dark rounded-lg transition-colors">
-                <FiEdit2 size={14} /> Edit
+                className="flex-1 flex items-center justify-center gap-1.5 text-sm text-white font-bold py-2 bg-primary hover:bg-primary-dark rounded-lg transition-colors shadow-sm shadow-primary/10">
+                <FiPhone size={14} /> Calling History
               </button>
               {(user?.role === 'admin' || user?.role === 'interviewer') ? (
                 <button onClick={(e) => { e.stopPropagation(); setInterviewStudent(s); }}
