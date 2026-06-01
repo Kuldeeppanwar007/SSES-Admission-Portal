@@ -68,7 +68,12 @@ export default function AICallbacks() {
     }
   };
 
-  useEffect(() => { load(); }, [statusFilter]);
+  useEffect(() => {
+    load();
+    // Auto-refresh callback list every 15 seconds to keep dashboard state in sync
+    const interval = setInterval(load, 15000);
+    return () => clearInterval(interval);
+  }, [statusFilter]);
 
   const handleCancel = async (id) => {
     if (!window.confirm('Cancel this callback?')) return;

@@ -188,8 +188,8 @@ class WhatsAppAIService:
     async def _reply_with_tools(self, lead: Lead, text: str) -> tuple[str, str]:
         from .memory_service import build_key_facts
         from .webhook_processor import _format_callback_datetime
-        from zoneinfo import ZoneInfo
-        IST     = ZoneInfo("Asia/Kolkata")
+        from datetime import timezone, timedelta
+        IST     = timezone(timedelta(hours=5, minutes=30))
         now_ist = datetime.now(IST)
 
         pending_cbs = [cb for cb in await self.cbs.list_for_lead(lead.id)
@@ -411,9 +411,10 @@ def _extract_lead_details(text: str) -> dict[str, str]:
 
 
 def _system_prompt(lead: Lead, key_facts: str, now_ist=None, pending_cb: str = "") -> str:
-    from zoneinfo import ZoneInfo
+    from datetime import timezone, timedelta
     if now_ist is None:
-        now_ist = datetime.now(ZoneInfo("Asia/Kolkata"))
+        IST = timezone(timedelta(hours=5, minutes=30))
+        now_ist = datetime.now(IST)
 
     now_str    = now_ist.strftime("%A, %d %B %Y, %I:%M %p IST")
     known_name = not _is_placeholder_name(lead.name or _PLACEHOLDER_NAME_PREFIX)

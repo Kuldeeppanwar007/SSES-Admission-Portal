@@ -50,6 +50,9 @@ export default function StudentCalling() {
 
   useEffect(() => {
     fetchStudentAndHistory();
+    // Auto-refresh calling history and callbacks every 15 seconds to keep state in sync
+    const interval = setInterval(fetchStudentAndHistory, 15000);
+    return () => clearInterval(interval);
   }, [fetchStudentAndHistory]);
 
   const handleCall = async () => {

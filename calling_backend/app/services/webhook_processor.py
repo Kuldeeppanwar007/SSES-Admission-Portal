@@ -547,8 +547,8 @@ async def _dispatch_template(
 def _format_callback_datetime(cb_date: str, cb_time: str, now_ist=None) -> str:
     try:
         from dateutil import parser as dtparse
-        from zoneinfo import ZoneInfo
-        IST = ZoneInfo("Asia/Kolkata")
+        from datetime import timezone, timedelta
+        IST = timezone(timedelta(hours=5, minutes=30))
         dt  = dtparse.parse(f"{cb_date} {cb_time}".strip())
         if now_ist is None:
             now_ist = datetime.now(IST)
@@ -579,22 +579,56 @@ def _format_callback_datetime(cb_date: str, cb_time: str, now_ist=None) -> str:
 def _parse_dt(cb_date: str, cb_time: str) -> datetime:
     import re
     from dateutil import parser as dtparse
-    from zoneinfo import ZoneInfo
+    from datetime import timezone, timedelta
 
-    IST     = ZoneInfo("Asia/Kolkata")
+    IST     = timezone(timedelta(hours=5, minutes=30))
     now_utc = datetime.now(timezone.utc)
     now_ist = now_utc.astimezone(IST)
-    combined = f"{cb_date} {cb_time}".strip()
+    
+    cb_date_clean = cb_date.strip().lower()
+    cb_time_clean = cb_time.strip().lower()
 
-    min_m = re.search(r'(\d+)\s*min', combined, re.IGNORECASE)
+    # 1. If cb_time is just digits (under 60), treat as relative minutes immediately
+    if cb_time_clean.isdigit():
+        val = int(cb_time_clean)
+        if val < 60:
+            return now_utc + timedelta(minutes=max(val, 2))
+
+    # Support Hindi/English suffix "baad" or "later" after digits (e.g. "10 baad", "5 later")
+    baad_m = re.match(r'^(\d+)\s*(?:baad|later|after)?$', cb_time_clean)
+    if baad_m:
+        val = int(baad_m.group(1))
+        if val < 60:
+            return now_utc + timedelta(minutes=max(val, 2))
+
+    combined = f"{cb_date} {cb_time}".strip()
+    combined_clean = combined.lower().strip()
+
+    # Substitute today/tomorrow/aaj/kal
+    today_str = now_ist.strftime("%Y-%m-%d")
+    tomorrow_str = (now_ist + timedelta(days=1)).strftime("%Y-%m-%d")
+
+    combined_clean = combined_clean.replace("today", today_str).replace("aaj", today_str)
+    combined_clean = combined_clean.replace("tomorrow", tomorrow_str).replace("kal", tomorrow_str)
+
+    # 2. Match relative minutes with words (e.g., "5 min", "10 minutes", "5m", "10 mins")
+    min_m = re.search(r'(\d+)\s*(?:min|minute|minutes|minut|m|mins)\b', combined_clean)
     if min_m:
         return now_utc + timedelta(minutes=max(int(min_m.group(1)), 2))
-    hr_m = re.search(r'(\d+)\s*(?:hour|hr|ghante)', combined, re.IGNORECASE)
+
+    # 3. Match relative hours (e.g., "1 hour", "2 ghante")
+    hr_m = re.search(r'(\d+)\s*(?:hour|hours|hr|hrs|ghante|ghanta)\b', combined_clean)
     if hr_m:
         return now_utc + timedelta(hours=int(hr_m.group(1)))
 
+    # 4. Fallback to dateutil parser for absolute date-times
     try:
-        dt = dtparse.parse(combined, dayfirst=True, default=now_ist.replace(tzinfo=None))
+        if re.match(r'^\s*\d{4}', combined_clean):
+            # ISO format (starts with YYYY) -> do NOT use dayfirst=True
+            dt = dtparse.parse(combined_clean, default=now_ist.replace(tzinfo=None))
+        else:
+            dt = dtparse.parse(combined_clean, dayfirst=True, default=now_ist.replace(tzinfo=None))
+
         if dt.tzinfo is None:
             dt = dt.replace(tzinfo=IST)
         dt_utc = dt.astimezone(timezone.utc)
