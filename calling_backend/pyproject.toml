@@ -1,0 +1,33 @@
+[project]
+name = "ssism-calling-backend"
+version = "0.1.0"
+description = "Voice + WhatsApp AI admission counseling agent for SSISM"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+    "pydantic>=2.10",
+    "pydantic-settings>=2.7",
+    "httpx>=0.27",
+    "apscheduler>=3.10",
+    "python-multipart>=0.0.12",
+    "phonenumbers>=8.13",
+    "python-dateutil>=2.9",
+    "python-jose[cryptography]>=3.3",
+    "motor>=3.7.1",
+    "pymongo>=4.17.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["app"]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.24",
+    "httpx>=0.27",
+]

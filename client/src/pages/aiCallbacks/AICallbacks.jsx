@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { FiPhone, FiClock, FiXCircle, FiPlus, FiRefreshCw, FiUser, FiCalendar, FiCheckCircle } from 'react-icons/fi';
 import { agent } from '../../api/agentApi';
+import api from '../../api/axios';
 
 const STATUS_COLORS = {
   pending:   'bg-amber-50 text-amber-700 border-amber-200',
@@ -27,6 +28,28 @@ export default function AICallbacks() {
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('pending');
   const [cancelling, setCancelling] = useState(null);
+  const [viewingId, setViewingId] = useState(null);
+
+  const handleView = async (cb) => {
+    setViewingId(cb.id);
+    try {
+      // Extract last 10 digits of the phone number to bypass E.164 country code (+91) search mismatches
+      const cleanPhone = (cb.lead_phone || '').replace(/\D/g, '');
+      const searchNum = cleanPhone.length > 10 ? cleanPhone.slice(-10) : cleanPhone;
+
+      const { data } = await api.get('/students', { params: { search: searchNum } });
+      if (data.students && data.students.length > 0) {
+        const student = data.students[0];
+        navigate(`/students/${student._id}/calling`);
+      } else {
+        toast.error('Student profile not found in database');
+      }
+    } catch (err) {
+      toast.error('Failed to locate student profile');
+    } finally {
+      setViewingId(null);
+    }
+  };
 
   // New callback modal state
   const [showModal, setShowModal] = useState(false);
@@ -167,9 +190,14 @@ export default function AICallbacks() {
                 </span>
                 <div className="flex gap-2">
                   <button
-                    onClick={() => navigate(`/students?mobile=${cb.lead_phone}`)}
-                    className="flex items-center gap-1 text-xs font-semibold text-primary hover:underline">
-                    <FiPhone size={12} />
+                    onClick={() => handleView(cb)}
+                    disabled={viewingId !== null}
+                    className="flex items-center gap-1 text-xs font-semibold text-primary hover:underline disabled:opacity-50">
+                    {viewingId === cb.id ? (
+                      <div className="w-3 h-3 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <FiPhone size={12} />
+                    )}
                     View
                   </button>
                   {cb.status === 'pending' && (

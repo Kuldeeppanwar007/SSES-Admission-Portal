@@ -1,10 +1,11 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import api from '../../api/axios';
+import { agent } from '../../api/agentApi';
 import { TRACKS, STATUSES, STATUS_COLORS, TRACK_TOWNS, TOWN_TO_MAIN_TRACK } from '../../utils/constants';
 import useAuthStore from '../../store/authStore';
 import toast from 'react-hot-toast';
-import { FiPlus, FiUpload, FiSearch, FiEdit2, FiDownload, FiFilter, FiSlash, FiClipboard, FiExternalLink, FiChevronDown, FiSend, FiClock, FiX, FiFileText, FiAlertCircle } from 'react-icons/fi';
+import { FiPlus, FiUpload, FiSearch, FiEdit2, FiDownload, FiFilter, FiSlash, FiClipboard, FiExternalLink, FiChevronDown, FiSend, FiClock, FiX, FiFileText, FiAlertCircle, FiPhone } from 'react-icons/fi';
 import BottomSheet from '../../components/BottomSheet';
 import DatePicker from '../../components/DatePicker';
 import ReceptionEntryModal from '../../components/ReceptionEntryModal';
@@ -412,6 +413,24 @@ const ALL_BRANCHES = [
 export default function Students() {
   const { user } = useAuthStore();
   const navigate = useNavigate();
+  const [callingId, setCallingId] = useState(null);
+
+  const handleTriggerCall = async (s) => {
+    const phone = s.mobileNo || s.mobile;
+    if (!phone) {
+      toast.error('Phone number not available');
+      return;
+    }
+    setCallingId(s._id);
+    try {
+      await agent.triggerCall(phone, s.name);
+      toast.success(`AI Call initiated for ${s.name}!`);
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || 'Call failed');
+    } finally {
+      setCallingId(null);
+    }
+  };
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   
@@ -1332,10 +1351,26 @@ export default function Students() {
                     <td className="px-4 py-3 text-gray-500 text-xs">{s.trackName || '—'}</td>
                     <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                       {s.mobileNo ? (
-                        <a href={`tel:${s.mobileNo}`} className="text-gray-600 hover:text-primary hover:underline">
-                          {s.mobileNo}
-                        </a>
-                      ) : null}
+                        <button
+                          onClick={() => handleTriggerCall(s)}
+                          disabled={callingId !== null}
+                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all border shrink-0 ${
+                            callingId === s._id
+                              ? 'bg-orange-100 border-orange-200 text-primary animate-pulse'
+                              : 'bg-orange-50 border-orange-100 text-primary hover:bg-primary hover:text-white hover:border-primary active:scale-95'
+                          }`}
+                          title={`Trigger AI Call to ${s.name}`}
+                        >
+                          {callingId === s._id ? (
+                            <span className="w-3 h-3 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                          ) : (
+                            <FiPhone className="shrink-0" size={12} />
+                          )}
+                          <span>{s.mobileNo}</span>
+                        </button>
+                      ) : (
+                        <span className="text-gray-300">—</span>
+                      )}
                     </td>
                     <td className="px-4 py-3">
                       {s.formSource && (
@@ -1468,10 +1503,24 @@ export default function Students() {
                 </span>
               )}
               {s.mobileNo && (
-                <a href={`tel:${s.mobileNo}`} onClick={(e) => e.stopPropagation()}
-                  className="flex items-center gap-1 text-sm text-gray-500">
-                  <span className="text-base">📞</span> {s.mobileNo}
-                </a>
+                <div onClick={(e) => e.stopPropagation()} className="inline-block">
+                  <button
+                    onClick={() => handleTriggerCall(s)}
+                    disabled={callingId !== null}
+                    className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold transition-all border shrink-0 ${
+                      callingId === s._id
+                        ? 'bg-orange-100 border-orange-200 text-primary animate-pulse'
+                        : 'bg-orange-50 border-orange-100 text-primary hover:bg-primary hover:text-white hover:border-primary active:scale-95'
+                    }`}
+                  >
+                    {callingId === s._id ? (
+                      <span className="w-2.5 h-2.5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <FiPhone size={10} />
+                    )}
+                    <span>{s.mobileNo}</span>
+                  </button>
+                </div>
               )}
               {s.formSource && (
                 <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
