@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const AGENT_BASE = import.meta.env.VITE_AGENT_API_URL ?? 'https://ssism-voice-agent-nwm7.vercel.app/api/v1';
-const API_KEY    = import.meta.env.VITE_AGENT_API_KEY  ?? 'sses-internal-key-2024';
+const API_KEY    = import.meta.env.VITE_AGENT_API_KEY  ?? 'ae7e9b3c18c819532a773c9a6f1e633fc8fd2d29e802cda2ffc1cb8d7b597bfb';
 
 const agentApi = axios.create({
   baseURL: AGENT_BASE,
