@@ -82,8 +82,8 @@ function CapacityCard({ label, admitted, finalCleared, limit, color, bg, border,
 }
 
 function SSISMCapacityCards({ trackWise, finalClearedBySubject, trackFinalClearedBySubject, navigate, tracks, user }) {
-  const isTrackIncharge = user?.role === 'track_incharge';
-  const [selectedTrack, setSelectedTrack] = useState(isTrackIncharge ? (user?.track || '') : '');
+  const isTrackIncharge = user?.role === 'track_incharge' || user?.role === 'interviewer';
+  const [selectedTrack, setSelectedTrack] = useState('');
   const activeTrackWise = selectedTrack
     ? (trackWise || []).filter((t) => t.track === selectedTrack)
     : (trackWise || []);
@@ -140,8 +140,8 @@ const BTECH_BRANCHES = [
 ];
 
 function BTechCapacityCards({ btechByBranch, trackBtechBreakdown, finalClearedBySubject, trackFinalClearedBySubject, navigate, tracks, user }) {
-  const isTrackIncharge = user?.role === 'track_incharge';
-  const [selectedTrack, setSelectedTrack] = useState(isTrackIncharge ? (user?.track || '') : '');
+  const isTrackIncharge = user?.role === 'track_incharge' || user?.role === 'interviewer';
+  const [selectedTrack, setSelectedTrack] = useState('');
 
   let activeBtech = btechByBranch || {};
   if (selectedTrack && trackBtechBreakdown?.[selectedTrack]) {
@@ -195,8 +195,8 @@ const ADMISSION_TYPES = [
 ];
 
 function AdmissionTypeCards({ admissionTypeBreakdown, trackAdmissionTypeBreakdown, navigate, tracks, user }) {
-  const isTrackIncharge = user?.role === 'track_incharge';
-  const [selectedTrack, setSelectedTrack] = useState(isTrackIncharge ? (user?.track || '') : '');
+  const isTrackIncharge = user?.role === 'track_incharge' || user?.role === 'interviewer';
+  const [selectedTrack, setSelectedTrack] = useState('');
 
   let activeBreakdown = admissionTypeBreakdown || {};
   if (selectedTrack && trackAdmissionTypeBreakdown?.[selectedTrack]) {
@@ -353,8 +353,8 @@ const FUNNEL_STAGE_META = [
 ];
 
 function FunnelStageCards({ funnelStageBreakdown, trackFunnelBreakdown, navigate, user }) {
-  const isTrackIncharge = user?.role === 'track_incharge';
-  const [selectedTrack, setSelectedTrack] = useState(isTrackIncharge ? (user?.track || '') : '');
+  const isTrackIncharge = user?.role === 'track_incharge' || user?.role === 'interviewer';
+  const [selectedTrack, setSelectedTrack] = useState('');
   const tracks = Object.keys(trackFunnelBreakdown || {}).sort();
 
   const activeBreakdown = selectedTrack
@@ -535,7 +535,8 @@ function LeaderboardSection({ stats, user }) {
 
   const sorted = [...stats.trackWise].sort((a, b) => (b.points || 0) - (a.points || 0));
   const maxScore = sorted.reduce((m, t) => Math.max(m, t.points || 0), 1);
-  const myRank = user?.role === 'track_incharge'
+  const isTrackUser = user?.role === 'track_incharge' || user?.role === 'interviewer';
+  const myRank = isTrackUser
     ? sorted.findIndex((t) => t.track === user.track) + 1
     : null;
 
@@ -557,7 +558,7 @@ function LeaderboardSection({ stats, user }) {
       {open && (
         <div className="border-t border-gray-50">
           {sorted.map(({ track, points, calledCount, totalCount }, i) => {
-            const isMe = user?.role === 'track_incharge' && user?.track === track;
+            const isMe = isTrackUser && user?.track === track;
             const rank = RANK_STYLES[i] || { bg: 'bg-gray-100', text: 'text-gray-500', emoji: null };
             const barW = Math.round(((points || 0) / maxScore) * 100);
             // breakdown from stats
