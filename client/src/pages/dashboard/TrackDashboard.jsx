@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import api from '../../api/axios';
 import toast from 'react-hot-toast';
 import useAuthStore from '../../store/authStore';
-import { FiUsers, FiFileText, FiAward, FiXCircle, FiTarget, FiSlash, FiTrendingUp, FiMapPin, FiPhone, FiClipboard, FiExternalLink, FiCheckCircle } from 'react-icons/fi';
+import { FiUsers, FiFileText, FiAward, FiXCircle, FiTarget, FiSlash, FiTrendingUp, FiMapPin, FiPhone, FiClipboard, FiExternalLink, FiCheckCircle, FiUserX } from 'react-icons/fi';
 import { Geolocation } from '@capacitor/geolocation';
 import BottomSheet from '../../components/BottomSheet';
 
@@ -14,6 +14,7 @@ const STATUS_COLORS = {
   Admitted: 'bg-emerald-100 text-emerald-700',
   Rejected: 'bg-red-100 text-red-700',
   Disabled: 'bg-gray-100 text-gray-600',
+  'Admission Cancel': 'bg-rose-100 text-rose-700 border border-rose-200',
 };
 
 const FUNNEL_COLORS = {
@@ -47,6 +48,7 @@ const STAT_META = [
   { key: 'finalCleared',       label: 'Final Interview Cleared',     icon: FiCheckCircle, iconBg: 'bg-green-50/80', iconColor: 'text-green-500',  text: 'text-green-600',   border: 'border-green-100', hoverShadow: 'hover:shadow-[0_12px_24px_-4px_rgba(34,197,94,0.12)] hover:border-green-300 hover:bg-green-50/10', href: '/students?interviewFilter=finalCleared' },
   { key: 'admitted',           label: 'Admission Done',          icon: FiAward,     iconBg: 'bg-emerald-50/80', iconColor: 'text-emerald-500',text: 'text-emerald-600', border: 'border-emerald-100', hoverShadow: 'hover:shadow-[0_12px_24px_-4px_rgba(16,185,129,0.12)] hover:border-emerald-300 hover:bg-emerald-50/10', href: '/students?status=Admitted' },
   { key: 'rejected',           label: 'Rejected',          icon: FiXCircle,   iconBg: 'bg-rose-50/80',    iconColor: 'text-rose-500',   text: 'text-rose-600',    border: 'border-rose-100', hoverShadow: 'hover:shadow-[0_12px_24px_-4px_rgba(244,63,94,0.12)] hover:border-rose-300 hover:bg-rose-50/10', href: '/students?status=Rejected' },
+  { key: 'admissionCancel',    label: 'Admission Cancel',   icon: FiUserX,     iconBg: 'bg-red-50/80',     iconColor: 'text-red-500',    text: 'text-red-600',     border: 'border-red-100', hoverShadow: 'hover:shadow-[0_12px_24px_-4px_rgba(239,68,68,0.12)] hover:border-red-300 hover:bg-red-50/10', href: '/students?status=Admission+Cancel' },
   { key: 'disabled',           label: 'Disabled',          icon: FiSlash,     iconBg: 'bg-gray-50/80',    iconColor: 'text-gray-400',   text: 'text-gray-500',    border: 'border-gray-200', hoverShadow: 'hover:shadow-[0_12px_24px_-4px_rgba(107,114,128,0.12)] hover:border-gray-300 hover:bg-gray-50/10', href: '/students?tab=disabled' },
 ];
 
@@ -294,7 +296,7 @@ export default function TrackDashboard() {
       </div>
 
       {/* Stat Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-8 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-9 gap-4">
         {STAT_META.map(({ key, label, icon: Icon, iconBg, iconColor, text, border, hoverShadow, href }) => (
           <div key={key}
             onClick={() => key === 'interviewAttempts' ? openInterviewDrawer() : navigate(href)}

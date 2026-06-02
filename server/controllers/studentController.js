@@ -399,6 +399,7 @@ const getFunnelPoints = async (funnelStage, track, subject) => {
 const ALLOWED_FUNNEL = {
   'Calling':  ['Call Completed', 'Lead Interested', 'Call Not Received', 'Wrong Number', 'Switch Off', 'Repeated No Response', 'Not Interested', 'Joined Elsewhere'],
   'Admitted': ['Admission Closed'],
+  'Admission Cancel': [],
 };
 
 // Calling points — flat 5 pts per student (ek baar), leaderboard efficiency se rank hoga
@@ -601,18 +602,32 @@ const updateStatus = async (req, res) => {
   if (!student) return res.status(404).json({ message: 'Student not found' });
 
   const prevStatus = student.status;
+  const prevFunnel = student.funnelStage || '';
+  
+  const updates = { status, remarks, isDisabled };
+  let pointsDelta = 0;
+
+  const allowedFunnels = ALLOWED_FUNNEL[status] || [];
+  if (prevFunnel && !allowedFunnels.includes(prevFunnel)) {
+    updates.funnelStage = '';
+    if (student.awardedFunnelStages?.includes(prevFunnel)) {
+      pointsDelta -= await getFunnelPoints(prevFunnel, student.track, student.subject);
+      await Student.findByIdAndUpdate(req.params.id, { $pull: { awardedFunnelStages: prevFunnel } });
+    }
+  }
+
   const updated = await Student.findByIdAndUpdate(
     req.params.id,
-    { status, remarks, isDisabled },
+    updates,
     { new: true }
   );
 
   // Points logic
-  let pointsDelta = 0;
   if (prevStatus !== 'Admitted' && status === 'Admitted' && student.subject)
     pointsDelta += await getSubjectPoints(student.track, student.subject);
   if (prevStatus === 'Admitted' && status !== 'Admitted' && student.subject)
     pointsDelta -= await getSubjectPoints(student.track, student.subject);
+
   if (pointsDelta !== 0 && student.track) {
     const mainTrack = resolveMainTrack(student.track);
     await TrackPoints.findOneAndUpdate(
@@ -1163,12 +1178,13 @@ const getTrackStats = async (req, res) => {
     if (!track) return res.status(400).json({ message: 'No track assigned' });
 
     const filter = { track };
-    const [total, applied, calling, admitted, rejected] = await Promise.all([
+    const [total, applied, calling, admitted, rejected, admissionCancel] = await Promise.all([
       Student.countDocuments(filter),
       Student.countDocuments({ ...filter, status: 'Applied' }),
       Student.countDocuments({ ...filter, status: 'Calling' }),
       Student.countDocuments({ ...filter, status: 'Admitted' }),
       Student.countDocuments({ ...filter, status: 'Rejected' }),
+      Student.countDocuments({ ...filter, status: 'Admission Cancel' }),
     ]);
 
     const disabled = await Student.countDocuments({ track, isDisabled: true });
@@ -1239,7 +1255,7 @@ const getTrackStats = async (req, res) => {
     const callingEfficiency = totalActive > 0 ? Math.round((callingCount / totalActive) * 100) : 0;
 
     res.json({
-      track, total, applied, calling, admitted, rejected, disabled, finalCleared, interviewAttempts, subjects,
+      track, total, applied, calling, admitted, rejected, disabled, admissionCancel, finalCleared, interviewAttempts, subjects,
       points: trackPoints?.points || 0,
       statusBreakdown: statusBreakdown.map(({ _id, count }) => ({ status: _id, count })),
       funnelBreakdown: funnelData,
@@ -1261,6 +1277,7 @@ const getStats = async (req, res) => {
     const admitted = await Student.countDocuments({ status: 'Admitted', isDisabled: { $ne: true } });
     const rejected = await Student.countDocuments({ status: 'Rejected', isDisabled: { $ne: true } });
     const disabled = await Student.countDocuments({ isDisabled: true });
+    const admissionCancel = await Student.countDocuments({ status: 'Admission Cancel', isDisabled: { $ne: true } });
     const unassigned = await Student.countDocuments({ $or: [{ track: '' }, { track: null }, { track: { $exists: false } }] });
 
     // Interview attempts — students with at least 1 interview, not yet final cleared
@@ -1580,7 +1597,7 @@ const getStats = async (req, res) => {
       trackBtechBreakdown[track][subject] = (trackBtechBreakdown[track][subject] || 0) + admitted;
     });
 
-    res.json({ total, applied, calling, admitted, rejected, disabled, unassigned, admittedNoFunnelCount, finalCleared, finalClearedManual, interviewAttempts, trackWise, btechByBranch, finalClearedBySubject, trackFinalClearedBySubject, admissionTypeBreakdown, trackAdmissionTypeBreakdown, funnelStageBreakdown, trackFunnelBreakdown, trackBtechBreakdown });
+    res.json({ total, applied, calling, admitted, rejected, disabled, admissionCancel, unassigned, admittedNoFunnelCount, finalCleared, finalClearedManual, interviewAttempts, trackWise, btechByBranch, finalClearedBySubject, trackFinalClearedBySubject, admissionTypeBreakdown, trackAdmissionTypeBreakdown, funnelStageBreakdown, trackFunnelBreakdown, trackBtechBreakdown });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

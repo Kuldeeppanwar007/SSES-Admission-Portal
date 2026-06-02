@@ -115,7 +115,7 @@ const addUserSchema = Joi.object({
 });
 
 const updateStatusSchema = Joi.object({
-  status:  Joi.string().valid('Applied', 'Calling', 'Admitted', 'Rejected', 'Disabled').required(),
+  status:  Joi.string().valid('Applied', 'Calling', 'Admitted', 'Rejected', 'Disabled', 'Admission Cancel').required(),
   remarks: Joi.string().max(500).optional().allow(''),
 });
 

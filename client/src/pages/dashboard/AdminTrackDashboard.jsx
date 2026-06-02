@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import api from '../../api/axios';
 import toast from 'react-hot-toast';
 import { TRACKS, MAIN_TRACKS, TRACK_TOWNS } from '../../utils/constants';
-import { FiUsers, FiFileText, FiAward, FiXCircle, FiTarget, FiSlash, FiChevronDown, FiTrendingUp, FiPhone } from 'react-icons/fi';
+import { FiUsers, FiFileText, FiAward, FiXCircle, FiTarget, FiSlash, FiChevronDown, FiTrendingUp, FiPhone, FiUserX } from 'react-icons/fi';
 
 const SUBJECT_COLORS = {
   'B.Tech(CS)': 'bg-blue-100 text-blue-700',
@@ -24,6 +24,7 @@ const STATUS_COLORS = {
   Admitted: 'bg-emerald-100 text-emerald-700',
   Rejected: 'bg-red-100 text-red-700',
   Disabled: 'bg-gray-100 text-gray-600',
+  'Admission Cancel': 'bg-rose-100 text-rose-700 border border-rose-200',
 };
 
 const FUNNEL_COLORS = {
@@ -46,6 +47,7 @@ const STAT_META = [
   { key: 'calling',  label: 'Calling',     icon: FiPhone,    iconBg: 'bg-sky-50/80',     iconColor: 'text-sky-500',    text: 'text-sky-600',     border: 'border-sky-100', hoverShadow: 'hover:shadow-[0_12px_24px_-4px_rgba(14,165,233,0.12)] hover:border-sky-300 hover:bg-sky-50/10' },
   { key: 'admitted', label: 'Admission Done',    icon: FiAward,    iconBg: 'bg-emerald-50/80', iconColor: 'text-emerald-500',text: 'text-emerald-600', border: 'border-emerald-100', hoverShadow: 'hover:shadow-[0_12px_24px_-4px_rgba(16,185,129,0.12)] hover:border-emerald-300 hover:bg-emerald-50/10' },
   { key: 'rejected', label: 'Rejected',    icon: FiXCircle,  iconBg: 'bg-rose-50/80',    iconColor: 'text-rose-500',   text: 'text-rose-600',    border: 'border-rose-100', hoverShadow: 'hover:shadow-[0_12px_24px_-4px_rgba(244,63,94,0.12)] hover:border-rose-300 hover:bg-rose-50/10' },
+  { key: 'admissionCancel', label: 'Admission Cancel', icon: FiUserX, iconBg: 'bg-red-50/80', iconColor: 'text-red-500', text: 'text-red-600', border: 'border-red-100', hoverShadow: 'hover:shadow-[0_12px_24px_-4px_rgba(239,68,68,0.12)] hover:border-red-300 hover:bg-red-50/10' },
   { key: 'disabled', label: 'Disabled',    icon: FiSlash,    iconBg: 'bg-gray-50/80',    iconColor: 'text-gray-400',   text: 'text-gray-500',    border: 'border-gray-200', hoverShadow: 'hover:shadow-[0_12px_24px_-4px_rgba(107,114,128,0.12)] hover:border-gray-300 hover:bg-gray-50/10' },
 ];
 
@@ -104,7 +106,7 @@ export default function AdminTrackDashboard() {
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-4">
             {STAT_META.map(({ key, label, icon: Icon, iconBg, iconColor, text, border, hoverShadow }) => (
               <div key={key} className={`group relative h-[130px] bg-white rounded-2xl border ${border} ${hoverShadow} shadow-sm p-4 flex flex-col transition-all duration-300 hover:-translate-y-1 cursor-pointer`}>
                 <div className="flex items-start justify-between w-full">

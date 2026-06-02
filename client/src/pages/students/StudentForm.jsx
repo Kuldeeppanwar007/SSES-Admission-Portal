@@ -19,6 +19,7 @@ const ALLOWED_FUNNEL = {
   'Admitted': ['Admission Closed'],
   'Rejected': [],
   'Disabled': [],
+  'Admission Cancel': [],
 };
 
 const ADMISSION_TYPES = ['SNS', 'SVS', 'Shri Ram', 'Full Fees'];
