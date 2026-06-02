@@ -155,7 +155,7 @@ async def call_history(
                 "agent_reply": c.agent_reply,
                 "intent":        c.meta.get("intent")               if c.meta else None,
                 "outcome":       c.meta.get("outcome")              if c.meta else None,
-                "summary":       c.meta.get("conversation_summary") if c.meta else None,
+                "summary":       (c.meta.get("conversation_summary") or c.meta.get("summary_points")) if c.meta else None,
                 "transcript":    c.meta.get("transcript")           if c.meta else None,
                 "recording_url": c.meta.get("recording_url")        if c.meta else None,
                 "duration":      c.meta.get("duration")             if c.meta else None,

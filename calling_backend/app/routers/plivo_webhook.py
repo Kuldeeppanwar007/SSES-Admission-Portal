@@ -42,25 +42,25 @@ async def _run_recording(payload: PlivoRecordingPayload) -> None:
 
 
 @router.post("/hangup")
-async def hangup_webhook(request: Request, background: BackgroundTasks):
+async def hangup_webhook(request: Request):
     data    = await _parse_body(request)
     log.info("Hangup webhook: %s", {k: v for k, v in data.items() if k != "extracted_variables"})
     payload = PlivoHangupPayload.from_raw(data)
-    background.add_task(_run_hangup, payload)
+    await _run_hangup(payload)
     return {"status": "ok"}
 
 
 @router.post("/recording")
-async def recording_webhook(request: Request, background: BackgroundTasks):
+async def recording_webhook(request: Request):
     data    = await _parse_body(request)
     log.info("Recording webhook: call_uuid=%s", data.get("CallUUID") or data.get("call_uuid"))
     payload = PlivoRecordingPayload.from_raw(data)
-    background.add_task(_run_recording, payload)
+    await _run_recording(payload)
     return {"status": "ok"}
 
 
 @router.post("/call-status")
-async def call_status_webhook(request: Request, background: BackgroundTasks):
+async def call_status_webhook(request: Request):
     data   = await _parse_body(request)
     status = data.get("CallStatus") or data.get("call_status", "")
     uuid   = data.get("CallUUID") or data.get("call_uuid", "")
@@ -68,6 +68,6 @@ async def call_status_webhook(request: Request, background: BackgroundTasks):
 
     if status.lower() in ("completed", "failed", "no-answer", "no_answer", "busy"):
         payload = PlivoHangupPayload.from_raw(data)
-        background.add_task(_run_hangup, payload)
+        await _run_hangup(payload)
 
     return {"status": "ok"}

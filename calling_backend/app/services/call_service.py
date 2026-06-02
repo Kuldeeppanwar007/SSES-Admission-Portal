@@ -54,6 +54,8 @@ async def trigger_plivo_call(
         "backend_url":          settings.backend_url,
         "hangup_url":           hangup_url,
         "call_status_url":      call_status_url,
+        "recording_url":        f"{settings.backend_url}/api/v1/webhook/recording",
+        "recording_callback_url": f"{settings.backend_url}/api/v1/webhook/recording",
         # All dynamic context pre-formatted into one variable
         "previous_memory":      full_context,
         # Keep individual fields too — used by Plivo flow routing conditions
