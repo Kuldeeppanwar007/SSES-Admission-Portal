@@ -18,7 +18,7 @@ services:
   calling-backend:
     build: ./calling_backend
     ports:
-      - "3011:8000"
+      - "3012:8000"
     env_file:
       - ./calling_backend/.env
     restart: unless-stopped
