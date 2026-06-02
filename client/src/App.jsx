@@ -16,6 +16,7 @@ import AdminTrackDashboard from './pages/dashboard/AdminTrackDashboard';
 import Students from './pages/students/Students';
 import StudentForm from './pages/students/StudentForm';
 import StudentDetail from './pages/students/StudentDetail';
+import StudentCalling from './pages/students/StudentCalling';
 import Users from './pages/users/Users';
 import Targets from './pages/targets/Targets';
 import Attendance from './pages/attendance/Attendance';
@@ -25,6 +26,7 @@ import Settings from './pages/settings/Settings';
 import ActivityLog from './pages/activity/ActivityLog';
 import Profile from './pages/profile/Profile';
 import DailySummary from './pages/summary/DailySummary';
+import AICallbacks from './pages/aiCallbacks/AICallbacks';
 
 // Android back button handler
 function BackButtonHandler() {
@@ -106,6 +108,7 @@ export default function App() {
           <Route path="/students/add" element={<StudentForm />} />
           <Route path="/students/:id" element={<StudentDetail />} />
           <Route path="/students/:id/edit" element={<StudentForm />} />
+          <Route path="/students/:id/calling" element={<StudentCalling />} />
           <Route path="/targets" element={
             <ProtectedRoute roles={['admin']}>
               <Targets />
@@ -138,6 +141,7 @@ export default function App() {
               <TrackManager />
             </ProtectedRoute>
           } />
+          <Route path="/ai-callbacks" element={<AICallbacks />} />
           <Route path="/settings" element={<Settings />} />
         </Route>
       </Routes>

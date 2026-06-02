@@ -1,5 +1,6 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { agent } from '../../api/agentApi';
 import api from '../../api/axios';
 import { STATUSES, STATUS_COLORS } from '../../utils/constants';
 import useAuthStore from '../../store/authStore';
@@ -994,6 +995,8 @@ export default function StudentDetail() {
     );
   };
 
+
+
   // ─── Modals ────────────────────────────────────────────────────────────────
   return (
     <div className="px-2 pb-10">
@@ -1014,6 +1017,10 @@ export default function StudentDetail() {
           <button onClick={() => navigate(`/students/${id}/edit`)}
             className="flex items-center gap-1.5 bg-primary text-white px-3 py-1.5 rounded-lg text-sm hover:bg-primary-dark hover:scale-[1.02] active:scale-[0.98] transition-all duration-300">
             <FiEdit2 size={13} /> Edit
+          </button>
+          <button onClick={() => navigate(`/students/${id}/calling`)}
+            className="flex items-center gap-1.5 bg-orange-600 hover:bg-orange-700 text-white px-3 py-1.5 rounded-lg text-sm hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 shadow-md shadow-orange-600/20 font-semibold">
+            <FiPhone size={13} /> Calling
           </button>
           <div className="relative" ref={exportRef}>
             <button onClick={() => setExportOpen(!exportOpen)} disabled={exporting}

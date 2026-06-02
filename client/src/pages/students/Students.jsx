@@ -1,10 +1,11 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import api from '../../api/axios';
+import { agent } from '../../api/agentApi';
 import { TRACKS, STATUSES, STATUS_COLORS, TRACK_TOWNS, TOWN_TO_MAIN_TRACK } from '../../utils/constants';
 import useAuthStore from '../../store/authStore';
 import toast from 'react-hot-toast';
-import { FiPlus, FiUpload, FiSearch, FiEdit2, FiDownload, FiFilter, FiSlash, FiClipboard, FiExternalLink, FiChevronDown, FiSend, FiClock, FiX, FiFileText, FiAlertCircle } from 'react-icons/fi';
+import { FiPlus, FiUpload, FiSearch, FiEdit2, FiDownload, FiFilter, FiSlash, FiClipboard, FiExternalLink, FiChevronDown, FiSend, FiClock, FiX, FiFileText, FiAlertCircle, FiPhone } from 'react-icons/fi';
 import BottomSheet from '../../components/BottomSheet';
 import DatePicker from '../../components/DatePicker';
 import ReceptionEntryModal from '../../components/ReceptionEntryModal';
@@ -412,6 +413,25 @@ const ALL_BRANCHES = [
 export default function Students() {
   const { user } = useAuthStore();
   const navigate = useNavigate();
+  const [callingId, setCallingId] = useState(null);
+  const [confirmCallStudent, setConfirmCallStudent] = useState(null);
+
+  const handleTriggerCall = async (s) => {
+    const phone = s.mobileNo || s.mobile;
+    if (!phone) {
+      toast.error('Phone number not available');
+      return;
+    }
+    setCallingId(s._id);
+    try {
+      await agent.triggerCall(phone, s.name);
+      toast.success(`AI Call initiated for ${s.name}!`);
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || 'Call failed');
+    } finally {
+      setCallingId(null);
+    }
+  };
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   
@@ -869,6 +889,57 @@ export default function Students() {
       )}
 
       {receptionOpen && <ReceptionEntryModal onClose={() => setReceptionOpen(null)} student={receptionOpen} onSaved={fetchStudents} />}
+
+      {/* Trigger AI Call Confirmation Modal */}
+      {confirmCallStudent && (
+        <div 
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 transition-opacity duration-300 animate-in fade-in duration-200"
+          onClick={() => setConfirmCallStudent(null)}
+        >
+          <div 
+            className="bg-white rounded-3xl border border-gray-100 max-w-sm w-full p-6 text-left shadow-2xl animate-in zoom-in-95 duration-200"
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Modal Header Card */}
+            <div className="flex items-center gap-3 mb-4 bg-orange-50/50 p-4 rounded-2xl border border-orange-100/50">
+              <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center text-primary shrink-0">
+                <FiPhone size={20} className="text-primary" />
+              </div>
+              <div>
+                <p className="text-sm font-bold text-gray-800 leading-tight">{confirmCallStudent.name}</p>
+                <p className="text-xs text-gray-400 font-semibold mt-0.5">{confirmCallStudent.mobileNo || confirmCallStudent.mobile}</p>
+              </div>
+            </div>
+            
+            <p className="text-xs sm:text-sm text-gray-500 leading-relaxed mb-6 font-semibold">
+              Kya aap sach mein is student ko AI Agent se call lagana chahte hain?
+            </p>
+
+            {/* Actions */}
+            <div className="flex gap-3 pt-3 border-t border-gray-100">
+              <button
+                type="button"
+                onClick={() => setConfirmCallStudent(null)}
+                className="flex-1 py-2.5 rounded-xl border border-gray-200 text-xs font-bold text-gray-600 hover:bg-gray-50 active:scale-95 transition-all duration-200 bg-white"
+              >
+                Cancel / Exit
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const studentToCall = confirmCallStudent;
+                  setConfirmCallStudent(null);
+                  handleTriggerCall(studentToCall);
+                }}
+                className="flex-1 py-2.5 rounded-xl bg-primary text-white text-xs font-bold hover:bg-primary-dark hover:shadow-lg hover:shadow-primary/20 active:scale-95 transition-all duration-200 flex items-center justify-center gap-1.5"
+              >
+                <FiPhone size={13} />
+                Confirm & Call
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* History Modal */}
       {historyStudent && (
@@ -1332,10 +1403,26 @@ export default function Students() {
                     <td className="px-4 py-3 text-gray-500 text-xs">{s.trackName || '—'}</td>
                     <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                       {s.mobileNo ? (
-                        <a href={`tel:${s.mobileNo}`} className="text-gray-600 hover:text-primary hover:underline">
-                          {s.mobileNo}
-                        </a>
-                      ) : null}
+                        <button
+                          onClick={() => setConfirmCallStudent(s)}
+                          disabled={callingId !== null}
+                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all border shrink-0 ${
+                            callingId === s._id
+                              ? 'bg-orange-100 border-orange-200 text-primary animate-pulse'
+                              : 'bg-orange-50 border-orange-100 text-primary hover:bg-primary hover:text-white hover:border-primary active:scale-95'
+                          }`}
+                          title={`Trigger AI Call to ${s.name}`}
+                        >
+                          {callingId === s._id ? (
+                            <span className="w-3 h-3 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                          ) : (
+                            <FiPhone className="shrink-0" size={12} />
+                          )}
+                          <span>{s.mobileNo}</span>
+                        </button>
+                      ) : (
+                        <span className="text-gray-300">—</span>
+                      )}
                     </td>
                     <td className="px-4 py-3">
                       {s.formSource && (
@@ -1387,10 +1474,10 @@ export default function Students() {
                         e.stopPropagation(); 
                         const scrollPosition = window.pageYOffset;
                         localStorage.setItem('studentsScrollPosition', scrollPosition.toString());
-                        navigate(`/students/${s._id}/edit`); 
+                        navigate(`/students/${s._id}/calling`); 
                       }}
-                        className="flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 bg-primary hover:bg-primary-dark text-white rounded-lg transition-colors">
-                        <FiEdit2 size={11} /> Edit
+                        className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1.5 bg-primary hover:bg-primary-dark text-white rounded-lg transition-colors">
+                        <FiPhone size={11} /> Calling History
                       </button>
                     </td>
                   </tr>
@@ -1468,10 +1555,24 @@ export default function Students() {
                 </span>
               )}
               {s.mobileNo && (
-                <a href={`tel:${s.mobileNo}`} onClick={(e) => e.stopPropagation()}
-                  className="flex items-center gap-1 text-sm text-gray-500">
-                  <span className="text-base">📞</span> {s.mobileNo}
-                </a>
+                <div onClick={(e) => e.stopPropagation()} className="inline-block">
+                  <button
+                    onClick={() => setConfirmCallStudent(s)}
+                    disabled={callingId !== null}
+                    className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold transition-all border shrink-0 ${
+                      callingId === s._id
+                        ? 'bg-orange-100 border-orange-200 text-primary animate-pulse'
+                        : 'bg-orange-50 border-orange-100 text-primary hover:bg-primary hover:text-white hover:border-primary active:scale-95'
+                    }`}
+                  >
+                    {callingId === s._id ? (
+                      <span className="w-2.5 h-2.5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <FiPhone size={10} />
+                    )}
+                    <span>{s.mobileNo}</span>
+                  </button>
+                </div>
               )}
               {s.formSource && (
                 <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
@@ -1496,10 +1597,10 @@ export default function Students() {
                 e.stopPropagation(); 
                 const scrollPosition = window.pageYOffset;
                 localStorage.setItem('studentsScrollPosition', scrollPosition.toString());
-                navigate(`/students/${s._id}/edit`); 
+                navigate(`/students/${s._id}/calling`); 
               }}
-                className="flex-1 flex items-center justify-center gap-1.5 text-sm text-white font-semibold py-2 bg-primary hover:bg-primary-dark rounded-lg transition-colors">
-                <FiEdit2 size={14} /> Edit
+                className="flex-1 flex items-center justify-center gap-1.5 text-sm text-white font-bold py-2 bg-primary hover:bg-primary-dark rounded-lg transition-colors shadow-sm shadow-primary/10">
+                <FiPhone size={14} /> Calling History
               </button>
               {(user?.role === 'admin' || user?.role === 'interviewer') ? (
                 <button onClick={(e) => { e.stopPropagation(); setInterviewStudent(s); }}

@@ -14,3 +14,11 @@ services:
     depends_on:
       - backend
     restart: unless-stopped
+
+  calling-backend:
+    build: ./calling_backend
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./calling_backend/.env
+    restart: unless-stopped
