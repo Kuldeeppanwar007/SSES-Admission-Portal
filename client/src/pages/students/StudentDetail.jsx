@@ -734,8 +734,8 @@ export default function StudentDetail() {
       FAILED: 'bg-rose-100 text-rose-700 border-rose-200',
       NO_PAYMENT_REQUIRED: 'bg-gray-100 text-gray-600 border-gray-200',
     };
-    const isAdmitted = s.status === 'Admitted';
-    const regFeesEffective = isAdmitted ? 'Paid' : (s.regFeesStatus || 'Unpaid');
+    const isAdmittedOrCancelled = s.status === 'Admitted' || s.status === 'Admission Cancel';
+    const regFeesEffective = isAdmittedOrCancelled ? 'Paid' : (s.regFeesStatus || 'Unpaid');
     const regStatusColor = regFeesEffective === 'Paid'
       ? 'bg-emerald-100 text-emerald-700 border-emerald-200'
       : 'bg-rose-100 text-rose-700 border-rose-200';
