@@ -5,19 +5,19 @@ const MOCK_MODE = process.env.CENTRAL_MOCK_MODE === 'true';
 // Student model se SSISM (new_student_reg) payload banao
 const buildSsismPayload = (s) => ({
   id: s.externalId || null,
-  firstName: (s.name || '').split(' ')[0] || '',
-  lastName: (s.name || '').split(' ').slice(1).join(' ') || '',
-  fathersName: s.fatherName || '',
-  mobile: Number(s.mobileNo) || null,
-  email: s.email || '',
-  branch: s.branch || '',
+  firstName: (s.name || '').split(' ')[0] || null,
+  lastName: (s.name || '').split(' ').slice(1).join(' ') || null,
+  fathersName: s.fatherName || null,
+  mobile: String(s.mobileNo) || null,
+  email: s.email || String('self-'+Date.now()+'@ssism.org'),
+  branch: s.branch || null,
   year: s.year || 'I',
-  joinBatch: s.joinBatch || null,
-  feesScheme: s.feesScheme || '',
+  joinBatch: s.joinBatch || '2026',
+  feesScheme: s.feesScheme || null,
   dob: s.dob || null,
-  fatherContactNumber: Number(s.fatherContactNumber) || null,
-  schoolName: s.schoolName || '',
-  school12Sub: s.school12Sub || '',
+  fatherContactNumber: String(s.fatherContactNumber) || String(s.mobileNo),
+  schoolName: s.schoolName || null,
+  school12Sub: s.school12Sub || String("Maths"),
   rollNumber12: s.rollNumber12 || null,
   persentage12: s.persentage12 || null,
   persentage11: s.persentage11 || null,
@@ -26,12 +26,12 @@ const buildSsismPayload = (s) => ({
   aadharNo: s.aadharNo || null,
   fatherOccupation: s.fatherOccupation || null,
   fatherIncome: s.fatherIncome || null,
-  category: s.category || '',
-  gender: s.gender || '',
+  category: s.category || null,
+  gender: s.gender || null,
   pincode: s.pincode || null,
   trackName: s.trackName || null,
   address: s.fullAddress || null,
-  village: s.village || '',
+  village: s.village || null,
   tehsil: s.tehsil || null,
   district: s.district || null,
   regFees: s.regFees || null,
@@ -46,7 +46,6 @@ const buildSsismPayload = (s) => ({
   merchantTransactionId: s.merchantTransactionId || null,
   isTop20: s.isTop20 || false,
   sRank: s.sRank || null,
-  persentage11: s.persentage11 || null,
   passout12: s.passout12 || null,
   linkSource: s.linkSource || 'default',
   remark: s.remarks || null,
@@ -149,7 +148,8 @@ const sendToCentral = async (student) => {
       timeout: 15000,
       validateStatus: () => true, // Don't throw error on non-2xx status codes
     });
-
+    console.log(payload)
+    console.log(JSON.stringify(response.data, null, 2));
     return response.status === 201;
   } catch (err) {
     console.error("Central sync error:", err.message);
