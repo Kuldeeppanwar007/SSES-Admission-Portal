@@ -5,22 +5,26 @@ const { sendToCentral, sendBulkToCentral } = require('../utils/centralSync');
 const syncSingleStudent = async (req, res) => {
   try {
     const student = await Student.findById(req.params.id).lean();
-    if (!student) return res.status(404).json({ message: 'Student not found' });
+    if (!student) return res.status(404).json({ success: false, shiftedToCentral: false, message: 'Student not found' });
 
     if (student.status !== 'Admitted')
-      return res.status(400).json({ message: 'Sirf Admitted students ko central bheja ja sakta hai' });
+      return res.status(400).json({ success: false, shiftedToCentral: false, message: 'Sirf Admitted students ko central bheja ja sakta hai' });
 
     if (!['btech', 'ssism'].includes(student.formSource))
-      return res.status(400).json({ message: 'Sirf btech ya ssism formSource wale students bheje ja sakte hain' });
+      return res.status(400).json({ success: false, shiftedToCentral: false, message: 'Sirf btech ya ssism formSource wale students bheje ja sakte hain' });
 
     const result = await sendToCentral(student);
+
+    if (!result) {
+      return res.status(400).json({ success: false, shiftedToCentral: false, message: 'Central sync failed (API did not return 201 status)' });
+    }
 
     // shiftedToCentral flag set karo
     await Student.findByIdAndUpdate(req.params.id, { shiftedToCentral: true, shiftedAt: new Date() });
 
-    res.json({ message: 'Student successfully sent to central', result });
+    res.json({ success: true, shiftedToCentral: true, message: 'Student successfully sent to central', result });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    res.status(500).json({ success: false, shiftedToCentral: false, message: err.message });
   }
 };
 

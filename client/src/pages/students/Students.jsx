@@ -865,8 +865,12 @@ export default function Students() {
   const doSyncSingle = async (studentId) => {
     setSyncingCentral(true);
     try {
-      await api.post(`/central-sync/${studentId}`);
-      toast.success('Student central ko bhej diya');
+      const { data } = await api.post(`/central-sync/${studentId}`);
+      if (data.success) {
+        toast.success(data.message || 'Student central ko bhej diya');
+      } else {
+        toast.error(data.message || 'Sync failed');
+      }
       setConfirmSync(null);
       fetchStudents();
     } catch (err) { toast.error(err.response?.data?.message || 'Sync failed'); }
