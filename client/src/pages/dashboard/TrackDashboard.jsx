@@ -356,7 +356,9 @@ export default function TrackDashboard() {
               const sBadgeColor = sPct >= 75 ? 'bg-emerald-50 text-emerald-600' : sPct >= 40 ? 'bg-amber-50 text-amber-600' : 'bg-rose-50 text-rose-500';
               return (
                 <div key={subject} className="flex items-center justify-between px-5 py-3.5 hover:bg-gray-50/70 transition-colors">
-                  <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${SUBJECT_COLORS[subject] || 'bg-gray-100 text-gray-600'}`}>
+                  <span
+                    onClick={() => navigate(`/students?subjectFilter=${encodeURIComponent(subject)}&status=Admitted&track=${encodeURIComponent(stats.track)}`)}
+                    className={`text-xs font-semibold px-2 py-0.5 rounded-full cursor-pointer hover:opacity-80 transition-opacity ${SUBJECT_COLORS[subject] || 'bg-gray-100 text-gray-600'}`}>
                     {subject}
                   </span>
                   <div className="flex items-center gap-3">

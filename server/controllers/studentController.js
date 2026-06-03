@@ -30,6 +30,26 @@ const normalizeBranch = (val) => {
   return BRANCH_NORMALIZE[key] || val.trim();
 };
 
+const SUBJECT_TO_BRANCHES = {
+  'BCA':           ['BCA', 'BCA(ITEG)', 'bca', 'bca(iteg)'],
+  'BBA':           ['BBA', 'bba'],
+  'Bio':           ['Bio', 'BSC(BT)', 'BSC(Bt)', 'Biology', 'bio', 'BSc(BT)', 'Bsc(BT)', 'BSC(bt)'],
+  'Micro':         ['Micro', 'BSC(MICRO)', 'micro', 'BSc(MICRO)', 'Bsc(Micro)', 'BSC(micro)'],
+  'Bcom':          ['Bcom', 'B.com(CA)', 'B.COM(CA)', 'B.Com (CA)', 'B.COM (CA)', 'b.com (ca)', 'b.com(ca)', 'B.Com(CA)', 'B.Com(ca)', 'bcom'],
+  'ITEG Diploma':  ['ITEG Diploma', 'iteg diploma', 'ITEG diploma'],
+  'B.Tech(CS)':    ['B.Tech(CS)', 'CS', 'cs', 'B.tech(CS)', 'b.tech(cs)'],
+  'B.Tech(IT)':    ['B.Tech(IT)', 'IT', 'it', 'B.tech(IT)', 'b.tech(it)'],
+  'B.Tech(ECE)':   ['B.Tech(ECE)', 'ECE', 'ece', 'B.tech(ECE)', 'b.tech(ece)'],
+  'B.Tech(AI/ML)': ['B.Tech(AI/ML)', 'AI/ML', 'AIML', 'ai/ml', 'aiml', 'B.Tech(AIML)', 'b.tech(ai/ml)', 'B.tech(AI/ML)'],
+  'B.Tech':        [
+    'B.Tech', 'B.Tech(CS)', 'B.Tech(IT)', 'B.Tech(ECE)', 'B.Tech(AI/ML)', 
+    'CS', 'cs', 'B.tech(CS)', 'b.tech(cs)',
+    'IT', 'it', 'B.tech(IT)', 'b.tech(it)',
+    'ECE', 'ece', 'B.tech(ECE)', 'b.tech(ece)',
+    'AI/ML', 'AIML', 'ai/ml', 'aiml', 'B.Tech(AIML)', 'b.tech(ai/ml)', 'B.tech(AI/ML)'
+  ],
+};
+
 // Get all students (admin/manager = all, track_incharge = own track)
 const getStudents = async (req, res) => {
   try {
@@ -162,7 +182,11 @@ const getStudents = async (req, res) => {
     }
 
     // Subject filter (dashboard capacity cards se)
-    if (req.query.subjectFilter) filter.subject = req.query.subjectFilter;
+    if (req.query.subjectFilter) {
+      const sf = req.query.subjectFilter;
+      const aliases = SUBJECT_TO_BRANCHES[sf] || [sf];
+      filter.subject = { $in: [...aliases, sf] };
+    }
 
     // School filter
     if (req.query.schoolName) filter.schoolName = { $regex: `^${req.query.schoolName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, $options: 'i' };
@@ -185,18 +209,6 @@ const getStudents = async (req, res) => {
       }
       if (req.query.subjectFilter) {
         const sf = req.query.subjectFilter;
-        const SUBJECT_TO_BRANCHES = {
-          'BCA':           ['BCA', 'BCA(ITEG)', 'bca', 'bca(iteg)'],
-          'BBA':           ['BBA', 'bba'],
-          'Bio':           ['Bio', 'BSC(BT)', 'BSC(Bt)', 'Biology', 'bio', 'BSc(BT)', 'Bsc(BT)', 'BSC(bt)'],
-          'Micro':         ['Micro', 'BSC(MICRO)', 'micro', 'BSc(MICRO)', 'Bsc(Micro)', 'BSC(micro)'],
-          'Bcom':          ['Bcom', 'B.com(CA)', 'B.COM(CA)', 'B.Com (CA)', 'B.COM (CA)', 'b.com (ca)', 'b.com(ca)', 'B.Com(CA)', 'B.Com(ca)', 'bcom'],
-          'ITEG Diploma':  ['ITEG Diploma', 'iteg diploma', 'ITEG diploma'],
-          'B.Tech(CS)':    ['B.Tech(CS)', 'CS', 'cs', 'B.tech(CS)', 'b.tech(cs)'],
-          'B.Tech(IT)':    ['B.Tech(IT)', 'IT', 'it', 'B.tech(IT)', 'b.tech(it)'],
-          'B.Tech(ECE)':   ['B.Tech(ECE)', 'ECE', 'ece', 'B.tech(ECE)', 'b.tech(ece)'],
-          'B.Tech(AI/ML)': ['B.Tech(AI/ML)', 'AI/ML', 'AIML', 'ai/ml', 'aiml', 'B.Tech(AIML)', 'b.tech(ai/ml)', 'B.tech(AI/ML)'],
-        };
         const aliases = SUBJECT_TO_BRANCHES[sf] || [sf];
         const otherCanonicalAliases = Object.entries(SUBJECT_TO_BRANCHES)
           .filter(([key]) => key !== sf)

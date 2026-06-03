@@ -957,7 +957,12 @@ export default function Dashboard() {
                       const sPct = target > 0 ? Math.round((admitted / target) * 100) : 0;
                       return (
                         <div key={subject} className="flex items-center justify-between px-5 py-3 hover:bg-gray-50/70 transition-colors">
-                          <span className={`text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full ${SUBJECT_COLORS[subject] || 'bg-gray-100 text-gray-600'}`}>
+                          <span
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate(`/students?subjectFilter=${encodeURIComponent(subject)}&status=Admitted&track=${encodeURIComponent(track)}`);
+                            }}
+                            className={`text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full cursor-pointer hover:opacity-80 transition-opacity ${SUBJECT_COLORS[subject] || 'bg-gray-100 text-gray-600'}`}>
                             {subject}
                           </span>
                           <div className="flex items-center gap-3">
