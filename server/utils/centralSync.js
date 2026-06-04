@@ -12,7 +12,7 @@ const buildSsismPayload = (s) => ({
   email: s.email || String('self-'+Date.now()+'@ssism.org'),
   branch: s.branch || null,
   year: s.year || 'I',
-  joinBatch: s.joinBatch || '2026',
+  joinBatch: new Date().getFullYear(),
   feesScheme: s.feesScheme || null,
   dob: s.dob || null,
   fatherContactNumber: String(s.fatherContactNumber) || String(s.mobileNo),
