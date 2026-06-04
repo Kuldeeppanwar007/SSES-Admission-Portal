@@ -15,14 +15,51 @@ const syncSingleStudent = async (req, res) => {
 
     const result = await sendToCentral(student);
 
-    if (!result) {
-      return res.status(400).json({ success: false, shiftedToCentral: false, message: 'Central sync failed (API did not return 201 status)' });
+    if (!result.success) {
+      // Missing fields — admin ko batao kaunse fields bharne hain
+      if (result.reason === 'MISSING_FIELDS') {
+        return res.status(400).json({
+          success: false,
+          shiftedToCentral: false,
+          reason: 'MISSING_FIELDS',
+          message: `Central sync failed — ye required fields missing hain: ${result.missingFields.join(', ')}`,
+          missingFields: result.missingFields,
+        });
+      }
+
+      // Duplicate — Central mein already exists
+      if (result.reason === 'DUPLICATE') {
+        return res.status(409).json({
+          success: false,
+          shiftedToCentral: false,
+          reason: 'DUPLICATE',
+          message: result.error || 'Student already exists in Central',
+        });
+      }
+
+      // Validation error from Central
+      if (result.reason === 'VALIDATION_ERROR') {
+        return res.status(400).json({
+          success: false,
+          shiftedToCentral: false,
+          reason: 'VALIDATION_ERROR',
+          message: `Central validation error: ${result.error}`,
+        });
+      }
+
+      // Any other error
+      return res.status(400).json({
+        success: false,
+        shiftedToCentral: false,
+        reason: result.reason || 'API_ERROR',
+        message: `Central sync failed: ${result.error || 'Unknown error'}`,
+      });
     }
 
     // shiftedToCentral flag set karo
     await Student.findByIdAndUpdate(req.params.id, { shiftedToCentral: true, shiftedAt: new Date() });
 
-    res.json({ success: true, shiftedToCentral: true, message: 'Student successfully sent to central', result });
+    res.json({ success: true, shiftedToCentral: true, message: 'Student successfully sent to central', data: result.data });
   } catch (err) {
     res.status(500).json({ success: false, shiftedToCentral: false, message: err.message });
   }
