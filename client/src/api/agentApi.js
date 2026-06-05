@@ -24,9 +24,13 @@ export const agent = {
   getCallbacks: (status = 'pending') =>
     agentApi.get('/agent/callbacks', { params: { status } }).then(r => r.data),
 
+  getConversations: (limit = 50, offset = 0) =>
+    agentApi.get('/agent/conversations', { params: { limit, offset } }).then(r => r.data),
+
   cancelCallback: (id) =>
     agentApi.patch(`/agent/callbacks/${id}/cancel`).then(r => r.data),
 
   sendWhatsApp: (phone, text) =>
     agentApi.post('/agent/whatsapp', { phone, text }).then(r => r.data),
 };
+

@@ -255,6 +255,64 @@ async def list_callbacks(
     }
 
 
+# ── Conversations list ────────────────────────────────────────────────────────
+
+@router.get("/conversations", dependencies=[_auth])
+async def list_conversations(
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    db: AsyncIOMotorDatabase = Depends(get_db),
+):
+    pipeline = [
+        {"$sort": {"created_at": -1}},
+        {"$skip": offset},
+        {"$limit": limit},
+        {
+            "$addFields": {
+                "lead_oid": {
+                    "$cond": {
+                        "if": {"$eq": [{"$type": "$lead_id"}, "string"]},
+                        "then": {"$toObjectId": "$lead_id"},
+                        "else": "$lead_id"
+                    }
+                }
+            }
+        },
+        {
+            "$lookup": {
+                "from": "agent_leads",
+                "localField": "lead_oid",
+                "foreignField": "_id",
+                "as": "lead"
+            }
+        },
+        {"$unwind": {"path": "$lead", "preserveNullAndEmptyArrays": True}}
+    ]
+
+    docs = await db.agent_conversations.aggregate(pipeline).to_list(limit)
+    total = await db.agent_conversations.count_documents({})
+
+    conversations = []
+    for c in docs:
+        lead_doc = c.get("lead") or {}
+        conversations.append({
+            "id": str(c["_id"]),
+            "lead_id": str(c["lead_id"]),
+            "lead_name": lead_doc.get("name") or "Unknown",
+            "lead_phone": lead_doc.get("phone") or "Unknown",
+            "channel": c.get("channel"),
+            "direction": c.get("direction"),
+            "message": c.get("message"),
+            "agent_reply": c.get("agent_reply"),
+            "call_id": c.get("call_id"),
+            "meta": c.get("meta", {}),
+            "created_at": c["created_at"].isoformat() if c.get("created_at") else None,
+        })
+
+    return {"conversations": conversations, "total": total}
+
+
+
 # ── Cancel callback ────────────────────────────────────────────────────────────
 
 @router.patch("/callbacks/{callback_id}/cancel", dependencies=[_auth])
