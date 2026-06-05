@@ -1221,8 +1221,6 @@ export default function Students() {
               className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${tab === 'active' ? 'bg-white shadow text-gray-800' : 'text-gray-500 hover:text-gray-700'}`}>
               <FiSearch size={14} /> Active Profiles
             </button>
-            {(user?.role === 'admin' || user?.role === 'manager') && (
-              <>
                 <button onClick={() => switchTab('shiftCentral')}
                   className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${tab === 'shiftCentral' ? 'bg-primary shadow text-white' : 'text-gray-500 hover:text-gray-700'}`}>
                   <FiSend size={14} /> Shift Central
@@ -1231,8 +1229,6 @@ export default function Students() {
                   className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${tab === 'shifted' ? 'bg-primary shadow text-white' : 'text-gray-500 hover:text-gray-700'}`}>
                   <FiRefreshCw size={14} /> Shifted Students
                 </button>
-              </>
-            )}
             <button onClick={() => switchTab('disabled')}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${tab === 'disabled' ? 'bg-white shadow text-gray-800' : 'text-gray-500 hover:text-gray-700'}`}>
               <FiSlash size={14} /> Disabled
@@ -1281,8 +1277,6 @@ export default function Students() {
               }`}>
               <FiSearch size={13} /> Active
             </button>
-            {(user?.role === 'admin' || user?.role === 'manager') ? (
-              <>
                 <button onClick={() => switchTab('shiftCentral')}
                   className={`flex items-center justify-center gap-1.5 py-2.5 text-sm font-semibold rounded-xl transition-colors border ${
                     tab === 'shiftCentral' ? 'bg-primary text-white border-primary' : 'bg-white text-gray-500 border-gray-200'
@@ -1295,8 +1289,6 @@ export default function Students() {
                   }`}>
                   <FiRefreshCw size={13} /> Shifted
                 </button>
-              </>
-            ) : <div />}
             <button onClick={() => switchTab('disabled')}
               className={`flex items-center justify-center gap-1.5 py-2.5 text-sm font-semibold rounded-xl transition-colors border ${
                 tab === 'disabled' ? 'bg-primary text-white border-primary' : 'bg-white text-gray-500 border-gray-200'
@@ -1501,7 +1493,7 @@ export default function Students() {
                   </thead>
                   <tbody className="divide-y divide-gray-100">
                     {students.map((s, i) => (
-                      <tr key={s._id} className="hover:bg-gray-50 cursor-pointer" onClick={() => navigate(`/students/${s._id}`)}>                        {/* COMMENTED OUT — row checkbox (abhi jarurat nahi)
+                      <tr key={s._id} className={`${user?.role === 'admin' ? 'hover:bg-gray-50 cursor-pointer' : ''}`} onClick={() => user?.role === 'admin' && navigate(`/students/${s._id}`)}>                        {/* COMMENTED OUT — row checkbox (abhi jarurat nahi)
                         {tab === 'shiftCentral' && (
                           <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
                             <input type="checkbox" checked={selected.includes(s._id)} onChange={() => toggleSelect(s._id)} disabled={!canSendCentral}
@@ -1543,7 +1535,7 @@ export default function Students() {
               {/* Mobile cards */}
               <div className="md:hidden divide-y divide-gray-100">
                 {students.map((s, i) => (
-                  <div key={s._id} className="p-4 flex items-center gap-3" onClick={() => navigate(`/students/${s._id}`)}>                    {/* COMMENTED OUT — mobile checkbox (abhi jarurat nahi)
+                  <div key={s._id} className={`p-4 flex items-center gap-3 ${user?.role === 'admin' ? 'cursor-pointer' : ''}`} onClick={() => user?.role === 'admin' && navigate(`/students/${s._id}`)}>                    {/* COMMENTED OUT — mobile checkbox (abhi jarurat nahi)
                     {tab === 'shiftCentral' && (
                       <input type="checkbox" checked={selected.includes(s._id)}
                         onChange={e => { e.stopPropagation(); toggleSelect(s._id); }}
