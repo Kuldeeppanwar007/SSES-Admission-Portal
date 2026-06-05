@@ -909,6 +909,7 @@ export default function Students() {
   const isShiftedTab = tab === 'shifted';
   const isCentralTab = isShiftCentralTab || isShiftedTab;
   const allSelected = students.length > 0 && selected.length === students.length;
+  const canSendCentral = user?.role === 'admin' && user?.canEditStudent;
 
   // Memoize filtered students for better performance
   const displayStudents = useMemo(() => {
@@ -1452,14 +1453,17 @@ export default function Students() {
                 onChange={handleSearchChange}
                 className="flex-1 py-2 outline-none text-sm" />
             </div>
+            {/* COMMENTED OUT — bulk Send Selected to Central (abhi jarurat nahi)
             {tab === 'shiftCentral' && (
-              <button onClick={handleBulkSync} disabled={syncingCentral || selected.length === 0}
-                className="flex items-center gap-1.5 bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-lg text-sm font-semibold disabled:opacity-60 transition-colors shrink-0">
+              <button onClick={handleBulkSync} disabled={!canSendCentral || syncingCentral || selected.length === 0}
+                title={!canSendCentral ? 'Sirf Student Editor admin hi send kar sakte hain' : ''}
+                className={`flex items-center gap-1.5 text-white px-4 py-2 rounded-lg text-sm font-semibold disabled:opacity-60 transition-colors shrink-0 ${canSendCentral ? 'bg-primary hover:bg-primary-dark' : 'bg-gray-400 cursor-not-allowed'}`}>
                 {syncingCentral
                   ? <><FiRefreshCw size={13} className="animate-spin" /> Sending...</>
                   : <><FiSend size={13} /> Send {selected.length > 0 ? `(${selected.length})` : 'Selected'} to Central</>}
               </button>
             )}
+            */}
           </div>
         </div>
       )}
@@ -1481,12 +1485,15 @@ export default function Students() {
                 <table className="w-full text-sm">
                   <thead className="bg-gray-50 border-b">
                     <tr>
+                      {/* COMMENTED OUT — select all checkbox (abhi jarurat nahi)
                       {tab === 'shiftCentral' && (
                         <th className="px-4 py-3 w-10">
-                          <input type="checkbox" checked={allSelected} onChange={toggleAll}
-                            className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer" />
+                          <input type="checkbox" checked={allSelected} onChange={toggleAll} disabled={!canSendCentral}
+                            title={!canSendCentral ? 'Sirf Student Editor admin hi select kar sakte hain' : ''}
+                            className={`rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 ${canSendCentral ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'}`} />
                         </th>
                       )}
+                      */}
                       {['S.N.', 'Name', 'Father Name', 'Track', 'Mobile', 'Form', 'Branch/Priority', tab === 'shifted' ? 'Shifted At' : 'Action'].map(h => (
                         <th key={h} className="px-4 py-3 text-xs font-semibold uppercase text-gray-500 text-left">{h}</th>
                       ))}
@@ -1494,12 +1501,15 @@ export default function Students() {
                   </thead>
                   <tbody className="divide-y divide-gray-100">
                     {students.map((s, i) => (
-                      <tr key={s._id} className="hover:bg-gray-50 cursor-pointer" onClick={() => navigate(`/students/${s._id}`)}>                        {tab === 'shiftCentral' && (
+                      <tr key={s._id} className="hover:bg-gray-50 cursor-pointer" onClick={() => navigate(`/students/${s._id}`)}>                        {/* COMMENTED OUT — row checkbox (abhi jarurat nahi)
+                        {tab === 'shiftCentral' && (
                           <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
-                            <input type="checkbox" checked={selected.includes(s._id)} onChange={() => toggleSelect(s._id)}
-                              className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer" />
+                            <input type="checkbox" checked={selected.includes(s._id)} onChange={() => toggleSelect(s._id)} disabled={!canSendCentral}
+                              title={!canSendCentral ? 'Sirf Student Editor admin hi select kar sakte hain' : ''}
+                              className={`rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 ${canSendCentral ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'}`} />
                           </td>
                         )}
+                        */}
                         <td className="px-4 py-3 text-gray-500">{i + 1}</td>
                         <td className="px-4 py-3 font-medium text-gray-800">{s.name}</td>
                         <td className="px-4 py-3 text-gray-600">{s.fatherName}</td>
@@ -1517,9 +1527,10 @@ export default function Students() {
                           {tab === 'shifted' ? (
                             <span className="text-xs text-gray-400">{s.shiftedAt ? new Date(s.shiftedAt).toLocaleDateString('en-IN') : '—'}</span>
                           ) : (
-                            <button onClick={e => { e.stopPropagation(); handleSyncSingle(s._id, s.name); }}
-                              disabled={syncingCentral}
-                              className="flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 bg-primary hover:bg-primary-dark text-white rounded-lg disabled:opacity-60">
+                            <button onClick={e => { e.stopPropagation(); if (canSendCentral) handleSyncSingle(s._id, s.name); }}
+                              disabled={!canSendCentral || syncingCentral}
+                              title={!canSendCentral ? 'Sirf Student Editor admin hi send kar sakte hain' : ''}
+                              className={`flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 text-white rounded-lg disabled:opacity-60 ${canSendCentral ? 'bg-primary hover:bg-primary-dark' : 'bg-gray-400 cursor-not-allowed'}`}>
                               <FiSend size={11} /> Send
                             </button>
                           )}
@@ -1532,12 +1543,16 @@ export default function Students() {
               {/* Mobile cards */}
               <div className="md:hidden divide-y divide-gray-100">
                 {students.map((s, i) => (
-                  <div key={s._id} className="p-4 flex items-center gap-3" onClick={() => navigate(`/students/${s._id}`)}>                    {tab === 'shiftCentral' && (
+                  <div key={s._id} className="p-4 flex items-center gap-3" onClick={() => navigate(`/students/${s._id}`)}>                    {/* COMMENTED OUT — mobile checkbox (abhi jarurat nahi)
+                    {tab === 'shiftCentral' && (
                       <input type="checkbox" checked={selected.includes(s._id)}
                         onChange={e => { e.stopPropagation(); toggleSelect(s._id); }}
                         onClick={e => e.stopPropagation()}
-                        className="rounded border-gray-300 text-emerald-600 shrink-0" />
+                        disabled={!canSendCentral}
+                        title={!canSendCentral ? 'Sirf Student Editor admin hi select kar sakte hain' : ''}
+                        className={`rounded border-gray-300 text-emerald-600 shrink-0 ${canSendCentral ? '' : 'cursor-not-allowed opacity-50'}`} />
                     )}
+                    */}
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold text-gray-800 truncate">{i + 1}. {s.name}</p>
                       <p className="text-xs text-gray-400">{s.fatherName} · {s.mobileNo}</p>
@@ -1552,9 +1567,10 @@ export default function Students() {
                       </div>
                     </div>
                     {tab === 'shiftCentral' && (
-                      <button onClick={e => { e.stopPropagation(); handleSyncSingle(s._id, s.name); }}
-                        disabled={syncingCentral}
-                        className="flex items-center gap-1 text-xs font-medium px-3 py-2 bg-primary hover:bg-primary-dark text-white rounded-lg disabled:opacity-60 shrink-0">
+                      <button onClick={e => { e.stopPropagation(); if (canSendCentral) handleSyncSingle(s._id, s.name); }}
+                        disabled={!canSendCentral || syncingCentral}
+                        title={!canSendCentral ? 'Sirf Student Editor admin hi send kar sakte hain' : ''}
+                        className={`flex items-center gap-1 text-xs font-medium px-3 py-2 text-white rounded-lg disabled:opacity-60 shrink-0 ${canSendCentral ? 'bg-primary hover:bg-primary-dark' : 'bg-gray-400 cursor-not-allowed'}`}>
                         <FiSend size={12} /> Send
                       </button>
                     )}

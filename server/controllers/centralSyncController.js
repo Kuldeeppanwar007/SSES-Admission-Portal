@@ -109,7 +109,7 @@ const syncBulkStudents = async (req, res) => {
 // Eligible students list — jo central bheje ja sakte hain
 const getEligibleStudents = async (req, res) => {
   try {
-    const { onlyPending } = req.query; // onlyPending=1 — sirf jo abhi tak nahi bheje
+    const { onlyPending, search, track } = req.query;
 
     const filter = {
       status: 'Admitted',
@@ -117,6 +117,19 @@ const getEligibleStudents = async (req, res) => {
     };
 
     if (onlyPending === '1') filter.shiftedToCentral = { $ne: true };
+
+    // Track filter
+    if (track) filter.track = track;
+
+    // Search filter — name, fatherName, mobileNo
+    if (search && search.trim()) {
+      const regex = new RegExp(search.trim(), 'i');
+      filter.$or = [
+        { name: regex },
+        { fatherName: regex },
+        { mobileNo: regex },
+      ];
+    }
 
     const students = await Student.find(filter)
       .select('name fatherName mobileNo formSource track shiftedToCentral shiftedAt branch priority1 subject')
