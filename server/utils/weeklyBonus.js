@@ -40,7 +40,9 @@ const calcAdmissionPointsPerTrack = async () => {
   admittedAgg.forEach(({ _id: { track, subject }, count }) => {
     if (!track || !subject) return;
     // B.Tech ke 4 subjects ko 'B.Tech' ke under group karo (same as getStats)
-    const subjectKey = BTECH_SUBJECTS.includes(subject) ? 'B.Tech' : subject;
+    // BCA(ITEG) → BCA
+    const SUBJECT_DISPLAY_MAP = { 'BCA(ITEG)': 'BCA', 'bca(iteg)': 'BCA', 'bca': 'BCA' };
+    const subjectKey = BTECH_SUBJECTS.includes(subject) ? 'B.Tech' : (SUBJECT_DISPLAY_MAP[subject] || subject);
     const pts = pointsPerSubject[track]?.[subjectKey] || 0;
     admissionPointsMap[track] = (admissionPointsMap[track] || 0) + count * pts;
   });
