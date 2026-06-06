@@ -63,8 +63,29 @@ export default function AdminTrackDashboard() {
       .catch(() => toast.error('Failed to load track stats'));
   }, [track]);
 
-  const totalTarget = stats?.subjects.reduce((s, x) => s + x.target, 0) || 0;
-  const totalAdmitted = stats?.subjects.reduce((s, x) => s + x.admitted, 0) || 0;
+  let btechTarget = 0;
+  let btechAdmitted = 0;
+  let ssismTarget = 0;
+  let ssismAdmitted = 0;
+
+  (stats?.subjects || []).forEach((s) => {
+    if (s.subject === 'B.Tech') {
+      btechTarget += s.target || 0;
+      btechAdmitted += s.admitted || 0;
+    } else {
+      ssismTarget += s.target || 0;
+      ssismAdmitted += s.admitted || 0;
+    }
+  });
+
+  const btechRemaining = Math.max(0, btechTarget - btechAdmitted);
+  const ssismRemaining = Math.max(0, ssismTarget - ssismAdmitted);
+
+  const btechPct = btechTarget > 0 ? Math.min(Math.round((btechAdmitted / btechTarget) * 100), 100) : 0;
+  const ssismPct = ssismTarget > 0 ? Math.min(Math.round((ssismAdmitted / ssismTarget) * 100), 100) : 0;
+
+  const totalTarget = btechTarget + ssismTarget;
+  const totalAdmitted = btechAdmitted + ssismAdmitted;
   const overallPct = totalTarget > 0 ? Math.round((totalAdmitted / totalTarget) * 100) : 0;
   const pctColor = overallPct >= 75 ? 'bg-emerald-500' : overallPct >= 40 ? 'bg-amber-500' : 'bg-rose-500';
 
@@ -106,22 +127,85 @@ export default function AdminTrackDashboard() {
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-4">
-            {STAT_META.map(({ key, label, icon: Icon, iconBg, iconColor, text, border, hoverShadow }) => (
-              <div key={key} className={`group relative h-[130px] bg-white rounded-2xl border ${border} ${hoverShadow} shadow-sm p-4 flex flex-col transition-all duration-300 hover:-translate-y-1 cursor-pointer`}>
-                <div className="flex items-start justify-between w-full">
-                  <div className={`w-10 h-10 rounded-xl ${iconBg} border border-transparent group-hover:border-white/50 flex items-center justify-center transition-all duration-300`}>
-                    <Icon size={18} className={`${iconColor} group-hover:scale-110 transition-transform duration-300`} />
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+            {STAT_META.map(({ key, label, icon: Icon, iconBg, iconColor, text, border, hoverShadow }) => {
+              const isTotalCard = key === 'total';
+              const completionPct = totalTarget > 0 ? Math.min(Math.round((totalAdmitted / totalTarget) * 100), 100) : 0;
+              return (
+                <div key={key}
+                  className={`group relative h-[130px] bg-white rounded-2xl border ${border} ${hoverShadow} shadow-sm p-4 flex flex-col justify-between transition-all duration-300 hover:-translate-y-1 cursor-pointer ${isTotalCard ? 'lg:col-span-2' : ''}`}>
+                  
+                  {isTotalCard ? (
+                <div className="flex flex-row justify-between items-end h-full w-full gap-4">
+                  {/* Left Half */}
+                  <div className="flex flex-col justify-between h-full flex-1">
+                    <div className={`w-10 h-10 rounded-xl ${iconBg} border border-transparent group-hover:border-white/50 flex items-center justify-center transition-all duration-300`}>
+                      <Icon size={18} className={`${iconColor} group-hover:scale-110 transition-transform duration-300`} />
+                    </div>
+                    <div className="mb-0.5">
+                      <p className={`text-[10px] font-bold uppercase tracking-wider leading-tight ${text}`}>{label}</p>
+                      <p className="text-2xl sm:text-3xl font-black text-gray-800 mt-1 tracking-tight">{stats[key] ?? 0}</p>
+                    </div>
                   </div>
+
+                  {/* Right Half (Progress Bar & Targets) */}
+                  {totalTarget > 0 && (
+                    <div className="hidden sm:flex flex-col justify-between flex-1 pl-6 border-l border-gray-100 h-[98px] py-0.5 w-1/2 select-none">
+                      {/* B.Tech Breakdown */}
+                      <div className="flex flex-col">
+                        <div className="flex items-center justify-between text-[10px] font-bold text-gray-500 mb-1 leading-none">
+                          <span className="uppercase tracking-wider text-[8px] font-bold text-gray-500 flex items-center">
+                            <span className="w-1.5 h-1.5 rounded-full bg-blue-500 mr-1.5 inline-block" />
+                            B.Tech Target
+                          </span>
+                          <span className="text-blue-600 font-extrabold">{btechPct}%</span>
+                        </div>
+                        <div className="w-full bg-gray-100 rounded-full h-1 overflow-hidden mb-1">
+                          <div className="bg-blue-500 h-full rounded-full transition-all duration-700" style={{ width: `${btechPct}%` }} />
+                        </div>
+                        <div className="flex justify-between items-center text-[9px] text-gray-400 font-semibold leading-none">
+                          <span><strong className="text-gray-700 font-bold">{btechAdmitted}</strong> / {btechTarget} Admitted</span>
+                          <span className="bg-blue-50/50 text-blue-600 px-1.5 py-0.5 rounded border border-blue-100/30 font-bold text-[9px] scale-95 origin-right">{btechRemaining} Left</span>
+                        </div>
+                      </div>
+
+                      {/* SSISM Breakdown */}
+                      <div className="flex flex-col">
+                        <div className="flex items-center justify-between text-[10px] font-bold text-gray-500 mb-1 leading-none">
+                          <span className="uppercase tracking-wider text-[8px] font-bold text-gray-500 flex items-center">
+                            <span className="w-1.5 h-1.5 rounded-full bg-orange-500 mr-1.5 inline-block" />
+                            SSISM Target
+                          </span>
+                          <span className="text-orange-600 font-extrabold">{ssismPct}%</span>
+                        </div>
+                        <div className="w-full bg-gray-100 rounded-full h-1 overflow-hidden mb-1">
+                          <div className="bg-orange-500 h-full rounded-full transition-all duration-700" style={{ width: `${ssismPct}%` }} />
+                        </div>
+                        <div className="flex justify-between items-center text-[9px] text-gray-400 font-semibold leading-none">
+                          <span><strong className="text-gray-700 font-bold">{ssismAdmitted}</strong> / {ssismTarget} Admitted</span>
+                          <span className="bg-orange-50/50 text-orange-600 px-1.5 py-0.5 rounded border border-orange-100/30 font-bold text-[9px] scale-95 origin-right">{ssismRemaining} Left</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
-                <div className="mt-2.5">
-                  <p className={`text-[10px] font-bold uppercase tracking-wide leading-tight ${text}`}>{label}</p>
+                  ) : (
+                    <>
+                      <div className="flex items-start justify-between w-full">
+                        <div className={`w-10 h-10 rounded-xl ${iconBg} border border-transparent group-hover:border-white/50 flex items-center justify-center transition-all duration-300`}>
+                          <Icon size={18} className={`${iconColor} group-hover:scale-110 transition-transform duration-300`} />
+                        </div>
+                      </div>
+                      <div className="mt-2">
+                        <p className={`text-[10px] font-bold uppercase tracking-wide leading-tight ${text}`}>{label}</p>
+                        <p className="text-2xl font-bold text-gray-800 mt-1">{stats[key] ?? 0}</p>
+                      </div>
+                    </>
+                  )}
+
                 </div>
-                <div className="absolute bottom-[10px] left-4">
-                  <p className="text-2xl font-bold text-gray-800">{stats[key] ?? 0}</p>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           {/* Subject-wise Target Progress */}
