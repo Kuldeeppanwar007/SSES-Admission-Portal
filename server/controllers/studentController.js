@@ -161,8 +161,18 @@ const getStudents = async (req, res) => {
       filter.admissionType = req.query.admissionType === 'PSRDMS' ? 'Shri Ram' : req.query.admissionType;
     }
 
-    // Subject filter (dashboard capacity cards se)
-    if (req.query.subjectFilter) filter.subject = req.query.subjectFilter;
+    // Subject filter (dashboard capacity cards se) — aliases bhi include karo
+    if (req.query.subjectFilter) {
+      const SUBJECT_ALIASES = {
+        'BCA': ['BCA', 'BCA(ITEG)', 'bca', 'bca(iteg)'],
+      };
+      const aliases = SUBJECT_ALIASES[req.query.subjectFilter];
+      if (aliases) {
+        filter.subject = { $in: aliases };
+      } else {
+        filter.subject = req.query.subjectFilter;
+      }
+    }
 
     // School filter
     if (req.query.schoolName) filter.schoolName = { $regex: `^${req.query.schoolName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, $options: 'i' };
@@ -1218,8 +1228,9 @@ const getTrackStats = async (req, res) => {
     targets.forEach(({ subject, target }) => {
       subjectMap[subject] = { target, admitted: 0 };
     });
+    const SUBJECT_DISPLAY_MAP_TRACK = { 'BCA(ITEG)': 'BCA', 'bca(iteg)': 'BCA', 'bca': 'BCA' };
     subjectAdmitted.forEach(({ _id, admitted }) => {
-      const mapped = BTECH_SUBJECTS_TRACK.includes(_id) ? 'B.Tech' : _id;
+      let mapped = BTECH_SUBJECTS_TRACK.includes(_id) ? 'B.Tech' : (SUBJECT_DISPLAY_MAP_TRACK[_id] || _id);
       if (!subjectMap[mapped]) subjectMap[mapped] = { target: 0, admitted: 0 };
       subjectMap[mapped].admitted += admitted;
     });
@@ -1291,6 +1302,16 @@ const getStats = async (req, res) => {
 
     const BTECH_SUBJECTS = ['B.Tech(CS)', 'B.Tech(IT)', 'B.Tech(ECE)', 'B.Tech(AI/ML)'];
 
+    // Subject display normalization — BCA(ITEG) → BCA, B.Tech variants → B.Tech
+    const SUBJECT_DISPLAY_MAP = {
+      'BCA(ITEG)': 'BCA', 'bca(iteg)': 'BCA', 'bca': 'BCA',
+    };
+    const normalizeSubjectForDisplay = (subject) => {
+      if (!subject) return subject;
+      if (BTECH_SUBJECTS.includes(subject)) return 'B.Tech';
+      return SUBJECT_DISPLAY_MAP[subject] || subject;
+    };
+
     const trackSubjectAdmitted = await Student.aggregate([
       { $match: { status: 'Admitted', admissionType: 'Full Fees', isDisabled: { $ne: true } } },
       { $group: { _id: { track: '$track', subject: '$subject' }, admitted: { $sum: 1 } } },
@@ -1302,7 +1323,11 @@ const getStats = async (req, res) => {
       { $group: { _id: '$subject', admitted: { $sum: 1 } } },
     ]);
     const admittedBySubjectMap = {};
-    allAdmittedBySubject.forEach(({ _id, admitted }) => { if (_id) admittedBySubjectMap[_id] = admitted; });
+    allAdmittedBySubject.forEach(({ _id, admitted }) => {
+      if (!_id) return;
+      const normSubj = normalizeSubjectForDisplay(_id);
+      admittedBySubjectMap[normSubj] = (admittedBySubjectMap[normSubj] || 0) + admitted;
+    });
 
     // B.Tech branch-wise admitted count — sabhi admitted
     const btechBranches = await Student.aggregate([
@@ -1322,7 +1347,7 @@ const getStats = async (req, res) => {
     allTrackSubjectAdmitted.forEach(({ _id, admitted }) => {
       let { track, subject } = _id;
       if (track) track = resolveMainTrack(track);
-      const mappedSubject = BTECH_SUBJECTS.includes(subject) ? 'B.Tech' : subject;
+      const mappedSubject = normalizeSubjectForDisplay(subject);
       if (!allTrackSubjectMap[track]) allTrackSubjectMap[track] = {};
       allTrackSubjectMap[track][mappedSubject] = (allTrackSubjectMap[track][mappedSubject] || 0) + admitted;
     });
@@ -1345,8 +1370,8 @@ const getStats = async (req, res) => {
     trackSubjectAdmitted.forEach(({ _id, admitted }) => {
       let { track, subject } = _id;
       if (track) track = resolveMainTrack(track);
-      // B.Tech ke 4 subjects ko 'B.Tech' ke under group karo
-      const mappedSubject = BTECH_SUBJECTS.includes(subject) ? 'B.Tech' : subject;
+      // B.Tech ke 4 subjects ko 'B.Tech' ke under group karo, BCA(ITEG) → BCA
+      const mappedSubject = normalizeSubjectForDisplay(subject);
       if (!trackMap[track]) trackMap[track] = { subjects: {} };
       if (!trackMap[track].subjects[mappedSubject]) trackMap[track].subjects[mappedSubject] = { target: trackMap[track].subjects[mappedSubject]?.target || 0, admitted: 0 };
       trackMap[track].subjects[mappedSubject].admitted += admitted;
@@ -1580,7 +1605,8 @@ const getStats = async (req, res) => {
       const typeKey = admissionType === 'Shri Ram' ? 'PSRDMS' : admissionType;
       if (!trackAdmissionTypeBreakdown[track]) trackAdmissionTypeBreakdown[track] = {};
       if (!trackAdmissionTypeBreakdown[track][typeKey]) trackAdmissionTypeBreakdown[track][typeKey] = {};
-      trackAdmissionTypeBreakdown[track][typeKey][subject || 'Unknown'] = (trackAdmissionTypeBreakdown[track][typeKey][subject || 'Unknown'] || 0) + count;
+      const normSubject = normalizeSubjectForDisplay(subject) || 'Unknown';
+      trackAdmissionTypeBreakdown[track][typeKey][normSubject] = (trackAdmissionTypeBreakdown[track][typeKey][normSubject] || 0) + count;
     });
 
     // Track-wise B.Tech breakdown

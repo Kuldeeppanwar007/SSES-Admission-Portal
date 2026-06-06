@@ -956,7 +956,9 @@ export default function Dashboard() {
                     {subjects.map(({ subject, target, admitted }) => {
                       const sPct = target > 0 ? Math.round((admitted / target) * 100) : 0;
                       return (
-                        <div key={subject} className="flex items-center justify-between px-5 py-3 hover:bg-gray-50/70 transition-colors">
+                        <div key={subject}
+                          onClick={(e) => { e.stopPropagation(); navigate(`/students?subjectFilter=${encodeURIComponent(subject)}&status=Admitted&track=${encodeURIComponent(track)}`); }}
+                          className="flex items-center justify-between px-5 py-3 hover:bg-orange-50/60 transition-colors cursor-pointer group/row">
                           <span className={`text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full ${SUBJECT_COLORS[subject] || 'bg-gray-100 text-gray-600'}`}>
                             {subject}
                           </span>
@@ -965,7 +967,7 @@ export default function Dashboard() {
                               <div className="h-1.5 rounded-full bg-primary/60 transition-all duration-500"
                                 style={{ width: `${Math.min(sPct, 100)}%` }} />
                             </div>
-                            <span className="text-xs font-bold tabular-nums text-gray-700">{admitted}/{target}</span>
+                            <span className="text-xs font-bold tabular-nums text-gray-700 group-hover/row:text-primary transition-colors">{admitted}/{target}</span>
                             <span className={`text-[10px] font-bold uppercase tracking-wide tabular-nums px-1.5 py-0.5 rounded-md ${sPct >= 75 ? 'bg-emerald-50 text-emerald-600' :
                                 sPct >= 40 ? 'bg-amber-50 text-amber-600' :
                                   'bg-rose-50 text-rose-500'
