@@ -8,6 +8,7 @@ const validate = (schema) => (req, res, next) => {
   });
   if (error) {
     const messages = error.details.map(d => d.message.replace(/"/g, ''));
+    console.error(`[VALIDATION ERROR] ${req.method} ${req.originalUrl || req.url}: ${messages.join(', ')}`, '\nBody received:', JSON.stringify(req.body, null, 2));
     return res.status(400).json({ message: messages.join(', ') });
   }
   req.body = value; // cleaned data use karo
@@ -37,7 +38,7 @@ const googleLoginSchema = Joi.object({
 }).or('idToken', 'accessToken');
 
 const selfRegisterSchema = Joi.object({
-  formSource:          Joi.string().valid('btech', 'ssism').optional(),
+  formSource:          Joi.string().valid('btech', 'ssism', 'ssec').optional(),
   firstName:           Joi.string().min(2).max(60).required(),
   lastName:            Joi.string().max(60).optional().allow(''),
   fathersName:         Joi.string().max(60).optional().allow(''),

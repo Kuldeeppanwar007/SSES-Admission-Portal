@@ -11,8 +11,52 @@ const {
 
 const memStorage = multer({ storage: multer.memoryStorage() });
 
+// Pre-sanitize self registration request payload to clean number formatting, country codes, spaces, placeholders
+const preSanitizeSelfRegister = (req, res, next) => {
+  if (req.body) {
+    // 1. Sanitize phone numbers to pure 10-digit strings if they are present
+    const phoneFields = ['mobile', 'whatsappNumber', 'parentMobile', 'parentMobil', 'fatherContactNumber'];
+    phoneFields.forEach(field => {
+      if (req.body[field] !== undefined && req.body[field] !== null && req.body[field] !== '') {
+        let val = String(req.body[field]).trim().replace(/\D/g, ''); // keep only digits
+        // If it starts with 91 and is 12 digits, remove the country code prefix
+        if (val.length === 12 && val.startsWith('91')) {
+          val = val.slice(2);
+        }
+        req.body[field] = val;
+      }
+    });
+
+    // 2. Sanitize aadharNo to pure digits
+    if (req.body.aadharNo !== undefined && req.body.aadharNo !== null && req.body.aadharNo !== '') {
+      req.body.aadharNo = String(req.body.aadharNo).trim().replace(/\D/g, '');
+    }
+
+    // 3. Clean placeholder emails like "-", "none", etc.
+    if (req.body.email) {
+      const emailLower = String(req.body.email).trim().toLowerCase();
+      if (['-', 'no', 'none', 'nil', 'na'].includes(emailLower)) {
+        req.body.email = '';
+      } else {
+        req.body.email = String(req.body.email).trim();
+      }
+    }
+
+    // 4. Map formSource "ssec" to "btech"
+    if (req.body.formSource) {
+      const src = String(req.body.formSource).trim().toLowerCase();
+      if (src === 'ssec') {
+        req.body.formSource = 'btech';
+      } else {
+        req.body.formSource = src;
+      }
+    }
+  }
+  next();
+};
+
 // Public self-registration endpoint (no auth required)
-router.post('/self-register', validate(schemas.selfRegister), selfRegister);
+router.post('/self-register', preSanitizeSelfRegister, validate(schemas.selfRegister), selfRegister);
 
 // External website se student field update (webhook secret secured)
 router.patch('/external-update/:id', async (req, res) => {
