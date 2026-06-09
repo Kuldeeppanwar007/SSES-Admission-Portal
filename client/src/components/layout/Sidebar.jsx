@@ -1,5 +1,6 @@
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
-import { FiHome, FiUsers, FiUserCheck, FiChevronLeft, FiChevronRight, FiFlag, FiPieChart, FiChevronDown, FiMap, FiCheckSquare, FiEdit, FiSettings, FiActivity, FiX, FiBarChart2, FiPhone } from 'react-icons/fi';
+import { FiHome, FiUsers, FiUserCheck, FiChevronLeft, FiChevronRight, FiFlag, FiPieChart, FiChevronDown, FiMap, FiCheckSquare, FiEdit, FiSettings, FiActivity, FiX, FiBarChart2, FiPhone, FiDownload, FiMonitor } from 'react-icons/fi';
+import { Capacitor } from '@capacitor/core';
 import { useState } from 'react';
 import useAuthStore from '../../store/authStore';
 import { TRACKS, MAIN_TRACKS } from '../../utils/constants';
@@ -191,6 +192,22 @@ export default function Sidebar({ open, onClose, collapsed, onToggle }) {
             </>
           )}
         </NavLink>
+
+        {!Capacitor.isNativePlatform() && (
+          <a
+            href="/downloads/SSES_Admission_Portal_Setup.exe"
+            download="SSES_Admission_Portal_Setup.exe"
+            className={`group relative flex items-center gap-3 px-3 py-2.5 mt-2 rounded-lg transition-all duration-200 font-medium bg-blue-50 text-blue-700 hover:bg-blue-100 hover:text-blue-800 border border-blue-100 ${collapsed ? 'justify-center' : ''}`}
+          >
+            <FiMonitor size={18} className="transition-transform duration-200 group-hover:scale-110" />
+            {!collapsed && <span className="text-sm">Download App</span>}
+            {collapsed && (
+              <div className="absolute left-14 px-2 py-1 bg-gray-800 text-white text-xs font-medium rounded opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap z-50 shadow-sm border border-gray-700">
+                Download App
+              </div>
+            )}
+          </a>
+        )}
       </div>
 
       <div className="p-3 border-t border-gray-100 bg-gray-50/50" style={{ paddingBottom: 'calc(12px + env(safe-area-inset-bottom, 16px))' }}>

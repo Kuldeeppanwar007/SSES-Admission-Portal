@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { HashRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import toast from 'react-hot-toast';
 import { useEffect, useRef } from 'react';
@@ -85,7 +85,7 @@ export default function App() {
 
   return (
     <PermissionGate>
-    <BrowserRouter>
+    <HashRouter>
       <Toaster position="top-right" />
       <LocationBlocker />
       <BackButtonHandler />
@@ -145,7 +145,7 @@ export default function App() {
           <Route path="/settings" element={<Settings />} />
         </Route>
       </Routes>
-    </BrowserRouter>
+    </HashRouter>
     </PermissionGate>
   );
 }

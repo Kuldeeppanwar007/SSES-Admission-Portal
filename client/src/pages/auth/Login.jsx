@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import useAuthStore from '../../store/authStore';
 import toast from 'react-hot-toast';
 import logo from '../../assets/web/icon-512.png';
-import { FiEye, FiEyeOff, FiMapPin, FiMail, FiLock } from 'react-icons/fi';
+import { FiEye, FiEyeOff, FiMapPin, FiMail, FiLock, FiDownload, FiMonitor } from 'react-icons/fi';
 import { FcGoogle } from 'react-icons/fc';
 import { Capacitor } from '@capacitor/core';
 import { Geolocation } from '@capacitor/geolocation';
@@ -425,7 +425,6 @@ export default function Login() {
                 <span>Login With Google</span>
               </button>
             </div>
-
           </div>
         )}
       </div>

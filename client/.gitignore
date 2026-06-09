@@ -2,3 +2,6 @@ node_modules/
 .env
 dist/
 .DS_Store
+public/downloads/
+desktop_release/
+dist_electron/

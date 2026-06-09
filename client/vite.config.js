@@ -3,8 +3,14 @@ import react from '@vitejs/plugin-react'
 
 // https://vite.dev/config/
 export default defineConfig({
+  base: './',
   plugins: [react()],
   build: {
     chunkSizeWarningLimit: 700,
   },
+  server: {
+    watch: {
+      ignored: ['**/dist_electron/**', '**/desktop_release/**']
+    }
+  }
 })

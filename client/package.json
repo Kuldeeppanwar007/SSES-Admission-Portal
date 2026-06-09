@@ -7,7 +7,9 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "electron:dev": "concurrently \"vite\" \"wait-on http://localhost:5173 && electron .\"",
+    "electron:build": "vite build && electron-builder -w"
   },
   "dependencies": {
     "@capacitor/android": "^8.2.0",
@@ -47,12 +49,37 @@
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.1",
     "autoprefixer": "^10.4.27",
+    "concurrently": "^10.0.3",
+    "electron": "^42.3.3",
+    "electron-builder": "^26.15.2",
     "eslint": "^9.39.4",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.5.2",
     "globals": "^17.4.0",
     "postcss": "^8.5.8",
     "tailwindcss": "^3.4.19",
-    "vite": "^8.0.1"
+    "vite": "^8.0.1",
+    "wait-on": "^9.0.10"
+  },
+  "main": "electron/main.js",
+  "build": {
+    "appId": "com.sses.admissionportal",
+    "productName": "SSES Admission Portal",
+    "directories": {
+      "output": "desktop_release"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": "nsis"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    },
+    "asar": false
   }
 }
