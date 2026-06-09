@@ -18,22 +18,22 @@ const SSISM_BRANCHES = [
 ];
 
 const SHADOW_MAP = {
-  'text-violet-600': 'hover:shadow-[0_12px_24px_-4px_rgba(139,92,246,0.12)] hover:border-violet-300 hover:bg-violet-50/10',
-  'text-amber-600': 'hover:shadow-[0_12px_24px_-4px_rgba(245,158,11,0.12)] hover:border-amber-300 hover:bg-amber-50/10',
-  'text-rose-600': 'hover:shadow-[0_12px_24px_-4px_rgba(244,63,94,0.12)] hover:border-rose-300 hover:bg-rose-50/10',
-  'text-cyan-600': 'hover:shadow-[0_12px_24px_-4px_rgba(6,182,212,0.12)] hover:border-cyan-300 hover:bg-cyan-50/10',
-  'text-emerald-600': 'hover:shadow-[0_12px_24px_-4px_rgba(16,185,129,0.12)] hover:border-emerald-300 hover:bg-emerald-50/10',
-  'text-blue-600': 'hover:shadow-[0_12px_24px_-4px_rgba(59,130,246,0.12)] hover:border-blue-300 hover:bg-blue-50/10',
-  'text-indigo-600': 'hover:shadow-[0_12px_24px_-4px_rgba(79,70,229,0.12)] hover:border-indigo-300 hover:bg-indigo-50/10',
-  'text-teal-600': 'hover:shadow-[0_12px_24px_-4px_rgba(13,148,136,0.12)] hover:border-teal-300 hover:bg-teal-50/10',
-  'text-purple-600': 'hover:shadow-[0_12px_24px_-4px_rgba(147,51,234,0.12)] hover:border-purple-300 hover:bg-purple-50/10',
+  'text-violet-600': 'hover:shadow-[0_8px_24px_rgba(139,92,246,0.15)] hover:border-violet-400/50 hover:bg-violet-50/40',
+  'text-amber-600': 'hover:shadow-[0_8px_24px_rgba(245,158,11,0.15)] hover:border-amber-400/50 hover:bg-amber-50/40',
+  'text-rose-600': 'hover:shadow-[0_8px_24px_rgba(244,63,94,0.15)] hover:border-rose-400/50 hover:bg-rose-50/40',
+  'text-cyan-600': 'hover:shadow-[0_8px_24px_rgba(6,182,212,0.15)] hover:border-cyan-400/50 hover:bg-cyan-50/40',
+  'text-emerald-600': 'hover:shadow-[0_8px_24px_rgba(16,185,129,0.15)] hover:border-emerald-400/50 hover:bg-emerald-50/40',
+  'text-blue-600': 'hover:shadow-[0_8px_24px_rgba(59,130,246,0.15)] hover:border-blue-400/50 hover:bg-blue-50/40',
+  'text-indigo-600': 'hover:shadow-[0_8px_24px_rgba(79,70,229,0.15)] hover:border-indigo-400/50 hover:bg-indigo-50/40',
+  'text-teal-600': 'hover:shadow-[0_8px_24px_rgba(13,148,136,0.15)] hover:border-teal-400/50 hover:bg-teal-50/40',
+  'text-purple-600': 'hover:shadow-[0_8px_24px_rgba(147,51,234,0.15)] hover:border-purple-400/50 hover:bg-purple-50/40',
 };
 
 function CapacityCard({ label, admitted, finalCleared, limit, color, bg, border, bar, onClick, onPendingClick }) {
   const remaining = limit !== null ? Math.max(0, limit - admitted) : null;
   const pct = limit ? Math.min(Math.round((admitted / limit) * 100), 100) : null;
   const isFull = limit !== null && remaining === 0;
-  const hoverStyle = SHADOW_MAP[color] || 'hover:shadow-[0_12px_24px_-4px_rgba(249,115,22,0.12)] hover:border-orange-300 hover:bg-orange-50/10';
+  const hoverStyle = SHADOW_MAP[color] || 'hover:shadow-[0_8px_24px_rgba(249,115,22,0.15)] hover:border-orange-400/50 hover:bg-orange-50/40';
   return (
     <div onClick={onClick} className={`bg-white rounded-2xl border ${border} ${hoverStyle} shadow-sm p-4 flex flex-col gap-2 transition-all duration-300 hover:-translate-y-1 ${onClick ? 'cursor-pointer' : ''}`}>
       <p className={`text-[10px] font-bold uppercase tracking-wide leading-tight ${color}`}>{label}</p>
@@ -189,10 +189,10 @@ function BTechCapacityCards({ btechByBranch, trackBtechBreakdown, finalClearedBy
 }
 
 const ADMISSION_TYPES = [
-  { key: 'SNS', color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-200', hoverShadow: 'hover:shadow-[0_12px_24px_-4px_rgba(59,130,246,0.12)] hover:border-blue-300 hover:bg-blue-50/10' },
-  { key: 'SVS', color: 'text-violet-600', bg: 'bg-violet-50', border: 'border-violet-200', hoverShadow: 'hover:shadow-[0_12px_24px_-4px_rgba(139,92,246,0.12)] hover:border-violet-300 hover:bg-violet-50/10' },
-  { key: 'PSRDMS', color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-200', hoverShadow: 'hover:shadow-[0_12px_24px_-4px_rgba(245,158,11,0.12)] hover:border-amber-300 hover:bg-amber-50/10' },
-  { key: 'Full Fees', color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-200', hoverShadow: 'hover:shadow-[0_12px_24px_-4px_rgba(16,185,129,0.12)] hover:border-emerald-300 hover:bg-emerald-50/10' },
+  { key: 'SNS', color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-200', hoverShadow: 'hover:shadow-[0_8px_24px_rgba(59,130,246,0.15)] hover:border-blue-400/50 hover:bg-blue-50/40' },
+  { key: 'SVS', color: 'text-violet-600', bg: 'bg-violet-50', border: 'border-violet-200', hoverShadow: 'hover:shadow-[0_8px_24px_rgba(139,92,246,0.15)] hover:border-violet-400/50 hover:bg-violet-50/40' },
+  { key: 'PSRDMS', color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-200', hoverShadow: 'hover:shadow-[0_8px_24px_rgba(245,158,11,0.15)] hover:border-amber-400/50 hover:bg-amber-50/40' },
+  { key: 'Full Fees', color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-200', hoverShadow: 'hover:shadow-[0_8px_24px_rgba(16,185,129,0.15)] hover:border-emerald-400/50 hover:bg-emerald-50/40' },
 ];
 
 function AdmissionTypeCards({ admissionTypeBreakdown, trackAdmissionTypeBreakdown, navigate, tracks, user }) {
@@ -330,28 +330,28 @@ const SUBJECT_COLORS = {
 };
 
 const STAT_META = [
-  { key: 'total', label: 'Total Students', icon: FiUsers, iconBg: 'bg-blue-50/80', iconColor: 'text-blue-500', text: 'text-blue-600', border: 'border-blue-100', hoverShadow: 'hover:shadow-[0_12px_24px_-4px_rgba(59,130,246,0.12)] hover:border-blue-300 hover:bg-blue-50/10', href: '/students' },
-  { key: 'applied', label: 'Not Calling', icon: FiFileText, iconBg: 'bg-amber-50/80', iconColor: 'text-amber-500', text: 'text-amber-600', border: 'border-amber-100', hoverShadow: 'hover:shadow-[0_12px_24px_-4px_rgba(245,158,11,0.12)] hover:border-amber-300 hover:bg-amber-50/10', href: '/students?status=Applied' },
-  { key: 'calling', label: 'Calling', icon: FiPhone, iconBg: 'bg-sky-50/80', iconColor: 'text-sky-500', text: 'text-sky-600', border: 'border-sky-100', hoverShadow: 'hover:shadow-[0_12px_24px_-4px_rgba(14,165,233,0.12)] hover:border-sky-300 hover:bg-sky-50/10', href: '/students?status=Calling' },
-  { key: 'interviewAttempts', label: 'Interview Attempts', icon: FiCheckCircle, iconBg: 'bg-violet-50/80', iconColor: 'text-violet-500', text: 'text-violet-600', border: 'border-violet-100', hoverShadow: 'hover:shadow-[0_12px_24px_-4px_rgba(139,92,246,0.12)] hover:border-violet-300 hover:bg-violet-50/10', href: '/students?interviewFilter=hasAttempts' },
-  { key: 'finalCleared', label: 'Final Interview Cleared', icon: FiCheckCircle, iconBg: 'bg-green-50/80', iconColor: 'text-green-500', text: 'text-green-600', border: 'border-green-100', hoverShadow: 'hover:shadow-[0_12px_24px_-4px_rgba(34,197,94,0.12)] hover:border-green-300 hover:bg-green-50/10', href: '/students?interviewFilter=finalCleared' },
-  { key: 'admitted', label: 'Admission Done', icon: FiAward, iconBg: 'bg-emerald-50/80', iconColor: 'text-emerald-500', text: 'text-emerald-600', border: 'border-emerald-100', hoverShadow: 'hover:shadow-[0_12px_24px_-4px_rgba(16,185,129,0.12)] hover:border-emerald-300 hover:bg-emerald-50/10', href: '/students?status=Admitted' },
-  { key: 'rejected', label: 'Rejected', icon: FiXCircle, iconBg: 'bg-rose-50/80', iconColor: 'text-rose-500', text: 'text-rose-600', border: 'border-rose-100', hoverShadow: 'hover:shadow-[0_12px_24px_-4px_rgba(244,63,94,0.12)] hover:border-rose-300 hover:bg-rose-50/10', href: '/students?status=Rejected' },
-  { key: 'admissionCancel', label: 'Admission Cancel', icon: FiUserX, iconBg: 'bg-red-50/80', iconColor: 'text-red-500', text: 'text-red-600', border: 'border-red-100', hoverShadow: 'hover:shadow-[0_12px_24px_-4px_rgba(239,68,68,0.12)] hover:border-red-300 hover:bg-red-50/10', href: '/students?status=Admission+Cancel' },
-  { key: 'disabled', label: 'Disabled', icon: FiSlash, iconBg: 'bg-gray-50/80', iconColor: 'text-gray-400', text: 'text-gray-500', border: 'border-gray-200', hoverShadow: 'hover:shadow-[0_12px_24px_-4px_rgba(107,114,128,0.12)] hover:border-gray-300 hover:bg-gray-50/10', href: '/students?tab=disabled' },
+  { key: 'total', label: 'Total Students', icon: FiUsers, iconBg: 'bg-blue-50/80', iconColor: 'text-blue-500', text: 'text-blue-600', border: 'border-blue-100', hoverShadow: 'hover:shadow-[0_8px_24px_rgba(59,130,246,0.15)] hover:border-blue-400/50 hover:bg-blue-50/40', href: '/students' },
+  { key: 'applied', label: 'Not Calling', icon: FiFileText, iconBg: 'bg-amber-50/80', iconColor: 'text-amber-500', text: 'text-amber-600', border: 'border-amber-100', hoverShadow: 'hover:shadow-[0_8px_24px_rgba(245,158,11,0.15)] hover:border-amber-400/50 hover:bg-amber-50/40', href: '/students?status=Applied' },
+  { key: 'calling', label: 'Calling', icon: FiPhone, iconBg: 'bg-sky-50/80', iconColor: 'text-sky-500', text: 'text-sky-600', border: 'border-sky-100', hoverShadow: 'hover:shadow-[0_8px_24px_rgba(14,165,233,0.15)] hover:border-sky-400/50 hover:bg-sky-50/40', href: '/students?status=Calling' },
+  { key: 'interviewAttempts', label: 'Interview Attempts', icon: FiCheckCircle, iconBg: 'bg-violet-50/80', iconColor: 'text-violet-500', text: 'text-violet-600', border: 'border-violet-100', hoverShadow: 'hover:shadow-[0_8px_24px_rgba(139,92,246,0.15)] hover:border-violet-400/50 hover:bg-violet-50/40', href: '/students?interviewFilter=hasAttempts' },
+  { key: 'finalCleared', label: 'Final Interview Cleared', icon: FiCheckCircle, iconBg: 'bg-green-50/80', iconColor: 'text-green-500', text: 'text-green-600', border: 'border-green-100', hoverShadow: 'hover:shadow-[0_8px_24px_rgba(34,197,94,0.15)] hover:border-green-400/50 hover:bg-green-50/40', href: '/students?interviewFilter=finalCleared' },
+  { key: 'admitted', label: 'Admission Done', icon: FiAward, iconBg: 'bg-emerald-50/80', iconColor: 'text-emerald-500', text: 'text-emerald-600', border: 'border-emerald-100', hoverShadow: 'hover:shadow-[0_8px_24px_rgba(16,185,129,0.15)] hover:border-emerald-400/50 hover:bg-emerald-50/40', href: '/students?status=Admitted' },
+  { key: 'rejected', label: 'Rejected', icon: FiXCircle, iconBg: 'bg-rose-50/80', iconColor: 'text-rose-500', text: 'text-rose-600', border: 'border-rose-100', hoverShadow: 'hover:shadow-[0_8px_24px_rgba(244,63,94,0.15)] hover:border-rose-400/50 hover:bg-rose-50/40', href: '/students?status=Rejected' },
+  { key: 'admissionCancel', label: 'Admission Cancel', icon: FiUserX, iconBg: 'bg-red-50/80', iconColor: 'text-red-500', text: 'text-red-600', border: 'border-red-100', hoverShadow: 'hover:shadow-[0_8px_24px_rgba(239,68,68,0.15)] hover:border-red-400/50 hover:bg-red-50/40', href: '/students?status=Admission+Cancel' },
+  { key: 'disabled', label: 'Disabled', icon: FiSlash, iconBg: 'bg-gray-50/80', iconColor: 'text-gray-400', text: 'text-gray-500', border: 'border-gray-200', hoverShadow: 'hover:shadow-[0_8px_24px_rgba(107,114,128,0.15)] hover:border-gray-400/50 hover:bg-gray-50/40', href: '/students?tab=disabled' },
 ];
 
 const FUNNEL_STAGE_META = [
-  { key: 'Call Not Received', label: 'Call Not Received', icon: FiPhoneMissed, iconBg: 'bg-rose-50/80', iconColor: 'text-rose-500', text: 'text-rose-600', border: 'border-rose-100', hoverShadow: 'hover:shadow-[0_12px_24px_-4px_rgba(244,63,94,0.12)] hover:border-rose-300 hover:bg-rose-50/10' },
-  { key: 'Call Completed', label: 'Call Completed', icon: FiCheckCircle, iconBg: 'bg-emerald-50/80', iconColor: 'text-emerald-500', text: 'text-emerald-600', border: 'border-emerald-100', hoverShadow: 'hover:shadow-[0_12px_24px_-4px_rgba(16,185,129,0.12)] hover:border-emerald-300 hover:bg-emerald-50/10' },
-  { key: 'Lead Interested', label: 'Lead Interested', icon: FiTrendingUp, iconBg: 'bg-blue-50/80', iconColor: 'text-blue-500', text: 'text-blue-600', border: 'border-blue-100', hoverShadow: 'hover:shadow-[0_12px_24px_-4px_rgba(59,130,246,0.12)] hover:border-blue-300 hover:bg-blue-50/10' },
-  { key: 'Wrong Number', label: 'Wrong Number', icon: FiAlertCircle, iconBg: 'bg-amber-50/80', iconColor: 'text-amber-500', text: 'text-amber-600', border: 'border-amber-100', hoverShadow: 'hover:shadow-[0_12px_24px_-4px_rgba(245,158,11,0.12)] hover:border-amber-300 hover:bg-amber-50/10' },
-  { key: 'Switch Off', label: 'Switch Off', icon: FiPhoneOff, iconBg: 'bg-gray-50/80', iconColor: 'text-gray-400', text: 'text-gray-500', border: 'border-gray-200', hoverShadow: 'hover:shadow-[0_12px_24px_-4px_rgba(107,114,128,0.12)] hover:border-gray-300 hover:bg-gray-50/10' },
-  { key: 'Admission Closed', label: 'Admission Closed', icon: FiLock, iconBg: 'bg-violet-50/80', iconColor: 'text-violet-500', text: 'text-violet-600', border: 'border-violet-100', hoverShadow: 'hover:shadow-[0_12px_24px_-4px_rgba(139,92,246,0.12)] hover:border-violet-300 hover:bg-violet-50/10' },
-  { key: 'Repeated No Response', label: 'No Response', icon: FiPhoneMissed, iconBg: 'bg-orange-50/80', iconColor: 'text-orange-500', text: 'text-orange-600', border: 'border-orange-100', hoverShadow: 'hover:shadow-[0_12px_24px_-4px_rgba(249,115,22,0.12)] hover:border-orange-300 hover:bg-orange-50/10' },
-  { key: 'Not Interested', label: 'Not Interested', icon: FiXCircle, iconBg: 'bg-red-50/80', iconColor: 'text-red-500', text: 'text-red-600', border: 'border-red-100', hoverShadow: 'hover:shadow-[0_12px_24px_-4px_rgba(239,68,68,0.12)] hover:border-red-300 hover:bg-red-50/10' },
-  { key: 'Joined Elsewhere', label: 'Joined Elsewhere', icon: FiSlash, iconBg: 'bg-slate-50/80', iconColor: 'text-slate-500', text: 'text-slate-600', border: 'border-slate-200', hoverShadow: 'hover:shadow-[0_12px_24px_-4px_rgba(71,85,105,0.12)] hover:border-slate-300 hover:bg-slate-50/10' },
-  { key: 'No Stage', label: 'No Stage Set', icon: FiSlash, iconBg: 'bg-gray-50/80', iconColor: 'text-gray-400', text: 'text-gray-500', border: 'border-gray-200', hoverShadow: 'hover:shadow-[0_12px_24px_-4px_rgba(107,114,128,0.12)] hover:border-gray-300 hover:bg-gray-50/10' },
+  { key: 'Call Not Received', label: 'Call Not Received', icon: FiPhoneMissed, iconBg: 'bg-rose-50/80', iconColor: 'text-rose-500', text: 'text-rose-600', border: 'border-rose-100', hoverShadow: 'hover:shadow-[0_8px_24px_rgba(244,63,94,0.15)] hover:border-rose-400/50 hover:bg-rose-50/40' },
+  { key: 'Call Completed', label: 'Call Completed', icon: FiCheckCircle, iconBg: 'bg-emerald-50/80', iconColor: 'text-emerald-500', text: 'text-emerald-600', border: 'border-emerald-100', hoverShadow: 'hover:shadow-[0_8px_24px_rgba(16,185,129,0.15)] hover:border-emerald-400/50 hover:bg-emerald-50/40' },
+  { key: 'Lead Interested', label: 'Lead Interested', icon: FiTrendingUp, iconBg: 'bg-blue-50/80', iconColor: 'text-blue-500', text: 'text-blue-600', border: 'border-blue-100', hoverShadow: 'hover:shadow-[0_8px_24px_rgba(59,130,246,0.15)] hover:border-blue-400/50 hover:bg-blue-50/40' },
+  { key: 'Wrong Number', label: 'Wrong Number', icon: FiAlertCircle, iconBg: 'bg-amber-50/80', iconColor: 'text-amber-500', text: 'text-amber-600', border: 'border-amber-100', hoverShadow: 'hover:shadow-[0_8px_24px_rgba(245,158,11,0.15)] hover:border-amber-400/50 hover:bg-amber-50/40' },
+  { key: 'Switch Off', label: 'Switch Off', icon: FiPhoneOff, iconBg: 'bg-gray-50/80', iconColor: 'text-gray-400', text: 'text-gray-500', border: 'border-gray-200', hoverShadow: 'hover:shadow-[0_8px_24px_rgba(107,114,128,0.15)] hover:border-gray-400/50 hover:bg-gray-50/40' },
+  { key: 'Admission Closed', label: 'Admission Closed', icon: FiLock, iconBg: 'bg-violet-50/80', iconColor: 'text-violet-500', text: 'text-violet-600', border: 'border-violet-100', hoverShadow: 'hover:shadow-[0_8px_24px_rgba(139,92,246,0.15)] hover:border-violet-400/50 hover:bg-violet-50/40' },
+  { key: 'Repeated No Response', label: 'No Response', icon: FiPhoneMissed, iconBg: 'bg-orange-50/80', iconColor: 'text-orange-500', text: 'text-orange-600', border: 'border-orange-100', hoverShadow: 'hover:shadow-[0_8px_24px_rgba(249,115,22,0.15)] hover:border-orange-400/50 hover:bg-orange-50/40' },
+  { key: 'Not Interested', label: 'Not Interested', icon: FiXCircle, iconBg: 'bg-red-50/80', iconColor: 'text-red-500', text: 'text-red-600', border: 'border-red-100', hoverShadow: 'hover:shadow-[0_8px_24px_rgba(239,68,68,0.15)] hover:border-red-400/50 hover:bg-red-50/40' },
+  { key: 'Joined Elsewhere', label: 'Joined Elsewhere', icon: FiSlash, iconBg: 'bg-slate-50/80', iconColor: 'text-slate-500', text: 'text-slate-600', border: 'border-slate-200', hoverShadow: 'hover:shadow-[0_8px_24px_rgba(71,85,105,0.15)] hover:border-slate-400/50 hover:bg-slate-50/40' },
+  { key: 'No Stage', label: 'No Stage Set', icon: FiSlash, iconBg: 'bg-gray-50/80', iconColor: 'text-gray-400', text: 'text-gray-500', border: 'border-gray-200', hoverShadow: 'hover:shadow-[0_8px_24px_rgba(107,114,128,0.15)] hover:border-gray-400/50 hover:bg-gray-50/40' },
 ];
 
 function FunnelStageCards({ funnelStageBreakdown, trackFunnelBreakdown, navigate, user }) {

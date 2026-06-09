@@ -11,3 +11,21 @@
 body {
   @apply bg-gray-50 text-gray-900;
 }
+
+/* Custom Scrollbar for Sidebar */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background-color: transparent;
+  border-radius: 4px;
+}
+.custom-scrollbar:hover::-webkit-scrollbar-thumb {
+  background-color: #e5e7eb;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: #d1d5db;
+}
