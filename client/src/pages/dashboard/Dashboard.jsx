@@ -29,18 +29,29 @@ const SHADOW_MAP = {
   'text-purple-600': 'hover:shadow-[0_8px_24px_rgba(147,51,234,0.15)] hover:border-purple-400/50 hover:bg-purple-50/40',
 };
 
-function CapacityCard({ label, admitted, finalCleared, limit, color, bg, border, bar, onClick, onPendingClick }) {
-  const remaining = limit !== null ? Math.max(0, limit - admitted) : null;
-  const pct = limit ? Math.min(Math.round((admitted / limit) * 100), 100) : null;
-  const isFull = limit !== null && remaining === 0;
+function CapacityCard({ label, subject, admitted, waiting, finalCleared, limit, color, bg, border, bar, onClick, onPendingClick, onWaitingClick }) {
+  const isReservable = limit !== null && limit > 0;
+  const maxReserved = /bca|bba/i.test(subject) ? 4 : 3;
+  const displayLimit = isReservable ? limit - maxReserved : limit;
+  const consumedReserved = isReservable ? Math.max(0, admitted - displayLimit) : 0;
+  const currentReservedSeats = isReservable ? Math.max(0, maxReserved - consumedReserved) : 0;
+
+  const remaining = displayLimit !== null ? Math.max(0, displayLimit - admitted) : null;
+  const pct = displayLimit ? Math.min(Math.round((admitted / displayLimit) * 100), 100) : null;
+  const isFull = displayLimit !== null && remaining === 0;
   const hoverStyle = SHADOW_MAP[color] || 'hover:shadow-[0_8px_24px_rgba(249,115,22,0.15)] hover:border-orange-400/50 hover:bg-orange-50/40';
   return (
-    <div onClick={onClick} className={`bg-white rounded-2xl border ${border} ${hoverStyle} shadow-sm p-4 flex flex-col gap-2 transition-all duration-300 hover:-translate-y-1 ${onClick ? 'cursor-pointer' : ''}`}>
+    <div onClick={onClick} className={`bg-white rounded-2xl border ${border} ${hoverStyle} shadow-sm p-4 flex flex-col gap-2 h-full transition-all duration-300 hover:-translate-y-1 ${onClick ? 'cursor-pointer' : ''}`}>
       <p className={`text-[10px] font-bold uppercase tracking-wide leading-tight ${color}`}>{label}</p>
       <div className="flex items-end justify-between">
         <div>
           <p className="text-2xl font-bold text-gray-800">{admitted}</p>
-          <p className="text-xs text-gray-400">{limit !== null ? `of ${limit}` : 'No limit set'}</p>
+          <div className="flex flex-col">
+            <p className="text-xs text-gray-400">{displayLimit !== null ? `of ${displayLimit}` : 'No limit set'}</p>
+            {isReservable && (
+              <p className="text-[9px] font-bold text-amber-500 mt-0.5" title="Requires Admin Approval">{currentReservedSeats} Reserved (Admin)</p>
+            )}
+          </div>
         </div>
         {remaining !== null && (
           <p className={`text-sm font-bold ${isFull ? 'text-rose-500' : 'text-emerald-600'}`}>
@@ -57,6 +68,17 @@ function CapacityCard({ label, admitted, finalCleared, limit, color, bg, border,
           </span>
           <span className="text-xs font-bold text-emerald-700">{admitted}</span>
         </div>
+        {waiting > 0 && (
+          <div 
+            onClick={(e) => { e.stopPropagation(); onWaitingClick?.(); }}
+            className="flex items-center justify-between bg-orange-50 px-2.5 py-1.5 rounded-lg border border-orange-100/50 cursor-pointer hover:bg-orange-100/80 transition-colors">
+            <span className="text-[11px] text-orange-700 font-semibold flex items-center gap-1.5">
+              <span className="w-4 h-4 rounded-full bg-orange-200/50 flex items-center justify-center text-[9px]">⏳</span> 
+              Waiting (Admin Approval)
+            </span>
+            <span className="text-xs font-bold text-orange-700">{waiting}</span>
+          </div>
+        )}
         {finalCleared > 0 && (
           <div
             onClick={(e) => { e.stopPropagation(); onPendingClick?.(); }}
@@ -70,7 +92,7 @@ function CapacityCard({ label, admitted, finalCleared, limit, color, bg, border,
         )}
       </div>
       {pct !== null && (
-        <div>
+        <div className="mt-auto pt-3">
           <div className="w-full bg-gray-100 rounded-full h-1.5">
             <div className={`h-1.5 rounded-full transition-all duration-700 ${isFull ? 'bg-rose-500' : bar}`}
               style={{ width: `${pct}%` }} />
@@ -90,9 +112,11 @@ function SSISMCapacityCards({ trackWise, finalClearedBySubject, trackFinalCleare
     : (trackWise || []);
 
   const admittedBySubject = {};
+  const waitingBySubject = {};
   activeTrackWise.forEach(({ subjects }) => {
-    (subjects || []).forEach(({ subject, admitted }) => {
+    (subjects || []).forEach(({ subject, admitted, waiting }) => {
       admittedBySubject[subject] = (admittedBySubject[subject] || 0) + (admitted || 0);
+      waitingBySubject[subject] = (waitingBySubject[subject] || 0) + (waiting || 0);
     });
   });
 
@@ -124,9 +148,11 @@ function SSISMCapacityCards({ trackWise, finalClearedBySubject, trackFinalCleare
         {SSISM_BRANCHES.map((b) => (
           <CapacityCard key={b.label} {...b}
             admitted={admittedBySubject[b.subject] || 0}
+            waiting={waitingBySubject[b.subject] || 0}
             finalCleared={activeFinalCleared[b.subject] || 0}
             onClick={() => navigate(`/students?subjectFilter=${encodeURIComponent(b.subject)}&status=Admitted${selectedTrack ? `&track=${encodeURIComponent(selectedTrack)}` : ''}`)}
-            onPendingClick={() => navigate(`/students?subjectFilter=${encodeURIComponent(b.subject)}&interviewFilter=finalCleared${selectedTrack ? `&track=${encodeURIComponent(selectedTrack)}` : ''}`)} />
+            onPendingClick={() => navigate(`/students?subjectFilter=${encodeURIComponent(b.subject)}&interviewFilter=finalCleared${selectedTrack ? `&track=${encodeURIComponent(selectedTrack)}` : ''}`)}
+            onWaitingClick={() => navigate(`/students?subjectFilter=${encodeURIComponent(b.subject)}&status=Waiting${selectedTrack ? `&track=${encodeURIComponent(selectedTrack)}` : ''}`)} />
         ))}
       </div>
     </div>
@@ -140,15 +166,18 @@ const BTECH_BRANCHES = [
   { label: 'B.Tech (AI/ML)', subject: 'B.Tech(AI/ML)', limit: 60, color: 'text-purple-600', bg: 'bg-purple-50', border: 'border-purple-200', bar: 'bg-purple-500' },
 ];
 
-function BTechCapacityCards({ btechByBranch, trackBtechBreakdown, finalClearedBySubject, trackFinalClearedBySubject, navigate, tracks, user }) {
+function BTechCapacityCards({ btechByBranch, btechWaitingByBranch, trackBtechBreakdown, trackBtechWaitingBreakdown, finalClearedBySubject, trackFinalClearedBySubject, navigate, tracks, user }) {
   const isTrackIncharge = user?.role === 'track_incharge' || user?.role === 'interviewer';
   const [selectedTrack, setSelectedTrack] = useState('');
 
   let activeBtech = btechByBranch || {};
+  let activeBtechWaiting = btechWaitingByBranch || {};
   if (selectedTrack && trackBtechBreakdown?.[selectedTrack]) {
     activeBtech = trackBtechBreakdown[selectedTrack];
+    activeBtechWaiting = trackBtechWaitingBreakdown?.[selectedTrack] || {};
   } else if (selectedTrack) {
     activeBtech = {};
+    activeBtechWaiting = {};
   }
 
   const activeFinalCleared = selectedTrack
@@ -179,9 +208,11 @@ function BTechCapacityCards({ btechByBranch, trackBtechBreakdown, finalClearedBy
         {BTECH_BRANCHES.map((b) => (
           <CapacityCard key={b.label} {...b}
             admitted={activeBtech[b.subject] || 0}
+            waiting={activeBtechWaiting[b.subject] || 0}
             finalCleared={activeFinalCleared[b.subject] || 0}
             onClick={() => navigate(`/students?subjectFilter=${encodeURIComponent(b.subject)}&status=Admitted${selectedTrack ? `&track=${encodeURIComponent(selectedTrack)}` : ''}`)}
-            onPendingClick={() => navigate(`/students?subjectFilter=${encodeURIComponent(b.subject)}&interviewFilter=finalCleared${selectedTrack ? `&track=${encodeURIComponent(selectedTrack)}` : ''}`)} />
+            onPendingClick={() => navigate(`/students?subjectFilter=${encodeURIComponent(b.subject)}&interviewFilter=finalCleared${selectedTrack ? `&track=${encodeURIComponent(selectedTrack)}` : ''}`)}
+            onWaitingClick={() => navigate(`/students?subjectFilter=${encodeURIComponent(b.subject)}&status=Waiting${selectedTrack ? `&track=${encodeURIComponent(selectedTrack)}` : ''}`)} />
         ))}
       </div>
     </div>

@@ -4,7 +4,7 @@ import api from '../../api/axios';
 import { TRACKS, STATUSES, TRACK_TOWNS } from '../../utils/constants';
 import useAuthStore from '../../store/authStore';
 import toast from 'react-hot-toast';
-import { FiExternalLink, FiCamera, FiImage, FiFileText, FiUser, FiCreditCard, FiX } from 'react-icons/fi';
+import { FiExternalLink, FiCamera, FiImage, FiFileText, FiUser, FiCreditCard, FiX, FiAlertCircle } from 'react-icons/fi';
 import BottomSheet from '../../components/BottomSheet';
 
 const SUBJECTS = ['B.Tech(CS)', 'B.Tech(IT)', 'B.Tech(ECE)', 'B.Tech(AI/ML)', 'BCA', 'BBA', 'Bcom', 'Bio', 'Micro'];
@@ -126,6 +126,7 @@ export default function StudentForm() {
   const [loading, setLoading] = useState(false);
   const [cameraFor, setCameraFor] = useState(null);
   const [originalFormSource, setOriginalFormSource] = useState('manual');
+  const [waitingPopupMessage, setWaitingPopupMessage] = useState(null);
   const isAdmin = user?.role === 'admin';
   const isManager = user?.role === 'manager';
   const isManual = !originalFormSource || originalFormSource === 'manual' || isAdmin;
@@ -229,9 +230,13 @@ export default function StudentForm() {
        'persentage10','dob','aadharNo','fatherOccupation','fatherIncome',
        'fatherContactNumber','pincode','tehsil'].forEach((k) => formData.append(k, form[k]));
       DOC_FIELDS.forEach(({ key }) => { if (docs[key]) formData.append(key, docs[key]); });
-      await api.put(`/students/${id}`, formData);
-      toast.success('Student updated successfully');
-      navigate('/students');
+      const { data } = await api.put(`/students/${id}`, formData);
+      if (data._waitingMessage) {
+        setWaitingPopupMessage(data._waitingMessage);
+      } else {
+        toast.success('Student updated successfully');
+        navigate('/students');
+      }
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to save');
     } finally { setLoading(false); }
@@ -277,6 +282,32 @@ export default function StudentForm() {
 
   return (
     <div className="px-2">
+      {waitingPopupMessage && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="p-6 text-center space-y-4">
+              <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-2">
+                <FiAlertCircle size={32} className="text-amber-500" />
+              </div>
+              <h3 className="text-xl font-bold text-gray-900">Shifted to Waiting</h3>
+              <p className="text-gray-600 text-sm leading-relaxed">
+                {waitingPopupMessage}
+              </p>
+            </div>
+            <div className="p-4 bg-gray-50 border-t border-gray-100 flex justify-center">
+              <button 
+                type="button"
+                onClick={() => {
+                  setWaitingPopupMessage(null);
+                  navigate('/students');
+                }}
+                className="w-full bg-amber-500 text-white px-6 py-2.5 rounded-xl font-semibold hover:bg-amber-600 transition-colors">
+                I Understand
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {cameraFor && (
         <CameraModal
           onCapture={(file) => { setDocs((d) => ({ ...d, [cameraFor]: file })); setCameraFor(null); }}

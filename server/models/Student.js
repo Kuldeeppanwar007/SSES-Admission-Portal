@@ -19,7 +19,7 @@ const studentSchema = new mongoose.Schema({
   aadharCard: { type: String, default: null },
   status: {
     type: String,
-    enum: ['Applied', 'Calling', 'Admitted', 'Rejected', 'Disabled', 'Admission Cancel'],
+    enum: ['Applied', 'Calling', 'Admitted', 'Waiting', 'Rejected', 'Disabled', 'Admission Cancel'],
     default: 'Applied',
   },
   remarks: { type: String, default: '' },

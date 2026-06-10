@@ -415,6 +415,45 @@ const ALLOWED_FUNNEL = {
 // Calling points — flat 5 pts per student (ek baar), leaderboard efficiency se rank hoga
 const CALLING_POINTS_PER_STUDENT = 5;
 
+const CAPACITY_LIMITS = {
+  'BCA': 120,
+  'BBA': 120,
+  'Bio': 60,
+  'Micro': 60,
+  'Bcom': 60,
+  'B.Tech(CS)': 60,
+  'B.Tech(IT)': 60,
+  'B.Tech(ECE)': 60,
+  'B.Tech(AI/ML)': 60
+};
+const getReservedSeatsCount = (subject) => {
+  if (!subject) return 3;
+  return /bca|bba/i.test(subject) ? 4 : 3;
+};
+
+const checkCapacity = async (subjectToAdmit, userRole) => {
+  if (!subjectToAdmit) return null;
+  let normSubj = subjectToAdmit;
+  if (/bca/i.test(subjectToAdmit)) normSubj = 'BCA';
+  const limit = CAPACITY_LIMITS[normSubj];
+  if (limit !== undefined) {
+    const Student = require('../models/Student');
+    const queryFilter = { status: 'Admitted', isDisabled: { $ne: true } };
+    if (normSubj === 'BCA') {
+      queryFilter.subject = { $in: ['BCA', 'BCA(ITEG)', 'bca', 'bca(iteg)'] };
+    } else {
+      queryFilter.subject = subjectToAdmit; 
+    }
+    const currentAdmitted = await Student.countDocuments(queryFilter);
+    const isAdmin = userRole === 'admin';
+    const effectiveLimit = isAdmin ? limit : (limit - getReservedSeatsCount(normSubj));
+    if (currentAdmitted >= effectiveLimit) {
+      return { isFull: true, isAdmin, limit, effectiveLimit, normSubj };
+    }
+  }
+  return null;
+};
+
 // Update student
 const updateStudent = async (req, res) => {
   const student = await Student.findById(req.params.id);
@@ -445,6 +484,24 @@ const updateStudent = async (req, res) => {
   if (updates.funnelStage && !allowedFunnels.includes(updates.funnelStage)) {
     updates.funnelStage = ''; // silently clear invalid funnel stage
   }
+
+  // --- CAPACITY VALIDATION ---
+  let isWaitingAssigned = false;
+  let waitingMessage = '';
+  if (prevStatus !== 'Admitted' && effectiveStatus === 'Admitted') {
+    const subjectToAdmit = updates.subject || student.subject;
+    const capacityInfo = await checkCapacity(subjectToAdmit, req.user.role);
+    if (capacityInfo && capacityInfo.isFull) {
+      if (capacityInfo.isAdmin) {
+        return res.status(400).json({ message: `Branch capacity full (${capacityInfo.limit}). Cannot admit more students in ${capacityInfo.normSubj}.` });
+      } else {
+        updates.status = 'Waiting';
+        isWaitingAssigned = true;
+        waitingMessage = `Ye student waiting me push kiya jaa raha h kyuki seats available nhi h. After admin approval isko admitted me shift kiya jayega.`;
+      }
+    }
+  }
+  // ---------------------------
 
   // If status changed and prevFunnel is no longer valid for new status, rollback those points
   let pointsDelta = 0;
@@ -591,7 +648,11 @@ const updateStudent = async (req, res) => {
     }
   }
 
-  res.json(updated);
+  const responseObj = updated.toObject ? updated.toObject() : updated;
+  if (isWaitingAssigned) {
+    responseObj._waitingMessage = waitingMessage;
+  }
+  res.json(responseObj);
 };
 
 // Delete student
@@ -614,10 +675,29 @@ const updateStatus = async (req, res) => {
   const prevStatus = student.status;
   const prevFunnel = student.funnelStage || '';
   
+  // --- CAPACITY VALIDATION ---
+  let isWaitingAssigned = false;
+  let waitingMessage = '';
   const updates = { status, remarks, isDisabled };
+  
+  if (prevStatus !== 'Admitted' && status === 'Admitted') {
+    const capacityInfo = await checkCapacity(student.subject, req.user.role);
+    if (capacityInfo && capacityInfo.isFull) {
+      if (capacityInfo.isAdmin) {
+        return res.status(400).json({ message: `Branch capacity full (${capacityInfo.limit}). Cannot admit more students in ${capacityInfo.normSubj}.` });
+      } else {
+        updates.status = 'Waiting';
+        isWaitingAssigned = true;
+        waitingMessage = `Ye student waiting me push kiya jaa raha h kyuki seats available nhi h. After admin approval isko admitted me shift kiya jayega.`;
+      }
+    }
+  }
+  // ---------------------------
+
   let pointsDelta = 0;
 
-  const allowedFunnels = ALLOWED_FUNNEL[status] || [];
+  const effectiveStatus = updates.status;
+  const allowedFunnels = ALLOWED_FUNNEL[effectiveStatus] || [];
   if (prevFunnel && !allowedFunnels.includes(prevFunnel)) {
     updates.funnelStage = '';
     if (student.awardedFunnelStages?.includes(prevFunnel)) {
@@ -633,9 +713,9 @@ const updateStatus = async (req, res) => {
   );
 
   // Points logic
-  if (prevStatus !== 'Admitted' && status === 'Admitted' && student.subject)
+  if (prevStatus !== 'Admitted' && effectiveStatus === 'Admitted' && student.subject)
     pointsDelta += await getSubjectPoints(student.track, student.subject);
-  if (prevStatus === 'Admitted' && status !== 'Admitted' && student.subject)
+  if (prevStatus === 'Admitted' && effectiveStatus !== 'Admitted' && student.subject)
     pointsDelta -= await getSubjectPoints(student.track, student.subject);
 
   if (pointsDelta !== 0 && student.track) {
@@ -647,8 +727,13 @@ const updateStatus = async (req, res) => {
     );
   }
 
-  await StatusHistory.create({ student: req.params.id, status, remarks, changedBy: req.user._id });
-  res.json(updated);
+  await StatusHistory.create({ student: req.params.id, status: updates.status, remarks, changedBy: req.user._id });
+  
+  const responseObj = updated.toObject ? updated.toObject() : updated;
+  if (isWaitingAssigned) {
+    responseObj._waitingMessage = waitingMessage;
+  }
+  res.json(responseObj);
 };
 
 // Get status history
@@ -1337,6 +1422,13 @@ const getStats = async (req, res) => {
     const btechByBranch = {};
     btechBranches.forEach(({ _id, admitted }) => { btechByBranch[_id] = admitted; });
 
+    const btechWaitingBranches = await Student.aggregate([
+      { $match: { status: 'Waiting', subject: { $in: BTECH_SUBJECTS }, isDisabled: { $ne: true } } },
+      { $group: { _id: '$subject', waiting: { $sum: 1 } } },
+    ]);
+    const btechWaitingByBranch = {};
+    btechWaitingBranches.forEach(({ _id, waiting }) => { btechWaitingByBranch[_id] = waiting; });
+
     // SSISM capacity — trackWise subjects mein bhi sab admitted chahiye (capacity display ke liye)
     // trackWise subjects admitted count ko allAdmittedBySubject se override karo
     const allTrackSubjectAdmitted = await Student.aggregate([
@@ -1350,6 +1442,19 @@ const getStats = async (req, res) => {
       const mappedSubject = normalizeSubjectForDisplay(subject);
       if (!allTrackSubjectMap[track]) allTrackSubjectMap[track] = {};
       allTrackSubjectMap[track][mappedSubject] = (allTrackSubjectMap[track][mappedSubject] || 0) + admitted;
+    });
+
+    const allTrackSubjectWaiting = await Student.aggregate([
+      { $match: { status: 'Waiting', isDisabled: { $ne: true } } },
+      { $group: { _id: { track: '$track', subject: '$subject' }, waiting: { $sum: 1 } } },
+    ]);
+    const allTrackSubjectWaitingMap = {};
+    allTrackSubjectWaiting.forEach(({ _id, waiting }) => {
+      let { track, subject } = _id;
+      if (track) track = resolveMainTrack(track);
+      const mappedSubject = normalizeSubjectForDisplay(subject);
+      if (!allTrackSubjectWaitingMap[track]) allTrackSubjectWaitingMap[track] = {};
+      allTrackSubjectWaitingMap[track][mappedSubject] = (allTrackSubjectWaitingMap[track][mappedSubject] || 0) + waiting;
     });
 
     const targets = await Target.find({});
@@ -1468,6 +1573,7 @@ const getStats = async (req, res) => {
           subject,
           target: data.target,
           admitted: allTrackSubjectMap[track]?.[subject] || 0,
+          waiting: allTrackSubjectWaitingMap[track]?.[subject] || 0,
         })),
         fullFeesSubjects,
         points: pointsMap[track] || 0,
@@ -1623,7 +1729,20 @@ const getStats = async (req, res) => {
       trackBtechBreakdown[track][subject] = (trackBtechBreakdown[track][subject] || 0) + admitted;
     });
 
-    res.json({ total, applied, calling, admitted, rejected, disabled, admissionCancel, unassigned, admittedNoFunnelCount, finalCleared, finalClearedManual, interviewAttempts, trackWise, btechByBranch, finalClearedBySubject, trackFinalClearedBySubject, admissionTypeBreakdown, trackAdmissionTypeBreakdown, funnelStageBreakdown, trackFunnelBreakdown, trackBtechBreakdown });
+    const trackBtechWaitingRaw = await Student.aggregate([
+      { $match: { status: 'Waiting', subject: { $in: BTECH_SUBJECTS }, isDisabled: { $ne: true } } },
+      { $group: { _id: { track: '$track', subject: '$subject' }, waiting: { $sum: 1 } } },
+    ]);
+    const trackBtechWaitingBreakdown = {};
+    trackBtechWaitingRaw.forEach(({ _id, waiting }) => {
+      let { track, subject } = _id;
+      if (!track) return;
+      track = resolveMainTrack(track);
+      if (!trackBtechWaitingBreakdown[track]) trackBtechWaitingBreakdown[track] = {};
+      trackBtechWaitingBreakdown[track][subject] = (trackBtechWaitingBreakdown[track][subject] || 0) + waiting;
+    });
+
+    res.json({ total, applied, calling, admitted, rejected, disabled, admissionCancel, unassigned, admittedNoFunnelCount, finalCleared, finalClearedManual, interviewAttempts, trackWise, btechByBranch, btechWaitingByBranch, finalClearedBySubject, trackFinalClearedBySubject, admissionTypeBreakdown, trackAdmissionTypeBreakdown, funnelStageBreakdown, trackFunnelBreakdown, trackBtechBreakdown, trackBtechWaitingBreakdown });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
