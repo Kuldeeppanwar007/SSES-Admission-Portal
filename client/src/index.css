@@ -29,3 +29,12 @@ body {
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background-color: #d1d5db;
 }
+
+/* Hide scrollbar but keep scroll functionality */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
