@@ -254,7 +254,7 @@ export default function Login() {
       </div>
 
       {/* ── Right Login Panel ── */}
-      <div className="flex-1 flex items-center justify-center px-5 py-6 relative h-full overflow-y-auto scrollbar-hide">
+      <div className="flex-1 flex items-center justify-center px-4 py-3 sm:px-5 sm:py-6 relative h-full overflow-hidden">
         {/* Soft bg circles */}
         <div className="absolute top-0 right-0 w-96 h-96 rounded-full blur-3xl pointer-events-none"
           style={{ background: 'rgba(253,186,116,0.18)', transform: 'translate(40%,-40%)' }} />
@@ -265,7 +265,7 @@ export default function Login() {
           style={{ opacity: mounted ? 1 : 0, transform: mounted ? 'translateY(0)' : 'translateY(24px)' }}>
 
           {/* ── Card ── */}
-          <div className="rounded-3xl p-8 md:p-10"
+          <div className="rounded-2xl sm:rounded-3xl p-5 sm:p-8 md:p-10"
             style={{
               background: '#ffffff',
               border: '1.5px solid rgba(249,115,22,0.12)',
@@ -311,15 +311,15 @@ export default function Login() {
             ) : (
               <>
                 {/* Header */}
-                <div className="mb-7">
+                <div className="mb-4 sm:mb-7">
                   {/* Mobile logo */}
-                  <div className="flex lg:hidden items-center gap-2 mb-5">
-                    <div className="w-9 h-9 rounded-xl bg-orange-50 border border-orange-100 flex items-center justify-center overflow-hidden">
-                      <img src={logo} alt="SSES" className="h-7 w-7 object-contain" />
+                  <div className="flex lg:hidden items-center gap-2 mb-3 sm:mb-5">
+                    <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-orange-50 border border-orange-100 flex items-center justify-center overflow-hidden">
+                      <img src={logo} alt="SSES" className="h-6 w-6 sm:h-7 sm:w-7 object-contain" />
                     </div>
-                    <span className="text-lg font-black text-orange-500 tracking-tight">SSES</span>
+                    <span className="text-base sm:text-lg font-black text-orange-500 tracking-tight">SSES</span>
                   </div>
-                  <h2 className="text-2xl font-black text-gray-900 tracking-tight">
+                  <h2 className="text-xl sm:text-2xl font-black text-gray-900 tracking-tight">
                     {loginMethod === 'otp' && otpStep === 'verify' ? 'Enter Your Code' : 'Welcome Back 👋'}
                   </h2>
                   <p className="text-gray-400 text-sm mt-1 font-medium">
@@ -333,7 +333,7 @@ export default function Login() {
 
                 {/* Toggle tabs */}
                 {!(loginMethod === 'otp' && otpStep === 'verify') && (
-                  <div className="flex gap-1 p-1 rounded-xl mb-6"
+                  <div className="flex gap-1 p-1 rounded-xl mb-3 sm:mb-6"
                     style={{ background: '#fff7ed', border: '1.5px solid #fed7aa' }}>
                     {[
                       { key: 'password', icon: FiLock, label: 'Password' },
@@ -341,7 +341,7 @@ export default function Login() {
                     ].map(({ key, icon: Icon, label }) => (
                       <button key={key} type="button"
                         onClick={() => { setLoginMethod(key); if (key === 'otp') setOtpStep('request'); }}
-                        className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-xs font-bold transition-all duration-200
+                        className={`flex-1 flex items-center justify-center gap-2 py-2 sm:py-2.5 rounded-lg text-xs font-bold transition-all duration-200
                           ${loginMethod === key
                             ? 'bg-gradient-to-r from-orange-500 to-amber-400 text-white shadow-md shadow-orange-200/60'
                             : 'text-orange-600/60 hover:text-orange-600'}`}
@@ -354,7 +354,7 @@ export default function Login() {
 
                 {/* ── Password form ── */}
                 {loginMethod === 'password' && (
-                  <form onSubmit={handleSubmit} className="space-y-4">
+                  <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
                     <FloatingInput id="email" type="email" label="Email Address" icon={FiMail}
                       value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required />
                     <div className="relative">
@@ -366,7 +366,7 @@ export default function Login() {
                       </button>
                     </div>
                     <button type="submit" disabled={loading}
-                      className="w-full flex items-center justify-center gap-2 text-white font-bold py-3.5 rounded-xl text-sm transition-all duration-200 hover:-translate-y-0.5 active:scale-[0.98] disabled:opacity-60 disabled:hover:translate-y-0 mt-2"
+                      className="w-full flex items-center justify-center gap-2 text-white font-bold py-3 sm:py-3.5 rounded-xl text-sm transition-all duration-200 hover:-translate-y-0.5 active:scale-[0.98] disabled:opacity-60 disabled:hover:translate-y-0 mt-1 sm:mt-2"
                       style={{ background: 'linear-gradient(135deg, #f97316, #f59e0b)', boxShadow: '0 4px 20px rgba(249,115,22,0.30)' }}>
                       {loading
                         ? <><FiRefreshCw size={14} className="animate-spin" /> Signing In...</>
@@ -443,7 +443,7 @@ export default function Login() {
                 )}
 
                 {/* ── Divider ── */}
-                <div className="relative flex items-center my-6">
+                <div className="relative flex items-center my-3 sm:my-6">
                   <div className="flex-grow border-t border-orange-100" />
                   <span className="flex-shrink mx-4 text-[10px] font-black uppercase tracking-widest text-orange-300 bg-orange-50 px-2.5 py-1 rounded-full border border-orange-100">
                     or
@@ -453,7 +453,7 @@ export default function Login() {
 
                 {/* ── Google ── */}
                 <button type="button" onClick={handleGoogleClick}
-                  className="w-full flex items-center justify-center gap-3 font-semibold py-3 px-4 rounded-xl text-sm text-gray-600 transition-all duration-200 hover:-translate-y-0.5 active:scale-[0.98]"
+                  className="w-full flex items-center justify-center gap-3 font-semibold py-2.5 sm:py-3 px-4 rounded-xl text-sm text-gray-600 transition-all duration-200 hover:-translate-y-0.5 active:scale-[0.98]"
                   style={{ background: '#fafafa', border: '1.5px solid #e5e7eb', boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}
                   onMouseEnter={e => { e.currentTarget.style.borderColor = '#fed7aa'; e.currentTarget.style.background = '#fff7ed'; }}
                   onMouseLeave={e => { e.currentTarget.style.borderColor = '#e5e7eb'; e.currentTarget.style.background = '#fafafa'; }}>
@@ -462,7 +462,7 @@ export default function Login() {
                 </button>
 
                 {/* Footer note */}
-                <p className="text-center text-[11px] text-gray-400 mt-5 leading-relaxed">
+                <p className="text-center text-[11px] text-gray-400 mt-3 sm:mt-5 leading-relaxed">
                   By signing in you agree to{' '}
                   <span className="text-orange-500 font-semibold cursor-pointer hover:underline">Terms</span>
                   {' '}&{' '}
@@ -472,7 +472,7 @@ export default function Login() {
             )}
           </div>
 
-          <p className="text-center text-[10px] text-orange-400/60 mt-4 font-medium">
+          <p className="hidden sm:block text-center text-[10px] text-orange-400/60 mt-4 font-medium">
             SSES Admission Portal · v2.0
           </p>
         </div>
