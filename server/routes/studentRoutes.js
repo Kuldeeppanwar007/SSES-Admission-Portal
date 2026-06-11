@@ -55,6 +55,21 @@ const preSanitizeSelfRegister = (req, res, next) => {
   next();
 };
 
+// Public stats for login page (no auth required)
+router.get('/public-stats', async (req, res) => {
+  try {
+    const Student = require('../models/Student');
+    const [total, admitted] = await Promise.all([
+      Student.countDocuments({ isDisabled: { $ne: true } }),
+      Student.countDocuments({ status: 'Admitted', isDisabled: { $ne: true } }),
+    ]);
+    const admissionRate = total > 0 ? Math.round((admitted / total) * 100) : 0;
+    res.json({ total, admitted, admissionRate });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 // Public self-registration endpoint (no auth required)
 router.post('/self-register', preSanitizeSelfRegister, validate(schemas.selfRegister), selfRegister);
 

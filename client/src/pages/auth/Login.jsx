@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useAuthStore from '../../store/authStore';
 import toast from 'react-hot-toast';
+import axios from 'axios';
 import logo from '../../assets/web/icon-512.png';
 import {
   FiEye, FiEyeOff, FiMapPin, FiMail, FiLock,
@@ -57,11 +58,7 @@ function FloatingInput({ id, type, value, onChange, label, icon: Icon, required,
   );
 }
 
-const STATS = [
-  { icon: FiUsers,      label: 'Students Managed', value: '5,000+' },
-  { icon: FiTrendingUp, label: 'Admission Rate',   value: '94%'    },
-  { icon: FiShield,     label: 'Uptime',           value: '99.9%'  },
-];
+
 
 export default function Login() {
   const [form, setForm] = useState({ email: '', password: '' });
@@ -75,11 +72,26 @@ export default function Login() {
   const [countdown, setCountdown] = useState(0);
   const [googleClient, setGoogleClient] = useState(null);
   const [mounted, setMounted] = useState(false);
+  const [publicStats, setPublicStats] = useState({ total: 0, admitted: 0, admissionRate: 0 });
 
   const { login, sendOtp, loginWithOtp, loginWithGoogle } = useAuthStore();
   const navigate = useNavigate();
 
   useEffect(() => { const t = setTimeout(() => setMounted(true), 60); return () => clearTimeout(t); }, []);
+
+  // Fetch real stats for login page cards
+  useEffect(() => {
+    const baseURL = import.meta.env.VITE_API_URL || 'https://sses-admission-portal-1.onrender.com/api';
+    axios.get(`${baseURL}/students/public-stats`)
+      .then(res => setPublicStats(res.data))
+      .catch(() => {});
+  }, []);
+
+  const STATS = [
+    { icon: FiUsers,      label: 'Students Managed', value: publicStats.total > 0 ? publicStats.total.toLocaleString('en-IN') : '—' },
+    { icon: FiTrendingUp, label: 'Admission Rate',   value: publicStats.total > 0 ? `${publicStats.admissionRate}% (${publicStats.admitted})` : '—' },
+    { icon: FiShield,     label: 'Uptime',           value: '99.9%' },
+  ];
 
   const handleGoogleLogin = async (credentials) => {
     setLoading(true);
