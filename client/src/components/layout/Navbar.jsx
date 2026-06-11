@@ -89,7 +89,7 @@ export default function Navbar({ onMenuClick }) {
           
           <div className="relative" ref={menuRef}>
             <button onClick={() => menuOpen ? closeMenu() : openMenu()}
-              className="flex items-center gap-2.5 rounded-full bg-white/80 border border-gray-100 p-1 pr-3 md:pr-4 shadow-[0_2px_8px_rgba(0,0,0,0.04)] text-gray-600 hover:text-primary hover:border-primary/30 hover:bg-orange-50/50 hover:shadow-[0_4px_16px_rgba(249,115,22,0.12)] transition-all duration-300 focus:outline-none">
+              className="flex items-center gap-2.5 rounded-full bg-white/80 border border-gray-100 p-1 sm:pr-3 md:pr-4 shadow-[0_2px_8px_rgba(0,0,0,0.04)] text-gray-600 hover:text-primary hover:border-primary/30 hover:bg-orange-50/50 hover:shadow-[0_4px_16px_rgba(249,115,22,0.12)] transition-all duration-300 focus:outline-none">
               <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary/20 to-primary/10 text-primary flex items-center justify-center font-bold text-sm border border-primary/20 shadow-sm">
                 {user?.name?.charAt(0)?.toUpperCase() || 'U'}
               </div>

@@ -362,7 +362,6 @@ const SUBJECT_COLORS = {
 
 const STAT_META = [
   { key: 'total', label: 'Total Students', icon: FiUsers, iconBg: 'bg-blue-50/80', iconColor: 'text-blue-500', text: 'text-blue-600', border: 'border-blue-100', hoverShadow: 'hover:shadow-[0_8px_24px_rgba(59,130,246,0.15)] hover:border-blue-400/50 hover:bg-blue-50/40', href: '/students' },
-  { key: 'applied', label: 'Not Calling', icon: FiFileText, iconBg: 'bg-amber-50/80', iconColor: 'text-amber-500', text: 'text-amber-600', border: 'border-amber-100', hoverShadow: 'hover:shadow-[0_8px_24px_rgba(245,158,11,0.15)] hover:border-amber-400/50 hover:bg-amber-50/40', href: '/students?status=Applied' },
   { key: 'calling', label: 'Calling', icon: FiPhone, iconBg: 'bg-sky-50/80', iconColor: 'text-sky-500', text: 'text-sky-600', border: 'border-sky-100', hoverShadow: 'hover:shadow-[0_8px_24px_rgba(14,165,233,0.15)] hover:border-sky-400/50 hover:bg-sky-50/40', href: '/students?status=Calling' },
   { key: 'interviewAttempts', label: 'Interview Attempts', icon: FiCheckCircle, iconBg: 'bg-violet-50/80', iconColor: 'text-violet-500', text: 'text-violet-600', border: 'border-violet-100', hoverShadow: 'hover:shadow-[0_8px_24px_rgba(139,92,246,0.15)] hover:border-violet-400/50 hover:bg-violet-50/40', href: '/students?interviewFilter=hasAttempts' },
   { key: 'finalCleared', label: 'Final Interview Cleared', icon: FiCheckCircle, iconBg: 'bg-green-50/80', iconColor: 'text-green-500', text: 'text-green-600', border: 'border-green-100', hoverShadow: 'hover:shadow-[0_8px_24px_rgba(34,197,94,0.15)] hover:border-green-400/50 hover:bg-green-50/40', href: '/students?interviewFilter=finalCleared' },
@@ -370,6 +369,7 @@ const STAT_META = [
   { key: 'rejected', label: 'Rejected', icon: FiXCircle, iconBg: 'bg-rose-50/80', iconColor: 'text-rose-500', text: 'text-rose-600', border: 'border-rose-100', hoverShadow: 'hover:shadow-[0_8px_24px_rgba(244,63,94,0.15)] hover:border-rose-400/50 hover:bg-rose-50/40', href: '/students?status=Rejected' },
   { key: 'admissionCancel', label: 'Admission Cancel', icon: FiUserX, iconBg: 'bg-red-50/80', iconColor: 'text-red-500', text: 'text-red-600', border: 'border-red-100', hoverShadow: 'hover:shadow-[0_8px_24px_rgba(239,68,68,0.15)] hover:border-red-400/50 hover:bg-red-50/40', href: '/students?status=Admission+Cancel' },
   { key: 'disabled', label: 'Disabled', icon: FiSlash, iconBg: 'bg-gray-50/80', iconColor: 'text-gray-400', text: 'text-gray-500', border: 'border-gray-200', hoverShadow: 'hover:shadow-[0_8px_24px_rgba(107,114,128,0.15)] hover:border-gray-400/50 hover:bg-gray-50/40', href: '/students?tab=disabled' },
+  { key: 'applied', label: 'Not Calling', icon: FiFileText, iconBg: 'bg-amber-50/80', iconColor: 'text-amber-500', text: 'text-amber-600', border: 'border-amber-100', hoverShadow: 'hover:shadow-[0_8px_24px_rgba(245,158,11,0.15)] hover:border-amber-400/50 hover:bg-amber-50/40', href: '/students?status=Applied' },
 ];
 
 const FUNNEL_STAGE_META = [
@@ -830,7 +830,7 @@ export default function Dashboard() {
           return (
             <div key={key}
               onClick={() => navigate(href)}
-              className={`group relative h-[130px] bg-white rounded-2xl border ${border} ${hoverShadow} shadow-sm p-4 flex flex-col justify-between transition-all duration-300 hover:-translate-y-1 cursor-pointer ${isTotalCard ? 'lg:col-span-2' : ''}`}>
+              className={`group relative h-[130px] bg-white rounded-2xl border ${border} ${hoverShadow} shadow-sm p-4 flex flex-col justify-between transition-all duration-300 hover:-translate-y-1 cursor-pointer ${isTotalCard ? 'col-span-2 sm:col-span-1 lg:col-span-2' : ''}`}>
               
               {isTotalCard ? (
                 <div className="flex flex-row justify-between items-end h-full w-full gap-4">
@@ -847,7 +847,7 @@ export default function Dashboard() {
 
                   {/* Right Half (Progress Bar & Targets) */}
                   {totalTarget > 0 && (
-                    <div className="hidden sm:flex flex-col justify-between flex-1 pl-6 border-l border-gray-100 h-[98px] py-0.5 w-1/2 select-none">
+                    <div className="flex sm:hidden lg:flex flex-col justify-between flex-1 pl-4 sm:pl-6 border-l border-gray-100 h-[98px] py-0.5 w-1/2 select-none">
                       {/* B.Tech Breakdown */}
                       <div className="flex flex-col">
                         <div className="flex items-center justify-between text-[10px] font-bold text-gray-500 mb-1 leading-none">
