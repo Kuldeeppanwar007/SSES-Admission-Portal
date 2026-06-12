@@ -232,7 +232,7 @@ export default function Login() {
               <img src={logo} alt="SSES" className="h-9 w-9 object-contain" />
             </div>
             <div>
-              <p className="text-orange-600 font-black text-xl tracking-tight leading-none">Sant Singaji Educational Society</p>
+              <p className="text-orange-500 font-black text-xl tracking-tight leading-none">Sant Singaji Educational Society</p>
               <p className="text-orange-400 text-[10px] font-bold uppercase tracking-widest">Admission Portal</p>
             </div>
           </div>
