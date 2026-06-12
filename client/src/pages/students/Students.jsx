@@ -435,9 +435,8 @@ export default function Students() {
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   
-  // Initialize state from URL params and localStorage
-  const getInitialState = () => {
-    const savedState = localStorage.getItem('studentsPageState');
+  // Initialize state from URL params and sessionStorage
+  const [initialUrlOverride] = useState(() => {
     const urlTab = searchParams.get('tab');
     const urlTrack = searchParams.get('track');
     const urlStatus = searchParams.get('status');
@@ -448,9 +447,52 @@ export default function Students() {
     const urlFunnelStage = searchParams.get('funnelStage');
     const urlAdmittedNoFunnel = searchParams.get('admittedNoFunnel');
     const urlNoFunnelStage = searchParams.get('noFunnelStage');
-    const hasUrlOverride = !!(urlTab || urlTrack || urlStatus || urlSubject || urlAdmissionType || urlInterviewFilter || urlFormSource || urlFunnelStage || urlAdmittedNoFunnel || urlNoFunnelStage);
+    return !!(urlTab || urlTrack || urlStatus || urlSubject || urlAdmissionType || urlInterviewFilter || urlFormSource || urlFunnelStage || urlAdmittedNoFunnel || urlNoFunnelStage);
+  });
+
+  const getInitialState = () => {
+    const savedState = sessionStorage.getItem('studentsPageState');
     
-    if (savedState && !hasUrlOverride) {
+    // URL params override saved state (e.g. from dashboard shortcut links)
+    if (initialUrlOverride) {
+      const urlTab = searchParams.get('tab');
+      const urlTrack = searchParams.get('track');
+      const urlStatus = searchParams.get('status');
+      const urlSubject = searchParams.get('subjectFilter');
+      const urlAdmissionType = searchParams.get('admissionType');
+      const urlInterviewFilter = searchParams.get('interviewFilter');
+      const urlFormSource = searchParams.get('formSource');
+      const urlFunnelStage = searchParams.get('funnelStage');
+      const urlAdmittedNoFunnel = searchParams.get('admittedNoFunnel');
+      const urlNoFunnelStage = searchParams.get('noFunnelStage');
+      return {
+        tab: urlTab || 'active',
+        page: 1,
+        filters: {
+          track: urlTrack || '',
+          status: urlStatus || '',
+          town: '',
+          search: '',
+          formSource: urlFormSource || '',
+          interviewFilter: urlInterviewFilter || '',
+          funnelStage: urlFunnelStage || '',
+          admittedNoFunnel: urlAdmittedNoFunnel || '',
+          noFunnelStage: urlNoFunnelStage || '',
+          admissionType: urlAdmissionType || '',
+          branch: '',
+          subjectFilter: urlSubject || '',
+          village: '',
+          schoolName: '',
+          interviewType: '',
+          hasFormNo: '',
+          sortByFormNo: '',
+        },
+        showFilters: !!(urlTrack || urlStatus || urlSubject || urlAdmissionType || urlInterviewFilter || urlFormSource || urlFunnelStage || urlAdmittedNoFunnel)
+      };
+    }
+    
+    // Restore from sessionStorage
+    if (savedState) {
       try {
         const parsed = JSON.parse(savedState);
         return {
@@ -463,8 +505,9 @@ export default function Students() {
             search: parsed.filters?.search || '',
             formSource: parsed.filters?.formSource || '',
             interviewFilter: parsed.filters?.interviewFilter || '',
-            funnelStage: parsed.filters?.funnelStage || urlFunnelStage || '',
-          noFunnelStage: parsed.filters?.noFunnelStage || urlNoFunnelStage || '',
+            funnelStage: parsed.filters?.funnelStage || '',
+            admittedNoFunnel: parsed.filters?.admittedNoFunnel || '',
+            noFunnelStage: parsed.filters?.noFunnelStage || '',
             admissionType: parsed.filters?.admissionType || '',
             branch: parsed.filters?.branch || '',
             subjectFilter: parsed.filters?.subjectFilter || '',
@@ -482,28 +525,15 @@ export default function Students() {
     }
     
     return {
-      tab: urlTab || 'active',
+      tab: 'active',
       page: 1,
       filters: {
-        track: urlTrack || '',
-        status: urlStatus || '',
-        town: '',
-        search: '',
-        formSource: urlFormSource || '',
-        interviewFilter: urlInterviewFilter || '',
-        funnelStage: urlFunnelStage || '',
-        admittedNoFunnel: urlAdmittedNoFunnel || '',
-        noFunnelStage: urlNoFunnelStage || '',
-        admissionType: urlAdmissionType || '',
-        branch: '',
-        subjectFilter: urlSubject || '',
-        village: '',
-        schoolName: '',
-        interviewType: '',
-        hasFormNo: '',
-        sortByFormNo: '',
+        track: '', status: '', town: '', search: '', formSource: '',
+        interviewFilter: '', funnelStage: '', admittedNoFunnel: '', noFunnelStage: '',
+        admissionType: '', branch: '', subjectFilter: '', village: '',
+        schoolName: '', interviewType: '', hasFormNo: '', sortByFormNo: '',
       },
-      showFilters: !!(urlTrack || urlStatus || urlSubject || urlAdmissionType || urlInterviewFilter || urlFormSource || urlFunnelStage || urlAdmittedNoFunnel)
+      showFilters: false
     };
   };
   
@@ -512,16 +542,6 @@ export default function Students() {
   const [page, setPage] = useState(initialState.page);
   const [filters, setFilters] = useState(initialState.filters);
   const [showFilters, setShowFilters] = useState(initialState.showFilters);
-  
-  // URL se aaye filters ko localStorage mein save mat karo — sirf clear karo
-  useEffect(() => {
-    const urlFormSource = searchParams.get('formSource');
-    const urlInterviewFilter = searchParams.get('interviewFilter');
-    if (urlFormSource || urlInterviewFilter) {
-      // URL params consume ho gaye, ab localStorage clean state save karo
-      return () => localStorage.removeItem('studentsPageState');
-    }
-  }, []); // eslint-disable-line
   
   const [students, setStudents] = useState([]);
   const [total, setTotal] = useState(0);
@@ -562,36 +582,27 @@ export default function Students() {
     return () => document.removeEventListener('mousedown', handler);
   }, []);
   
-  // Save state to localStorage whenever it changes
+  // Save state to sessionStorage whenever filters change
   useEffect(() => {
-    const stateToSave = {
-      tab,
-      page,
-      filters,
-      showFilters
-    };
-    localStorage.setItem('studentsPageState', JSON.stringify(stateToSave));
-    
-    // Update URL params
-    const newParams = new URLSearchParams();
-    if (tab !== 'active') newParams.set('tab', tab);
-    if (filters.track) newParams.set('track', filters.track);
-    if (filters.status) newParams.set('status', filters.status);
-    
-    const newSearch = newParams.toString();
-    if (newSearch !== searchParams.toString()) {
-      setSearchParams(newParams, { replace: true });
-    }
-  }, [tab, page, filters, showFilters, searchParams, setSearchParams]);
+    const stateToSave = { tab, page, filters, showFilters };
+    sessionStorage.setItem('studentsPageState', JSON.stringify(stateToSave));
+  }, [tab, page, filters, showFilters]);
   
-  // Clear state when navigating away from students list (but not to student detail/edit)
+  // Clear URL params after consuming them (one-time use from dashboard links)
+  useEffect(() => {
+    if (initialUrlOverride && searchParams.toString()) {
+      setSearchParams({}, { replace: true });
+    }
+  }, []); // eslint-disable-line
+  
+  // Clear state when navigating completely away from students section
   useEffect(() => {
     return () => {
-      // Only clear state when navigating completely away from students section
-      const currentPath = window.location.pathname;
-      if (!currentPath.startsWith('/students')) {
-        localStorage.removeItem('studentsPageState');
-        localStorage.removeItem('studentsScrollPosition');
+      // HashRouter uses hash for routing, not pathname
+      const hash = window.location.hash || '';
+      if (!hash.includes('/students')) {
+        sessionStorage.removeItem('studentsPageState');
+        sessionStorage.removeItem('studentsScrollPosition');
       }
     };
   }, []);
@@ -723,11 +734,11 @@ export default function Students() {
   
   // Restore scroll position when returning to the page
   useEffect(() => {
-    const savedScrollPosition = localStorage.getItem('studentsScrollPosition');
+    const savedScrollPosition = sessionStorage.getItem('studentsScrollPosition');
     if (savedScrollPosition && students.length > 0) {
       setTimeout(() => {
         window.scrollTo(0, parseInt(savedScrollPosition));
-        localStorage.removeItem('studentsScrollPosition');
+        sessionStorage.removeItem('studentsScrollPosition');
       }, 100); // Small delay to ensure content is rendered
     }
   }, [students]);
@@ -746,7 +757,7 @@ export default function Students() {
     setSelected([]);
     setHasMore(false);
     setInterviewRound('');
-    localStorage.removeItem('studentsPageState');
+    sessionStorage.removeItem('studentsPageState');
   };
 
   const toggleSelect = (id) => setSelected((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
@@ -1493,7 +1504,7 @@ export default function Students() {
                   </thead>
                   <tbody className="divide-y divide-gray-100">
                     {students.map((s, i) => (
-                      <tr key={s._id} className={`${user?.role === 'admin' ? 'hover:bg-gray-50 cursor-pointer' : ''}`} onClick={() => user?.role === 'admin' && navigate(`/students/${s._id}`)}>                        {/* COMMENTED OUT — row checkbox (abhi jarurat nahi)
+                      <tr key={s._id} className={`${user?.role === 'admin' ? 'hover:bg-gray-50 cursor-pointer' : ''}`} onClick={() => { if (user?.role === 'admin') { sessionStorage.setItem('studentsScrollPosition', String(window.scrollY)); navigate(`/students/${s._id}`); } }}>                        {/* COMMENTED OUT — row checkbox (abhi jarurat nahi)
                         {tab === 'shiftCentral' && (
                           <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
                             <input type="checkbox" checked={selected.includes(s._id)} onChange={() => toggleSelect(s._id)} disabled={!canSendCentral}
@@ -1535,7 +1546,7 @@ export default function Students() {
               {/* Mobile cards */}
               <div className="md:hidden divide-y divide-gray-100">
                 {students.map((s, i) => (
-                  <div key={s._id} className={`p-4 flex items-center gap-3 ${user?.role === 'admin' ? 'cursor-pointer' : ''}`} onClick={() => user?.role === 'admin' && navigate(`/students/${s._id}`)}>                    {/* COMMENTED OUT — mobile checkbox (abhi jarurat nahi)
+                  <div key={s._id} className={`p-4 flex items-center gap-3 ${user?.role === 'admin' ? 'cursor-pointer' : ''}`} onClick={() => { if (user?.role === 'admin') { sessionStorage.setItem('studentsScrollPosition', String(window.scrollY)); navigate(`/students/${s._id}`); } }}>                    {/* COMMENTED OUT — mobile checkbox (abhi jarurat nahi)
                     {tab === 'shiftCentral' && (
                       <input type="checkbox" checked={selected.includes(s._id)}
                         onChange={e => { e.stopPropagation(); toggleSelect(s._id); }}
@@ -1639,7 +1650,7 @@ export default function Students() {
                   <tr key={s._id} onClick={() => {
                     // Save current scroll position
                     const scrollPosition = window.pageYOffset;
-                    localStorage.setItem('studentsScrollPosition', scrollPosition.toString());
+                    sessionStorage.setItem('studentsScrollPosition', scrollPosition.toString());
                     navigate(`/students/${s._id}`);
                   }} className={`hover:bg-gray-50 transition-colors cursor-pointer ${
                     s.isPriority ? 'bg-violet-50 border-l-4 border-l-violet-400' :
@@ -1741,7 +1752,7 @@ export default function Students() {
                       <button onClick={(e) => { 
                         e.stopPropagation(); 
                         const scrollPosition = window.pageYOffset;
-                        localStorage.setItem('studentsScrollPosition', scrollPosition.toString());
+                        sessionStorage.setItem('studentsScrollPosition', scrollPosition.toString());
                         navigate(`/students/${s._id}/calling`); 
                       }}
                         className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1.5 bg-primary hover:bg-primary-dark text-white rounded-lg transition-colors">
@@ -1785,7 +1796,7 @@ export default function Students() {
         ) : displayStudents.map((s, i) => (
           <div key={s._id} onClick={() => {
             const scrollPosition = window.pageYOffset;
-            localStorage.setItem('studentsScrollPosition', scrollPosition.toString());
+            sessionStorage.setItem('studentsScrollPosition', scrollPosition.toString());
             navigate(`/students/${s._id}`);
           }} className={`bg-white rounded-xl shadow-sm border cursor-pointer ${
             s.isPriority ? 'border-l-4 border-l-violet-400 border-violet-200 bg-violet-50/30' :
@@ -1864,7 +1875,7 @@ export default function Students() {
               <button onClick={(e) => { 
                 e.stopPropagation(); 
                 const scrollPosition = window.pageYOffset;
-                localStorage.setItem('studentsScrollPosition', scrollPosition.toString());
+                sessionStorage.setItem('studentsScrollPosition', scrollPosition.toString());
                 navigate(`/students/${s._id}/calling`); 
               }}
                 className="flex-1 flex items-center justify-center gap-1.5 text-sm text-white font-bold py-2 bg-primary hover:bg-primary-dark rounded-lg transition-colors shadow-sm shadow-primary/10">
