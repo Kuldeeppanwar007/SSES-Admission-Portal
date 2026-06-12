@@ -4,6 +4,7 @@ import useAuthStore from '../../store/authStore';
 import toast from 'react-hot-toast';
 import axios from 'axios';
 import logo from '../../assets/web/icon-512.png';
+import bgImage from '../../assets/SSISM-2.jpeg';
 import {
   FiEye, FiEyeOff, FiMapPin, FiMail, FiLock,
   FiArrowRight, FiShield, FiUsers, FiTrendingUp, FiRefreshCw,
@@ -84,13 +85,13 @@ export default function Login() {
     const baseURL = import.meta.env.VITE_API_URL || 'https://sses-admission-portal-1.onrender.com/api';
     axios.get(`${baseURL}/students/public-stats`)
       .then(res => setPublicStats(res.data))
-      .catch(() => {});
+      .catch(() => { });
   }, []);
 
   const STATS = [
-    { icon: FiUsers,      label: 'Students Managed', value: publicStats.total > 0 ? publicStats.total.toLocaleString('en-IN') : '—' },
-    { icon: FiTrendingUp, label: 'Admission Rate',   value: publicStats.total > 0 ? `${publicStats.admissionRate}% (${publicStats.admitted})` : '—' },
-    { icon: FiShield,     label: 'Uptime',           value: '99.9%' },
+    { icon: FiUsers, label: 'Students Managed', value: publicStats.total > 0 ? publicStats.total.toLocaleString('en-IN') : '—' },
+    { icon: FiTrendingUp, label: 'Admission Rate', value: publicStats.total > 0 ? `${publicStats.admissionRate}% (${publicStats.admitted})` : '—' },
+    { icon: FiShield, label: 'Uptime', value: '99.9%' },
   ];
 
   const handleGoogleLogin = async (credentials) => {
@@ -192,6 +193,18 @@ export default function Login() {
       <div className="hidden lg:flex lg:w-[48%] xl:w-[50%] relative flex-col overflow-hidden"
         style={{ background: 'linear-gradient(145deg, #fff7ed 0%, #ffedd5 60%, #fed7aa 100%)' }}>
 
+        {/* ── Blurred College Background Image ── */}
+        <div className="absolute inset-0 z-0" style={{
+          backgroundImage: `url(${bgImage})`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          backgroundRepeat: 'no-repeat',
+          filter: 'blur(6px)',
+          transform: 'scale(1.05)',
+        }} />
+        {/* Overlay for readability */}
+        <div className="absolute inset-0 z-0" style={{ background: 'linear-gradient(145deg, rgba(255,247,237,0.65) 0%, rgba(255,237,213,0.60) 60%, rgba(254,215,170,0.55) 100%)' }} />
+
         {/* Light decorative blobs */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <div className="absolute w-[500px] h-[500px] rounded-full"
@@ -219,7 +232,7 @@ export default function Login() {
               <img src={logo} alt="SSES" className="h-9 w-9 object-contain" />
             </div>
             <div>
-              <p className="text-orange-600 font-black text-xl tracking-tight leading-none">SSES</p>
+              <p className="text-orange-600 font-black text-xl tracking-tight leading-none">Sant Singaji Educational Society</p>
               <p className="text-orange-400 text-[10px] font-bold uppercase tracking-widest">Admission Portal</p>
             </div>
           </div>
@@ -237,7 +250,7 @@ export default function Login() {
               </span>{' '}
               Seamlessly.
             </h1>
-            <p className="text-orange-800/60 text-base leading-relaxed max-w-sm">
+            <p className="text-gray-600 text-base leading-relaxed max-w-sm">
               A centralized platform to track, manage and accelerate student admissions across all tracks and campuses.
             </p>
           </div>
@@ -260,7 +273,7 @@ export default function Login() {
           </div>
 
           <div className="mt-6 pt-5 border-t border-orange-200/60">
-            <p className="text-orange-700/40 text-xs">© 2025 SSES · Sant SIngaji Educational Society. All Rights Reserved</p>
+            <p className="text-gray-600 text-xs">© 2025 SSES · Sant SIngaji Educational Society. All Rights Reserved</p>
           </div>
         </div>
       </div>
@@ -349,7 +362,7 @@ export default function Login() {
                     style={{ background: '#fff7ed', border: '1.5px solid #fed7aa' }}>
                     {[
                       { key: 'password', icon: FiLock, label: 'Password' },
-                      { key: 'otp',      icon: FiMail, label: 'Email OTP' },
+                      { key: 'otp', icon: FiMail, label: 'Email OTP' },
                     ].map(({ key, icon: Icon, label }) => (
                       <button key={key} type="button"
                         onClick={() => { setLoginMethod(key); if (key === 'otp') setOtpStep('request'); }}
