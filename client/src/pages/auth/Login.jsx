@@ -199,7 +199,7 @@ export default function Login() {
           backgroundSize: 'cover',
           backgroundPosition: 'center',
           backgroundRepeat: 'no-repeat',
-          filter: 'blur(6px)',
+          filter: 'blur(3px)',
           transform: 'scale(1.05)',
         }} />
         {/* Overlay for readability */}
@@ -232,8 +232,8 @@ export default function Login() {
               <img src={logo} alt="SSES" className="h-9 w-9 object-contain" />
             </div>
             <div>
-              <p className="text-orange-500 font-black text-xl tracking-tight leading-none">Sant Singaji Educational Society</p>
-              <p className="text-orange-400 text-[10px] font-bold uppercase tracking-widest">Admission Portal</p>
+              <p className="text-orange-500 font-black text-2xl tracking-tight leading-none">Sant Singaji Educational Society</p>
+              <p className="text-orange-400 text-[15px] font-bold uppercase tracking-widest">Admission Portal</p>
             </div>
           </div>
 
@@ -272,8 +272,8 @@ export default function Login() {
             ))}
           </div>
 
-          <div className="mt-6 pt-5 border-t border-orange-200/60">
-            <p className="text-gray-600 text-xs">© 2025 SSES · Sant SIngaji Educational Society. All Rights Reserved</p>
+          <div className="mt-6 pt-10 border-t border-orange-200/60">
+            <p className="text-gray-600 text-s">© 2025 SSES · Sant SIngaji Educational Society. All Rights Reserved</p>
           </div>
         </div>
       </div>
