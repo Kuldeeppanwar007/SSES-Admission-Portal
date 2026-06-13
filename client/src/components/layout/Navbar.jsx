@@ -3,7 +3,7 @@ import useAuthStore from '../../store/authStore';
 import logo from '../../assets/web/icon-512.png';
 import NotificationBell from './NotificationBell';
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Capacitor } from '@capacitor/core';
 
 const isMobile = Capacitor.isNativePlatform();
@@ -11,6 +11,7 @@ const isMobile = Capacitor.isNativePlatform();
 export default function Navbar({ onMenuClick }) {
   const { user, logout } = useAuthStore();
   const navigate = useNavigate();
+  const location = useLocation();
   const [online, setOnline] = useState(navigator.onLine);
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuVisible, setMenuVisible] = useState(false);
@@ -70,9 +71,18 @@ export default function Navbar({ onMenuClick }) {
             <FiMenu size={20} />
           </button>
           
-          <div className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity" onClick={() => navigate('/dashboard')}>
+          <div className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity md:hidden" onClick={() => navigate('/dashboard')}>
             <img src={logo} alt="SSES" className="h-8 w-8 object-contain drop-shadow-sm" />
             <span className="text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-primary to-orange-400 tracking-tight hidden sm:block">SSES</span>
+          </div>
+
+          {/* Desktop active status badge */}
+          <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-50/80 border border-emerald-200/60">
+            <span className="relative flex h-2.5 w-2.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+            </span>
+            <span className="text-xs font-bold text-emerald-700 tracking-wide uppercase">Active</span>
           </div>
         </div>
         
